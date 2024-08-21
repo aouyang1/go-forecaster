@@ -1,0 +1,2 @@
+# go-forecast
+forecasting library
