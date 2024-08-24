@@ -21,7 +21,7 @@ func TestLinearRegression(t *testing.T) {
 	mObs := mat.NewDense(4, 3, obs)
 	mY := mat.NewDense(1, 4, y)
 
-	coef := Regression(mObs, mY)
+	coef := OLS(mObs, mY)
 	assert.InDelta(t, 2.0, coef[0], 0.00001)
 	assert.InDelta(t, 3.0, coef[1], 0.00001)
 	assert.InDelta(t, 4.0, coef[2], 0.00001)
@@ -64,7 +64,7 @@ func BenchmarkRegression(b *testing.B) {
 		mObs := mat.NewDense(60, 5, data)
 		mY := mat.NewDense(1, 60, data2)
 
-		Regression(mObs, mY)
+		OLS(mObs, mY)
 	}
 }
 
