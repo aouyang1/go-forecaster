@@ -26,11 +26,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	f, err := NewForecast(td, opt)
+	f, err := NewForecast(opt)
 	if err != nil {
 		panic(err)
 	}
-	if err := f.Fit(); err != nil {
+	if err := f.Fit(td); err != nil {
 		panic(err)
 	}
 	eq, err := f.ModelEq()

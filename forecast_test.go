@@ -10,10 +10,10 @@ import (
 
 func TestFit(t *testing.T) {
 	// create a daily sine wave at minutely with one week
-	minutes := 24 * 60
-	bias := 1.2
+	minutes := 7 * 24 * 60
+	bias := 7.9
 	amp := 4.3
-	phase := int64(3 * 60 * 60) // 3 hours
+	phase := int64(4 * 60 * 60) // 3 hours
 
 	tWin := make([]time.Time, 0, minutes)
 	ct := time.Now().Add(-time.Duration(6) * time.Hour)
@@ -31,30 +31,50 @@ func TestFit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := NewForecast(td, opt)
+	f, err := NewForecast(opt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Fit(); err != nil {
+	if err := f.Fit(td); err != nil {
 		t.Fatal(err)
 	}
+
+	labels := f.FeatureLabels()
+	res := make([]float64, 0, len(labels)+1)
+	res = append(res, f.Intercept())
 
 	coef, err := f.Coefficients()
 	if err != nil {
 		t.Fatal(err)
 	}
-	labels := f.FeatureLabels()
-	res := make([]float64, 0, len(labels)+1)
-	res = append(res, coef["bias"])
 	for _, label := range labels {
 		res = append(res, coef[label])
 	}
 
 	expected := []float64{
 		bias,
-		3.04, 3.04,
+		3.72, 2.14,
 		0.00, 0.00,
 		0.00, 0.00,
 	}
 	assert.InDeltaSlice(t, expected, res, 0.1)
+
+	predicted, err := f.Predict(td.t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mse := 0.0
+	for i := 0; i < len(td.t); i++ {
+		mse += math.Pow(td.y[i]-predicted[i], 2.0)
+	}
+	mse /= float64(len(td.t))
+	assert.Less(t, mse, 75.0)
+
+	mape := 0.0
+	for i := 0; i < len(td.t); i++ {
+		mape += math.Abs((td.y[i] - predicted[i]) / td.y[i])
+	}
+	mape /= float64(len(td.t))
+	assert.Less(t, mape, 3.0)
 }
