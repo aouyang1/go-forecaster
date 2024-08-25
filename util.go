@@ -15,7 +15,7 @@ func featureMatrix(t []time.Time, featureLabels []string, features map[string][]
 	obs := make([]float64, m*n)
 
 	featNum := 0
-	for i := 0; i < n; i++ {
+	for i := 0; i < m; i++ {
 		idx := n * i
 		obs[idx] = 1.0
 	}

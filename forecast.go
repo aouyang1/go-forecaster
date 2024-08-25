@@ -69,15 +69,13 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
 	// prune linearly dependent fourier components
 	f.fLabels = featureLabels(x)
 	features := featureMatrix(t, f.fLabels, x).T()
-
 	weights := []float64{f.intercept}
 	weights = append(weights, f.coef...)
 	w := mat.NewDense(1, len(f.fLabels)+1, weights)
 
-	resMx := mat.NewDense(1, len(t), nil)
+	var resMx mat.Dense
 	resMx.Mul(w, features)
-
-	return resMx.RawRowView(0), nil
+	return mat.Row(nil, 0, &resMx), nil
 }
 
 func (f *Forecast) FeatureLabels() []string {

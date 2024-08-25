@@ -69,12 +69,12 @@ func TestFit(t *testing.T) {
 		mse += math.Pow(td.y[i]-predicted[i], 2.0)
 	}
 	mse /= float64(len(td.t))
-	assert.Less(t, mse, 75.0)
+	assert.Less(t, mse, 0.00001)
 
 	mape := 0.0
 	for i := 0; i < len(td.t); i++ {
 		mape += math.Abs((td.y[i] - predicted[i]) / td.y[i])
 	}
 	mape /= float64(len(td.t))
-	assert.Less(t, mape, 3.0)
+	assert.Less(t, mape, 0.0001)
 }
