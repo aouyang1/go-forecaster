@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -18,10 +19,12 @@ var (
 )
 
 type Forecast struct {
-	opt *Options
+	opt    *Options
+	scores *Scores // score calculations after training
 
 	// model coefficients
 	fLabels   []string // index positions correspond to coefficient values
+	residual  []float64
 	coef      []float64
 	intercept float64
 }
@@ -56,6 +59,23 @@ func (f *Forecast) Fit(trainingData *TimeDataset) error {
 	features := featureMatrix(trainingData.t, f.fLabels, x)
 	observations := observationMatrix(trainingData.y)
 	f.intercept, f.coef = OLS(features, observations)
+
+	predicted, err := f.Predict(trainingData.t)
+	if err != nil {
+		return err
+	}
+	scores, err := NewScores(predicted, trainingData.y)
+	if err != nil {
+		return err
+	}
+	f.scores = scores
+
+	residual := make([]float64, len(trainingData.t))
+	floats.Add(residual, trainingData.y)
+	floats.Sub(residual, predicted)
+	floats.Scale(-1.0, residual)
+	f.residual = residual
+
 	return nil
 }
 
@@ -75,6 +95,7 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
 
 	var resMx mat.Dense
 	resMx.Mul(w, features)
+
 	return mat.Row(nil, 0, &resMx), nil
 }
 
@@ -114,4 +135,17 @@ func (f *Forecast) ModelEq() (string, error) {
 		eq += fmt.Sprintf("+%.2f*%s", coef[labels[i]], labels[i])
 	}
 	return eq, nil
+}
+
+func (f *Forecast) Scores() Scores {
+	if f.scores == nil {
+		return Scores{}
+	}
+	return *f.scores
+}
+
+func (f *Forecast) Residuals() []float64 {
+	res := make([]float64, len(f.residual))
+	copy(res, f.residual)
+	return res
 }
