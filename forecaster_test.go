@@ -61,7 +61,7 @@ func ExampleForecaster() {
 	y := make([]float64, 0, minutes)
 	for i := 0; i < minutes; i++ {
 		noise := rand.NormFloat64() * (3.2 + 3.2*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
-		y = append(y, 98.3+20.5*math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))+noise)
+		y = append(y, 98.3+10.5*math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))+10.5*math.Cos(2.0*math.Pi*3.0/86400.0*float64(t[i].Unix()+2*60*60))+noise)
 	}
 
 	// add in anomalies
