@@ -1,4 +1,4 @@
-package main
+package forecast
 
 type Options struct {
 	DailyOrders  int
@@ -8,6 +8,6 @@ type Options struct {
 func NewDefaultOptions() *Options {
 	return &Options{
 		DailyOrders:  12,
-		WeeklyOrders: 12,
+		WeeklyOrders: 6,
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package timedataset
 
 import (
 	"errors"
@@ -9,8 +9,8 @@ import (
 var ErrDatasetLenMismatch = errors.New("time feature has a different length than observations")
 
 type TimeDataset struct {
-	t []time.Time
-	y []float64
+	T []time.Time
+	Y []float64
 }
 
 func NewUnivariateDataset(t []time.Time, y []float64) (*TimeDataset, error) {
@@ -22,8 +22,8 @@ func NewUnivariateDataset(t []time.Time, y []float64) (*TimeDataset, error) {
 	}
 
 	td := &TimeDataset{
-		t: t,
-		y: y,
+		T: t,
+		Y: y,
 	}
 
 	return td, nil

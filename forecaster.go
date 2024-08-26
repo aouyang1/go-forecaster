@@ -2,58 +2,113 @@ package main
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/aouyang1/go-forecast/forecast"
+	"github.com/aouyang1/go-forecast/timedataset"
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
 )
 
-type ForecasterOptions struct {
-	SeriesOptions   *Options
-	ResidualOptions *Options
+type Options struct {
+	SeriesOptions   *forecast.Options
+	ResidualOptions *forecast.Options
+
+	ResidualWindow int
+	ResidualZscore float64
+}
+
+func NewOptions() *Options {
+	return &Options{
+		SeriesOptions:   forecast.NewDefaultOptions(),
+		ResidualOptions: forecast.NewDefaultOptions(),
+		ResidualWindow:  100,
+		ResidualZscore:  4.0,
+	}
 }
 
 type Forecaster struct {
-	opt *ForecasterOptions
+	opt *Options
 
-	seriesForecast   *Forecast
-	residualForecast *Forecast
+	seriesForecast   *forecast.Forecast
+	residualForecast *forecast.Forecast
 }
 
-func NewForecaster() (*Forecaster, error) {
-	return &Forecaster{}, nil
-}
+func New(opt *Options) (*Forecaster, error) {
+	if opt == nil {
+		opt = NewOptions()
+	}
 
-func (f *Forecaster) Fit(trainingData *TimeDataset) error {
-	seriesForecast, err := NewForecast(f.opt.SeriesOptions)
+	f := &Forecaster{
+		opt: opt,
+	}
+
+	seriesForecast, err := forecast.New(f.opt.SeriesOptions)
 	if err != nil {
-		return fmt.Errorf("unable to initialize forecast series, %w", err)
+		return nil, fmt.Errorf("unable to initialize forecast series, %w", err)
 	}
 	f.seriesForecast = seriesForecast
+
+	residualForecast, err := forecast.New(f.opt.ResidualOptions)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize forecast residual, %w", err)
+	}
+	f.residualForecast = residualForecast
+
+	return f, nil
+}
+
+func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 	if err := f.seriesForecast.Fit(trainingData); err != nil {
 		return fmt.Errorf("unable to forecast series, %w", err)
 	}
 
 	residual := f.seriesForecast.Residuals()
 
-	window := 100
-	zscore := 3.0
+	stddevSeries := make([]float64, len(residual)-f.opt.ResidualWindow+1)
+	numWindows := len(residual) - f.opt.ResidualWindow + 1
 
-	stddevSeries := make([]float64, len(residual)-window)
-	for i := 0; i < len(residual)-window; i++ {
-		_, stddev := stat.MeanStdDev(residual[i:i+window], nil)
-		stddevSeries[i] = zscore * stddev
+	for i := 0; i < numWindows; i++ {
+		_, stddev := stat.MeanStdDev(residual[i:i+f.opt.ResidualWindow], nil)
+		stddevSeries[i] = f.opt.ResidualZscore * stddev
 	}
-	residualData, err := NewUnivariateDataset(trainingData.t[window-1:], stddevSeries)
+
+	start := f.opt.ResidualWindow/2 - 1
+	end := len(trainingData.T) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2
+	residualData, err := timedataset.NewUnivariateDataset(trainingData.T[start:end], stddevSeries)
 	if err != nil {
 		return fmt.Errorf("unable to create univariate dataset for residual, %w", err)
 	}
 
-	residualForecast, err := NewForecast(f.opt.ResidualOptions)
-	if err != nil {
-		return fmt.Errorf("unable to initialize forecast residual, %w", err)
-	}
-	f.residualForecast = residualForecast
 	if err := f.residualForecast.Fit(residualData); err != nil {
 		return fmt.Errorf("unable to forecast residual, %w", err)
 	}
 	return nil
+}
+
+func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
+	seriesRes, err := f.seriesForecast.Predict(t)
+	if err != nil {
+		return nil, fmt.Errorf("unable to predict series forecasts, %w", err)
+	}
+	residualRes, err := f.residualForecast.Predict(t)
+	if err != nil {
+		return nil, fmt.Errorf("unable to predict residual forecasts, %w", err)
+	}
+
+	r := &Results{
+		T:        t,
+		Forecast: seriesRes,
+	}
+	upper := make([]float64, len(seriesRes))
+	lower := make([]float64, len(seriesRes))
+
+	copy(upper, seriesRes)
+	copy(lower, seriesRes)
+
+	floats.Add(upper, residualRes)
+	floats.Sub(lower, residualRes)
+	r.Upper = upper
+	r.Lower = lower
+	return r, nil
 }

@@ -1,10 +1,11 @@
-package main
+package forecast
 
 import (
 	"math"
 	"testing"
 	"time"
 
+	"github.com/aouyang1/go-forecast/timedataset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,11 +28,11 @@ func TestFit(t *testing.T) {
 	opt := &Options{
 		DailyOrders: 3,
 	}
-	td, err := NewUnivariateDataset(tWin, y)
+	td, err := timedataset.NewUnivariateDataset(tWin, y)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := NewForecast(opt)
+	f, err := New(opt)
 	if err != nil {
 		t.Fatal(err)
 	}

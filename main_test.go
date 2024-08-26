@@ -1,132 +1,112 @@
 package main
 
 import (
-	"testing"
+	"fmt"
+	"io"
+	"math"
+	"math/rand"
+	"os"
+	"time"
 
-	"github.com/sajari/regression"
-	"github.com/stretchr/testify/assert"
-	"gonum.org/v1/gonum/mat"
+	"github.com/aouyang1/go-forecast/forecast"
+	"github.com/aouyang1/go-forecast/timedataset"
+
+	"github.com/go-echarts/go-echarts/v2/charts"
+	"github.com/go-echarts/go-echarts/v2/components"
+	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
-func TestLinearRegression(t *testing.T) {
-	// y = 2 + 3*x0 + 4*x1
-	obs := []float64{
-		1, 0, 0,
-		1, 3, 5,
-		1, 9, 20,
-		1, 12, 6,
-	}
-	y := []float64{2, 31, 109, 62}
-
-	mObs := mat.NewDense(4, 3, obs)
-	mY := mat.NewDense(1, 4, y)
-
-	intercept, coef := OLS(mObs, mY)
-	assert.InDelta(t, 2.0, intercept, 0.00001)
-	assert.InDelta(t, 3.0, coef[0], 0.00001)
-	assert.InDelta(t, 4.0, coef[1], 0.00001)
-}
-
-func TestLibRegression(t *testing.T) {
-	r := new(regression.Regression)
-	r.SetObserved("y")
-	r.SetVar(0, "x0")
-	r.SetVar(1, "x1")
-	r.Train(
-		regression.DataPoint(2, []float64{0, 0}),
-		regression.DataPoint(31, []float64{3, 5}),
-		regression.DataPoint(109, []float64{9, 20}),
-		regression.DataPoint(62, []float64{12, 6}),
+func lineForecaster(trainingData *timedataset.TimeDataset, res *Results) *charts.Line {
+	line := charts.NewLine()
+	line.SetGlobalOptions(
+		charts.WithTitleOpts(
+			opts.Title{
+				Title: "Forecast example",
+			},
+		),
 	)
-	r.Run()
 
-	t.Logf("Regression formula:\n%v\n", r.Formula)
-	t.Logf("Regression:\n%s\n", r)
-	assert.InDeltaSlice(t, []float64{2.0, 3.0, 4.0}, r.GetCoeffs(), 0.00001)
+	lineDataActual := make([]opts.LineData, 0, len(trainingData.T))
+	lineDataForecast := make([]opts.LineData, 0, len(res.T))
+	lineDataUpper := make([]opts.LineData, 0, len(res.T))
+	lineDataLower := make([]opts.LineData, 0, len(res.T))
+
+	for i := 0; i < len(res.T); i++ {
+		lineDataActual = append(lineDataActual, opts.LineData{Value: trainingData.Y[i]})
+		lineDataForecast = append(lineDataForecast, opts.LineData{Value: res.Forecast[i]})
+		lineDataUpper = append(lineDataUpper, opts.LineData{Value: res.Upper[i]})
+		lineDataLower = append(lineDataLower, opts.LineData{Value: res.Lower[i]})
+	}
+
+	line.SetXAxis(res.T).
+		AddSeries("Actual", lineDataActual).
+		AddSeries("Forecast", lineDataForecast).
+		AddSeries("Upper", lineDataUpper).
+		AddSeries("Lower", lineDataLower)
+	return line
 }
 
-func BenchmarkRegression(b *testing.B) {
-	data := make([]float64, 0, 300)
-	for i := 0; i < cap(data); i++ {
-		val := float64(i)
-		if i%5 == 0 {
-			val = 1.0
-		}
-		data = append(data, val)
+func ExampleForecaster() {
+	// create a daily sine wave at minutely with one week
+	minutes := 4 * 24 * 60
+	t := make([]time.Time, 0, minutes)
+	ct := time.Now().Add(-time.Duration(6) * time.Hour)
+	for i := 0; i < minutes; i++ {
+		t = append(t, ct.Add(-time.Duration(i)*time.Minute))
 	}
-
-	data2 := make([]float64, 0, 60)
-	for i := 0; i < cap(data2); i++ {
-		data2 = append(data2, float64(i))
+	y := make([]float64, 0, minutes)
+	for i := 0; i < minutes; i++ {
+		noise := rand.NormFloat64() * (0.5 + 0.5*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
+		y = append(y, 1.2+4.3*math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))+noise)
 	}
-
-	for i := 0; i < b.N; i++ {
-		mObs := mat.NewDense(60, 5, data)
-		mY := mat.NewDense(1, 60, data2)
-
-		OLS(mObs, mY)
+	opt := &Options{
+		SeriesOptions: &forecast.Options{
+			DailyOrders:  12,
+			WeeklyOrders: 12,
+		},
+		ResidualOptions: &forecast.Options{
+			DailyOrders:  12,
+			WeeklyOrders: 12,
+		},
+		ResidualWindow: 100,
+		ResidualZscore: 4.0,
 	}
-}
-
-func BenchmarkRegression2(b *testing.B) {
-	data := make(regression.DataPoints, 0, 60)
-	for i := 0; i < cap(data); i++ {
-		ifloat := float64(i)
-		obs := []float64{ifloat*5 + 1, ifloat*5 + 2, ifloat*5 + 3, ifloat*5 + 4}
-		point := regression.DataPoint(ifloat, obs)
-		data = append(data, point)
+	td, err := timedataset.NewUnivariateDataset(t, y)
+	if err != nil {
+		panic(err)
 	}
-
-	for i := 0; i < b.N; i++ {
-		r := new(regression.Regression)
-		r.SetObserved("y")
-		r.SetVar(0, "x0")
-		r.SetVar(1, "x1")
-		r.SetVar(2, "x2")
-		r.SetVar(3, "x3")
-		r.Train(data...)
-
-		if err := r.Run(); err != nil {
-			b.Error(err)
-		}
-		r.GetCoeffs()
+	f, err := New(opt)
+	if err != nil {
+		panic(err)
 	}
-}
-
-func BenchmarkMatMultObservationsByWeight(b *testing.B) {
-	data := make([]float64, 0, 30000)
-	for i := 0; i < cap(data); i++ {
-		data = append(data, float64(i))
+	if err := f.Fit(td); err != nil {
+		panic(err)
 	}
-
-	data2 := make([]float64, 0, 1000)
-	for i := 0; i < cap(data2); i++ {
-		data2 = append(data2, float64(i))
+	eq, err := f.seriesForecast.ModelEq()
+	if err != nil {
+		panic(err)
 	}
+	fmt.Fprintln(os.Stderr, eq)
 
-	for i := 0; i < b.N; i++ {
-		ma := mat.NewDense(30, 1000, data)
-		mb := mat.NewDense(1000, 1, data2)
-		var mc mat.Dense
-		mc.Mul(ma, mb)
+	eq, err = f.residualForecast.ModelEq()
+	if err != nil {
+		panic(err)
 	}
-}
+	fmt.Fprintln(os.Stderr, eq)
 
-func BenchmarkMatMultWeightByObservations(b *testing.B) {
-	data := make([]float64, 0, 1000)
-	for i := 0; i < cap(data); i++ {
-		data = append(data, float64(i))
+	res, err := f.Predict(td.T)
+	if err != nil {
+		panic(err)
 	}
+	page := components.NewPage()
+	page.AddCharts(
+		lineForecaster(td, res),
+	)
+	file, err := os.Create("examples/forecaster.html")
+	if err != nil {
+		panic(err)
+	}
+	page.Render(io.MultiWriter(file))
 
-	data2 := make([]float64, 0, 30000)
-	for i := 0; i < cap(data2); i++ {
-		data2 = append(data2, float64(i))
-	}
-
-	for i := 0; i < b.N; i++ {
-		ma := mat.NewDense(1, 1000, data)
-		mb := mat.NewDense(1000, 30, data2)
-		var mc mat.Dense
-		mc.Mul(ma, mb)
-	}
+	// Output:
 }

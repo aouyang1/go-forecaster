@@ -1,9 +1,11 @@
-package main
+package forecast
 
 import (
 	"errors"
 	"fmt"
 	"math"
+
+	"gonum.org/v1/gonum/stat"
 )
 
 var ErrResLenMismatch = errors.New("predicted and actual have different lengths")
@@ -11,6 +13,7 @@ var ErrResLenMismatch = errors.New("predicted and actual have different lengths"
 type Scores struct {
 	MSE  float64 // mean squared error
 	MAPE float64 // mean average percent error
+	R2   float64 // r-squared
 }
 
 func NewScores(predicted, actual []float64) (*Scores, error) {
@@ -25,6 +28,7 @@ func NewScores(predicted, actual []float64) (*Scores, error) {
 	return &Scores{
 		MSE:  mse,
 		MAPE: mape,
+		R2:   stat.RSquaredFrom(predicted, actual, nil),
 	}, nil
 }
 

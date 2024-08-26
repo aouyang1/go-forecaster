@@ -1,10 +1,12 @@
-package main
+package forecast
 
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/aouyang1/go-forecast/timedataset"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
@@ -29,7 +31,7 @@ type Forecast struct {
 	intercept float64
 }
 
-func NewForecast(opt *Options) (*Forecast, error) {
+func New(opt *Options) (*Forecast, error) {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
@@ -40,38 +42,51 @@ func NewForecast(opt *Options) (*Forecast, error) {
 func (f *Forecast) generateFeatures(t []time.Time) (map[string][]float64, error) {
 	tFeat := generateTimeFeatures(t, f.opt)
 
-	return generateFourierFeatures(tFeat, f.opt)
+	feat, err := generateFourierFeatures(tFeat, f.opt)
+	if err != nil {
+		return nil, err
+	}
+
+	// do not include weekly fourier features if time range is less than 1 week
+	if t[len(t)-1].Sub(t[0]) < time.Duration(7*24*time.Hour) {
+		for label := range feat {
+			if strings.HasPrefix(label, "dow") {
+				delete(feat, label)
+			}
+		}
+	}
+	return feat, nil
 }
 
-func (f *Forecast) Fit(trainingData *TimeDataset) error {
+func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 	if trainingData == nil {
 		return ErrNoTrainingData
 	}
 
 	// generate features
-	x, err := f.generateFeatures(trainingData.t)
+	x, err := f.generateFeatures(trainingData.T)
 	if err != nil {
 		return err
 	}
 
 	// prune linearly dependent fourier components
 	f.fLabels = featureLabels(x)
-	features := featureMatrix(trainingData.t, f.fLabels, x)
-	observations := observationMatrix(trainingData.y)
+	features := featureMatrix(trainingData.T, f.fLabels, x)
+	observations := observationMatrix(trainingData.Y)
 	f.intercept, f.coef = OLS(features, observations)
 
-	predicted, err := f.Predict(trainingData.t)
+	predicted, err := f.Predict(trainingData.T)
 	if err != nil {
 		return err
 	}
-	scores, err := NewScores(predicted, trainingData.y)
+	scores, err := NewScores(predicted, trainingData.Y)
 	if err != nil {
 		return err
 	}
 	f.scores = scores
 
-	residual := make([]float64, len(trainingData.t))
-	floats.Add(residual, trainingData.y)
+	residual := make([]float64, len(trainingData.T))
+	floats.Add(residual, trainingData.Y)
 	floats.Sub(residual, predicted)
 	floats.Scale(-1.0, residual)
 	f.residual = residual
