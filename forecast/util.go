@@ -126,8 +126,8 @@ func generateFourierOrders(tFeatures map[string][]float64, col string, orders []
 	x := make(map[string][]float64)
 	for _, order := range orders {
 		sinFeat, cosFeat := generateFourierComponent(tFeat, order, period)
-		sinFeatCol := fmt.Sprintf("%s_%dsin", col, order)
-		cosFeatCol := fmt.Sprintf("%s_%dcos", col, order)
+		sinFeatCol := fmt.Sprintf("%s_%02dsin", col, order)
+		cosFeatCol := fmt.Sprintf("%s_%02dcos", col, order)
 		x[sinFeatCol] = sinFeat
 		x[cosFeatCol] = cosFeat
 	}
