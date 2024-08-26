@@ -6,10 +6,14 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"testing"
 	"time"
+
+	"gonum.org/v1/gonum/mat"
 
 	"github.com/aouyang1/go-forecast/forecast"
 	"github.com/aouyang1/go-forecast/timedataset"
+	"gonum.org/v1/gonum/floats"
 
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
@@ -56,9 +60,18 @@ func ExampleForecaster() {
 	}
 	y := make([]float64, 0, minutes)
 	for i := 0; i < minutes; i++ {
-		noise := rand.NormFloat64() * (0.5 + 0.5*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
-		y = append(y, 1.2+4.3*math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))+noise)
+		noise := rand.NormFloat64() * (3.2 + 3.2*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
+		y = append(y, 98.3+20.5*math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))+noise)
 	}
+
+	// add in anomalies
+	anomalyRegion1 := y[len(y)/3 : len(y)/3+len(y)/20]
+	floats.Scale(0, anomalyRegion1)
+	floats.AddConst(2.7, anomalyRegion1)
+
+	anomalyRegion2 := y[len(y)*2/3 : len(y)*2/3+len(y)/40]
+	floats.AddConst(31.4, anomalyRegion2)
+
 	opt := &Options{
 		SeriesOptions: &forecast.Options{
 			DailyOrders:  12,
@@ -68,6 +81,7 @@ func ExampleForecaster() {
 			DailyOrders:  12,
 			WeeklyOrders: 12,
 		},
+		OutlierOptions: NewOutlierOptions(),
 		ResidualWindow: 100,
 		ResidualZscore: 4.0,
 	}
@@ -109,4 +123,24 @@ func ExampleForecaster() {
 	page.Render(io.MultiWriter(file))
 
 	// Output:
+}
+
+func TestMatrixMulWithNaN(t *testing.T) {
+	// Initialize two matrices, a and b.
+	a := mat.NewDense(1, 2, []float64{
+		4, 3,
+	})
+	b := mat.NewDense(2, 4, []float64{
+		4, 0, 0, math.NaN(),
+		0, 0, 4, math.NaN(),
+	})
+
+	// Take the matrix product of a and b and place the result in c.
+	var c mat.Dense
+	c.Mul(a, b)
+
+	// Print the result using the formatter.
+	fc := mat.Formatted(&c, mat.Prefix("    "), mat.Squeeze())
+	fmt.Printf("c = %v", fc)
+	// Output: c = [16  0  12  NaN]
 }

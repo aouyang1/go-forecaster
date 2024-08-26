@@ -3,6 +3,7 @@ package forecast
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -63,18 +64,30 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 		return ErrNoTrainingData
 	}
 
+	// remove any NaNs from training set
+	trainingT := make([]time.Time, 0, len(trainingData.T))
+	trainingY := make([]float64, 0, len(trainingData.Y))
+	for i := 0; i < len(trainingData.T); i++ {
+		if math.IsNaN(trainingData.Y[i]) {
+			continue
+		}
+		trainingT = append(trainingT, trainingData.T[i])
+		trainingY = append(trainingY, trainingData.Y[i])
+	}
+
 	// generate features
-	x, err := f.generateFeatures(trainingData.T)
+	x, err := f.generateFeatures(trainingT)
 	if err != nil {
 		return err
 	}
 
-	// prune linearly dependent fourier components
 	f.fLabels = featureLabels(x)
-	features := featureMatrix(trainingData.T, f.fLabels, x)
-	observations := observationMatrix(trainingData.Y)
+
+	features := featureMatrix(trainingT, f.fLabels, x)
+	observations := observationMatrix(trainingY)
 	f.intercept, f.coef = OLS(features, observations)
 
+	// use input training to include NaNs
 	predicted, err := f.Predict(trainingData.T)
 	if err != nil {
 		return err

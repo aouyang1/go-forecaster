@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/aouyang1/go-forecast/forecast"
@@ -10,10 +12,29 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
+var ErrEmptyTimeDataset = errors.New("no timedataset or uninitialized")
+
+type OutlierOptions struct {
+	NumPasses       int
+	UpperPercentile float64
+	LowerPercentile float64
+	TukeyFactor     float64
+}
+
+func NewOutlierOptions() *OutlierOptions {
+	return &OutlierOptions{
+		NumPasses:       3,
+		UpperPercentile: 0.9,
+		LowerPercentile: 0.1,
+		TukeyFactor:     1.0,
+	}
+}
+
 type Options struct {
 	SeriesOptions   *forecast.Options
 	ResidualOptions *forecast.Options
 
+	OutlierOptions *OutlierOptions
 	ResidualWindow int
 	ResidualZscore float64
 }
@@ -54,17 +75,46 @@ func New(opt *Options) (*Forecaster, error) {
 		return nil, fmt.Errorf("unable to initialize forecast residual, %w", err)
 	}
 	f.residualForecast = residualForecast
-
 	return f, nil
 }
 
 func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
-	if err := f.seriesForecast.Fit(trainingData); err != nil {
-		return fmt.Errorf("unable to forecast series, %w", err)
+	if trainingData == nil {
+		return ErrEmptyTimeDataset
+	}
+	td, err := timedataset.NewUnivariateDataset(trainingData.T, trainingData.Y)
+	if err != nil {
+		return fmt.Errorf("unable to create copy of training dataset, %w", err)
 	}
 
-	residual := f.seriesForecast.Residuals()
+	// iterate to remove outliers
+	numPasses := 0
+	if f.opt.OutlierOptions != nil {
+		numPasses = f.opt.OutlierOptions.NumPasses
+	}
 
+	var residual []float64
+	for i := 0; i <= numPasses; i++ {
+		if err := f.seriesForecast.Fit(td); err != nil {
+			return fmt.Errorf("unable to forecast series, %w", err)
+		}
+
+		residual = f.seriesForecast.Residuals()
+
+		outlierIdxs := DetectOutliers(f.opt.OutlierOptions, residual)
+		outlierSet := make(map[int]struct{})
+		for _, idx := range outlierIdxs {
+			outlierSet[idx] = struct{}{}
+		}
+		for i := 0; i < len(td.T); i++ {
+			if _, exists := outlierSet[i]; exists {
+				td.Y[i] = math.NaN()
+				continue
+			}
+		}
+	}
+
+	// compute rolling window standard deviation of residual foor uncertaninty bands
 	stddevSeries := make([]float64, len(residual)-f.opt.ResidualWindow+1)
 	numWindows := len(residual) - f.opt.ResidualWindow + 1
 
@@ -74,8 +124,8 @@ func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 	}
 
 	start := f.opt.ResidualWindow/2 - 1
-	end := len(trainingData.T) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2
-	residualData, err := timedataset.NewUnivariateDataset(trainingData.T[start:end], stddevSeries)
+	end := len(td.T) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2
+	residualData, err := timedataset.NewUnivariateDataset(td.T[start:end], stddevSeries)
 	if err != nil {
 		return fmt.Errorf("unable to create univariate dataset for residual, %w", err)
 	}
