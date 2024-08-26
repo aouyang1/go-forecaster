@@ -106,6 +106,12 @@ func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 		for _, idx := range outlierIdxs {
 			outlierSet[idx] = struct{}{}
 		}
+
+		// no more outliers detected with outlier options so break early
+		if len(outlierIdxs) == 0 {
+			break
+		}
+
 		for i := 0; i < len(td.T); i++ {
 			if _, exists := outlierSet[i]; exists {
 				td.Y[i] = math.NaN()
