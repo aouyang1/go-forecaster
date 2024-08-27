@@ -1,7 +1,7 @@
 # go-forecast
 forecasting library
 
-![Forecast Example](https://github.com/aouyang1/go-forecast/tree/main/examples/forecast_example.png)
+![Forecast Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_example.png)
 
 ## Example Use
 ```
@@ -31,7 +31,7 @@ func MyForecast(t []time.Time, y []float64) (*forecaster.Results, error) {
 	fmt.Fprintln(os.Stderr, eq)
 
 	return f.Predict(td.T)
-	
+}	
 ```
 
 
