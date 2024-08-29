@@ -207,6 +207,8 @@ func VarianceInflationFactor(features map[string][]float64) (map[string]float64,
 	return vif, nil
 }
 
+// OLS takes in obs of mxn and y 1xn where m is the number of observations
+// and n is the number of features
 func OLS(obs, y mat.Matrix) (float64, []float64) {
 	_, n := obs.Dims()
 	qr := new(mat.QR)
@@ -235,4 +237,50 @@ func OLS(obs, y mat.Matrix) (float64, []float64) {
 		return c[0], nil
 	}
 	return c[0], c[1:]
+}
+
+// CoordinateDescent takes in obs of mxn and y 1xn where m is the number of observations
+// and n is the number of features. lambda = 0 converges to OLS.
+func CoordinateDescent(obs, y *mat.Dense, lambda float64, iterations int) (float64, []float64) {
+	m, n := obs.Dims()
+	beta := mat.NewDense(1, n, nil)
+
+	xdot := make([]float64, n)
+	for i := 0; i < n; i++ {
+		xi := obs.ColView(i)
+		xdot[i] = mat.Dot(xi, xi)
+	}
+	for i := 0; i < iterations; i++ {
+		for j := 0; j < n; j++ {
+			xb := mat.NewDense(1, m, nil)
+			xb.Mul(beta, obs.T())
+
+			residual := mat.NewDense(1, m, nil)
+			residual.Sub(y, xb)
+
+			num := mat.Dot(obs.ColView(j), residual.RowView(0))
+			betaNext := num/xdot[j] + beta.At(0, j)
+
+			gamma := lambda / xdot[j]
+			betaNext = SoftThreshold(betaNext, gamma)
+			beta.Set(0, j, betaNext)
+		}
+	}
+
+	c := beta.RawRowView(0)
+	if len(c) == 0 {
+		return math.NaN(), nil
+	}
+	if len(c) == 1 {
+		return c[0], nil
+	}
+	return c[0], c[1:]
+}
+
+func SoftThreshold(x, gamma float64) float64 {
+	res := math.Max(0, math.Abs(x)-gamma)
+	if math.Signbit(x) {
+		return -res
+	}
+	return res
 }

@@ -26,6 +26,25 @@ func TestLinearRegression(t *testing.T) {
 	assert.InDelta(t, 4.0, coef[1], 0.00001)
 }
 
+func TestCoordinateDescent(t *testing.T) {
+	// y = 2 + 3*x0 + 4*x1
+	obs := []float64{
+		1, 0, 0,
+		1, 3, 5,
+		1, 9, 20,
+		1, 12, 6,
+	}
+	y := []float64{2, 31, 109, 62}
+
+	mObs := mat.NewDense(4, 3, obs)
+	mY := mat.NewDense(1, 4, y)
+
+	intercept, coef := CoordinateDescent(mObs, mY, 0, 100)
+	assert.InDelta(t, 2.0, intercept, 0.00001)
+	assert.InDelta(t, 3.0, coef[0], 0.00001)
+	assert.InDelta(t, 4.0, coef[1], 0.00001)
+}
+
 func BenchmarkRegression(b *testing.B) {
 	data := make([]float64, 0, 300)
 	for i := 0; i < cap(data); i++ {
