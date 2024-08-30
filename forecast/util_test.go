@@ -7,7 +7,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func TestLinearRegression(t *testing.T) {
+func TestOLS(t *testing.T) {
 	// y = 2 + 3*x0 + 4*x1
 	obs := []float64{
 		1, 0, 0,
@@ -26,7 +26,7 @@ func TestLinearRegression(t *testing.T) {
 	assert.InDelta(t, 4.0, coef[1], 0.00001)
 }
 
-func TestCoordinateDescent(t *testing.T) {
+func TestLassoRegression(t *testing.T) {
 	// y = 2 + 3*x0 + 4*x1
 	obs := []float64{
 		1, 0, 0,
@@ -39,14 +39,24 @@ func TestCoordinateDescent(t *testing.T) {
 	mObs := mat.NewDense(4, 3, obs)
 	mY := mat.NewDense(1, 4, y)
 
-	intercept, coef := CoordinateDescent(mObs, mY, 0, 100)
+	opt := NewDefaultLassoOptions()
+	opt.Lambda = 0
+	opt.Tolerance = 1e-6
+
+	intercept, coef, err := LassoRegression(mObs, mY, opt)
+	if err != nil {
+		t.Fatal(err)
+	}
 	assert.InDelta(t, 2.0, intercept, 0.00001)
 	assert.InDelta(t, 3.0, coef[0], 0.00001)
 	assert.InDelta(t, 4.0, coef[1], 0.00001)
 }
 
-func BenchmarkRegression(b *testing.B) {
-	data := make([]float64, 0, 300)
+func BenchmarkOLS(b *testing.B) {
+	nObs := 1000
+	nFeat := 100
+
+	data := make([]float64, 0, nObs*nFeat)
 	for i := 0; i < cap(data); i++ {
 		val := float64(i)
 		if i%5 == 0 {
@@ -55,16 +65,41 @@ func BenchmarkRegression(b *testing.B) {
 		data = append(data, val)
 	}
 
-	data2 := make([]float64, 0, 60)
+	data2 := make([]float64, 0, nObs)
 	for i := 0; i < cap(data2); i++ {
 		data2 = append(data2, float64(i))
 	}
 
 	for i := 0; i < b.N; i++ {
-		mObs := mat.NewDense(60, 5, data)
-		mY := mat.NewDense(1, 60, data2)
+		mObs := mat.NewDense(nObs, nFeat, data)
+		mY := mat.NewDense(1, nObs, data2)
 
 		OLS(mObs, mY)
+	}
+}
+
+func BenchmarkLassoRegression(b *testing.B) {
+	nObs := 1000
+	nFeat := 100
+	data := make([]float64, 0, nObs*nFeat)
+	for i := 0; i < cap(data); i++ {
+		val := float64(i)
+		if i%5 == 0 {
+			val = 1.0
+		}
+		data = append(data, val)
+	}
+
+	data2 := make([]float64, 0, nObs)
+	for i := 0; i < cap(data2); i++ {
+		data2 = append(data2, float64(i))
+	}
+
+	for i := 0; i < b.N; i++ {
+		mObs := mat.NewDense(nObs, nFeat, data)
+		mY := mat.NewDense(1, nObs, data2)
+
+		LassoRegression(mObs, mY, nil)
 	}
 }
 

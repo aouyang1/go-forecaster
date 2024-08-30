@@ -239,42 +239,94 @@ func OLS(obs, y mat.Matrix) (float64, []float64) {
 	return c[0], c[1:]
 }
 
-// CoordinateDescent takes in obs of mxn and y 1xn where m is the number of observations
-// and n is the number of features. lambda = 0 converges to OLS.
-func CoordinateDescent(obs, y *mat.Dense, lambda float64, iterations int) (float64, []float64) {
-	m, n := obs.Dims()
-	beta := mat.NewDense(1, n, nil)
+var (
+	ErrObsYSizeMismatch  = errors.New("observation and y matrix have different number of features")
+	ErrWarmStartBetaSize = errors.New("warm start beta does not have the same dimensions as X")
+)
 
+type LassoOptions struct {
+	WarmStartBeta []float64
+	Lambda        float64
+	Iterations    int
+	Tolerance     float64
+}
+
+func NewDefaultLassoOptions() *LassoOptions {
+	return &LassoOptions{
+		Lambda:        1.0,
+		Iterations:    1000,
+		Tolerance:     1e-4,
+		WarmStartBeta: nil,
+	}
+}
+
+// LassoRegression takes in obs of mxn and y 1xn where m is the number of observations
+// and n is the number of features. lambda = 0 converges to OLS
+func LassoRegression(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64, error) {
+	if opt == nil {
+		opt = NewDefaultLassoOptions()
+	}
+
+	m, n := obs.Dims()
+
+	_, ym := y.Dims()
+	if m != ym {
+		return 0, nil, fmt.Errorf("observation matrix has %d observations and y matrix as %d observations, %w", m, ym, ErrObsYSizeMismatch)
+	}
+	if opt.WarmStartBeta != nil && len(opt.WarmStartBeta) != n {
+		return 0, nil, fmt.Errorf("warm start beta has %d features instead of %d, %w", len(opt.WarmStartBeta), n, ErrWarmStartBetaSize)
+	}
+
+	// tracks current betas
+	beta := mat.NewDense(1, n, opt.WarmStartBeta)
+
+	// precompute the per feature dot product
 	xdot := make([]float64, n)
 	for i := 0; i < n; i++ {
 		xi := obs.ColView(i)
 		xdot[i] = mat.Dot(xi, xi)
 	}
-	for i := 0; i < iterations; i++ {
-		for j := 0; j < n; j++ {
-			xb := mat.NewDense(1, m, nil)
-			xb.Mul(beta, obs.T())
 
-			residual := mat.NewDense(1, m, nil)
-			residual.Sub(y, xb)
+	// tracks the per coordinate residual
+	residual := mat.NewDense(1, m, nil)
+
+	for i := 0; i < opt.Iterations; i++ {
+		maxCoef := 0.0
+		maxUpdate := 0.0
+
+		// loop through all features and minimize loss function
+		for j := 0; j < n; j++ {
+			residual.Mul(beta, obs.T())
+			residual.Scale(-1, residual)
+
+			residual.Add(y, residual)
 
 			num := mat.Dot(obs.ColView(j), residual.RowView(0))
-			betaNext := num/xdot[j] + beta.At(0, j)
+			betaCurr := beta.At(0, j)
+			betaNext := num/xdot[j] + betaCurr
 
-			gamma := lambda / xdot[j]
+			gamma := opt.Lambda / xdot[j]
 			betaNext = SoftThreshold(betaNext, gamma)
+
+			maxCoef = math.Max(maxCoef, betaNext)
+			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
 			beta.Set(0, j, betaNext)
+		}
+
+		// break early if we've achieved the desired tolerance
+		if maxUpdate < opt.Tolerance*maxCoef {
+			break
 		}
 	}
 
 	c := beta.RawRowView(0)
 	if len(c) == 0 {
-		return math.NaN(), nil
+		return math.NaN(), nil, nil
 	}
 	if len(c) == 1 {
-		return c[0], nil
+		return c[0], nil, nil
 	}
-	return c[0], c[1:]
+	return c[0], c[1:], nil
 }
 
 func SoftThreshold(x, gamma float64) float64 {
