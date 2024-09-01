@@ -20,6 +20,33 @@ import (
 	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
+func lineResidual(t []time.Time, res []float64) *charts.Line {
+	line := charts.NewLine()
+	line.SetGlobalOptions(
+		charts.WithTitleOpts(
+			opts.Title{
+				Title: "Forecast Residual",
+			},
+		),
+	)
+
+	lineDataResidual := make([]opts.LineData, 0, len(res))
+
+	filteredT := make([]time.Time, 0, len(t))
+	for i := 0; i < len(res); i++ {
+		if math.IsNaN(res[i]) {
+			continue
+		}
+		filteredT = append(filteredT, t[i])
+		lineDataResidual = append(lineDataResidual, opts.LineData{Value: res[i]})
+	}
+
+	line.SetXAxis(filteredT).
+		AddSeries("Residual", lineDataResidual)
+
+	return line
+}
+
 func lineForecaster(trainingData *timedataset.TimeDataset, res *Results) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
@@ -61,7 +88,18 @@ func ExampleForecaster() {
 	y := make([]float64, 0, minutes)
 	for i := 0; i < minutes; i++ {
 		noise := rand.NormFloat64() * (3.2 + 3.2*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
-		y = append(y, 98.3+10.5*math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))+10.5*math.Cos(2.0*math.Pi*3.0/86400.0*float64(t[i].Unix()+2*60*60))+noise)
+		bias := 98.3
+		daily1 := 10.5 * math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))
+		daily2 := 10.5 * math.Cos(2.0*math.Pi*3.0/86400.0*float64(t[i].Unix()+2*60*60))
+
+		jump := 0.0
+		if i > minutes/2 {
+			jump = 10.0
+		}
+		if i > minutes*17/20 {
+			jump = -60.0
+		}
+		y = append(y, bias+daily1+daily2+noise+jump)
 	}
 
 	// add in anomalies
@@ -70,12 +108,13 @@ func ExampleForecaster() {
 	floats.AddConst(2.7, anomalyRegion1)
 
 	anomalyRegion2 := y[len(y)*2/3 : len(y)*2/3+len(y)/40]
-	floats.AddConst(31.4, anomalyRegion2)
+	floats.AddConst(61.4, anomalyRegion2)
 
 	opt := &Options{
 		SeriesOptions: &forecast.Options{
 			DailyOrders:  12,
 			WeeklyOrders: 12,
+			Changepoints: []time.Time{t[minutes/2], t[minutes*17/20]},
 		},
 		ResidualOptions: &forecast.Options{
 			DailyOrders:  12,
@@ -115,13 +154,13 @@ func ExampleForecaster() {
 	page := components.NewPage()
 	page.AddCharts(
 		lineForecaster(td, res),
+		lineResidual(td.T, f.seriesForecast.Residuals()),
 	)
 	file, err := os.Create("examples/forecaster.html")
 	if err != nil {
 		panic(err)
 	}
 	page.Render(io.MultiWriter(file))
-
 	// Output:
 }
 

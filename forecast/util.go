@@ -12,7 +12,7 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-func featureMatrix(t []time.Time, featureLabels []string, features map[string][]float64) mat.Matrix {
+func featureMatrixChangepoints(t []time.Time, featureLabels []time.Time, features map[time.Time][]float64) *mat.Dense {
 	m := len(t)
 	n := len(features) + 1
 	obs := make([]float64, m*n)
@@ -35,7 +35,30 @@ func featureMatrix(t []time.Time, featureLabels []string, features map[string][]
 	return mat.NewDense(m, n, obs)
 }
 
-func observationMatrix(y []float64) mat.Matrix {
+func featureMatrix(t []time.Time, featureLabels []string, features map[string][]float64) *mat.Dense {
+	m := len(t)
+	n := len(features) + 1
+	obs := make([]float64, m*n)
+
+	featNum := 0
+	for i := 0; i < m; i++ {
+		idx := n * i
+		obs[idx] = 1.0
+	}
+	featNum += 1
+
+	for _, label := range featureLabels {
+		feature := features[label]
+		for i := 0; i < len(feature); i++ {
+			idx := n*i + featNum
+			obs[idx] = feature[i]
+		}
+		featNum += 1
+	}
+	return mat.NewDense(m, n, obs)
+}
+
+func observationMatrix(y []float64) *mat.Dense {
 	n := len(y)
 	return mat.NewDense(1, n, y)
 }
@@ -152,6 +175,71 @@ var (
 	ErrFeatureLen         = errors.New("must have at least 2 points per feature")
 )
 
+func generateChangepointFeatures(t, changepoints []time.Time) map[string][]float64 {
+	var minTime, maxTime time.Time
+	for _, tPnt := range t {
+		if minTime.IsZero() || tPnt.Before(minTime) {
+			minTime = tPnt
+		}
+		if maxTime.IsZero() || tPnt.After(maxTime) {
+			maxTime = tPnt
+		}
+	}
+
+	sort.Slice(
+		changepoints,
+		func(i, j int) bool {
+			return changepoints[i].Before(changepoints[j])
+		},
+	)
+	chptStart := len(changepoints)
+	chptEnd := -1
+	for i := 0; i < len(changepoints); i++ {
+		// haven't reached a changepoint in the time window
+		if changepoints[i].Before(minTime) || changepoints[i].Equal(minTime) {
+			continue
+		}
+		if i < chptStart {
+			chptStart = i
+		}
+
+		// reached end of time window so break
+		if changepoints[i].Equal(maxTime) || changepoints[i].After(maxTime) {
+			chptEnd = i
+			break
+		}
+	}
+	if chptEnd == -1 {
+		chptEnd = len(changepoints)
+	}
+	fChpts := changepoints[chptStart:chptEnd]
+	chpts := make([][]float64, len(fChpts))
+	for i := 0; i < len(fChpts); i++ {
+		chpt := make([]float64, len(t))
+		chpts[i] = chpt
+	}
+
+	for i := 0; i < len(t); i++ {
+		for j := 0; j < len(fChpts); j++ {
+			var beforeNextChpt bool
+			if j != len(fChpts)-1 {
+				beforeNextChpt = t[i].Before(fChpts[j+1])
+			} else {
+				beforeNextChpt = true
+			}
+			if t[i].Equal(fChpts[j]) || (t[i].After(fChpts[j]) && beforeNextChpt) {
+				chpts[j][i] = 1.0
+			}
+		}
+	}
+
+	feat := make(map[string][]float64)
+	for i := 0; i < len(fChpts); i++ {
+		feat[fmt.Sprintf("chpnt_%02d", i)] = chpts[i]
+	}
+	return feat
+}
+
 func VarianceInflationFactor(features map[string][]float64) (map[string]float64, error) {
 	if len(features) < 2 {
 		return nil, ErrMinimumFeatures
@@ -207,8 +295,7 @@ func VarianceInflationFactor(features map[string][]float64) (map[string]float64,
 	return vif, nil
 }
 
-// OLS takes in obs of mxn and y 1xn where m is the number of observations
-// and n is the number of features
+// OLS computes ordinary least squares using QR factorization
 func OLS(obs, y mat.Matrix) (float64, []float64) {
 	_, n := obs.Dims()
 	qr := new(mat.QR)
@@ -260,8 +347,7 @@ func NewDefaultLassoOptions() *LassoOptions {
 	}
 }
 
-// LassoRegression takes in obs of mxn and y 1xn where m is the number of observations
-// and n is the number of features. lambda = 0 converges to OLS
+// LassoRegression computes the lasso regression using coordinate descent. lambda = 0 converges to OLS
 func LassoRegression(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64, error) {
 	if opt == nil {
 		opt = NewDefaultLassoOptions()

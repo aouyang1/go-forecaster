@@ -56,6 +56,13 @@ func (f *Forecast) generateFeatures(t []time.Time) (map[string][]float64, error)
 			}
 		}
 	}
+
+	// generate changepoint features
+	chptFeat := generateChangepointFeatures(t, f.opt.Changepoints)
+	for chptLabel, feature := range chptFeat {
+		feat[chptLabel] = feature
+	}
+
 	return feat, nil
 }
 
