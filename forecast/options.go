@@ -10,8 +10,8 @@ type Options struct {
 
 func NewDefaultOptions() *Options {
 	return &Options{
+		Changepoints: nil,
 		DailyOrders:  12,
 		WeeklyOrders: 6,
-		Changepoints: nil,
 	}
 }

@@ -77,7 +77,7 @@ func lineForecaster(trainingData *timedataset.TimeDataset, res *Results) *charts
 	return line
 }
 
-func ExampleForecaster() {
+func generateExampleSeries() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 4 * 24 * 60
 	t := make([]time.Time, 0, minutes)
@@ -110,15 +110,24 @@ func ExampleForecaster() {
 	anomalyRegion2 := y[len(y)*2/3 : len(y)*2/3+len(y)/40]
 	floats.AddConst(61.4, anomalyRegion2)
 
+	return t, y
+}
+
+func ExampleForecaster() {
+	t, y := generateExampleSeries()
+
+	changepoints := []time.Time{t[len(t)/2], t[len(t)*17/20]}
+
 	opt := &Options{
 		SeriesOptions: &forecast.Options{
 			DailyOrders:  12,
 			WeeklyOrders: 12,
-			Changepoints: []time.Time{t[minutes/2], t[minutes*17/20]},
+			Changepoints: changepoints,
 		},
 		ResidualOptions: &forecast.Options{
 			DailyOrders:  12,
 			WeeklyOrders: 12,
+			Changepoints: changepoints,
 		},
 		OutlierOptions: NewOutlierOptions(),
 		ResidualWindow: 100,
@@ -157,6 +166,91 @@ func ExampleForecaster() {
 		lineResidual(td.T, f.seriesForecast.Residuals()),
 	)
 	file, err := os.Create("examples/forecaster.html")
+	if err != nil {
+		panic(err)
+	}
+	page.Render(io.MultiWriter(file))
+	// Output:
+}
+
+func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
+	// create a daily sine wave at minutely with one week
+	minutes := 4 * 24 * 60
+	t := make([]time.Time, 0, minutes)
+	ct := time.Now().Add(-time.Duration(24*4) * time.Hour)
+	for i := 0; i < minutes; i++ {
+		t = append(t, ct.Add(time.Duration(i)*time.Minute))
+	}
+	y := make([]float64, 0, minutes)
+	for i := 0; i < minutes; i++ {
+		noise := rand.NormFloat64() * (3.2 + 3.2*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
+		bias := 98.3
+		daily1 := 10.5 * math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))
+		daily2 := 10.5 * math.Cos(2.0*math.Pi*3.0/86400.0*float64(t[i].Unix()+2*60*60))
+
+		jump := 0.0
+		if i > minutes/2 && i < minutes*17/20 {
+			jump = 40.0 / float64(minutes*17/20-minutes/2) * float64(i-minutes/2)
+		}
+		y = append(y, bias+daily1+daily2+noise+jump)
+	}
+
+	return t, y
+}
+
+func ExampleForecasterWithTrend() {
+	t, y := generateExampleSeriesWithTrend()
+
+	changepoints := []time.Time{t[len(t)/2], t[len(t)*17/20]}
+
+	opt := &Options{
+		SeriesOptions: &forecast.Options{
+			DailyOrders:  12,
+			WeeklyOrders: 12,
+			Changepoints: changepoints,
+		},
+		ResidualOptions: &forecast.Options{
+			DailyOrders:  12,
+			WeeklyOrders: 12,
+			Changepoints: changepoints,
+		},
+		OutlierOptions: NewOutlierOptions(),
+		ResidualWindow: 100,
+		ResidualZscore: 4.0,
+	}
+	td, err := timedataset.NewUnivariateDataset(t, y)
+	if err != nil {
+		panic(err)
+	}
+	f, err := New(opt)
+	if err != nil {
+		panic(err)
+	}
+	if err := f.Fit(td); err != nil {
+		panic(err)
+	}
+	eq, err := f.seriesForecast.ModelEq()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintln(os.Stderr, eq)
+
+	eq, err = f.residualForecast.ModelEq()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintln(os.Stderr, eq)
+
+	res, err := f.Predict(td.T)
+	if err != nil {
+		panic(err)
+	}
+	page := components.NewPage()
+	page.AddCharts(
+		lineForecaster(td, res),
+		lineResidual(td.T, f.seriesForecast.Residuals()),
+	)
+	file, err := os.Create("examples/forecaster_with_trend.html")
 	if err != nil {
 		panic(err)
 	}

@@ -3,6 +3,8 @@ forecasting library
 
 ![Forecast Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_example.png)
 
+![Forecast With Trend Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_with_trend_example.png)
+
 ## Example Use
 ```
 import (

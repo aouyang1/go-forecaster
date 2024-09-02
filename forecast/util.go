@@ -175,7 +175,7 @@ var (
 	ErrFeatureLen         = errors.New("must have at least 2 points per feature")
 )
 
-func generateChangepointFeatures(t, changepoints []time.Time) map[string][]float64 {
+func generateChangepointFeatures(t, chpts []time.Time) map[string][]float64 {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -187,16 +187,16 @@ func generateChangepointFeatures(t, changepoints []time.Time) map[string][]float
 	}
 
 	sort.Slice(
-		changepoints,
+		chpts,
 		func(i, j int) bool {
-			return changepoints[i].Before(changepoints[j])
+			return chpts[i].Before(chpts[j])
 		},
 	)
-	chptStart := len(changepoints)
+	chptStart := len(chpts)
 	chptEnd := -1
-	for i := 0; i < len(changepoints); i++ {
+	for i := 0; i < len(chpts); i++ {
 		// haven't reached a changepoint in the time window
-		if changepoints[i].Before(minTime) || changepoints[i].Equal(minTime) {
+		if chpts[i].Before(minTime) {
 			continue
 		}
 		if i < chptStart {
@@ -204,21 +204,23 @@ func generateChangepointFeatures(t, changepoints []time.Time) map[string][]float
 		}
 
 		// reached end of time window so break
-		if changepoints[i].Equal(maxTime) || changepoints[i].After(maxTime) {
+		if chpts[i].Equal(maxTime) || chpts[i].After(maxTime) {
 			chptEnd = i
 			break
 		}
 	}
 	if chptEnd == -1 {
-		chptEnd = len(changepoints)
+		chptEnd = len(chpts)
 	}
-	fChpts := changepoints[chptStart:chptEnd]
-	chpts := make([][]float64, len(fChpts))
-	for i := 0; i < len(fChpts); i++ {
+	fChpts := chpts[chptStart:chptEnd]
+	chptFeatures := make([][]float64, len(fChpts)*2)
+	for i := 0; i < len(fChpts)*2; i++ {
 		chpt := make([]float64, len(t))
-		chpts[i] = chpt
+		chptFeatures[i] = chpt
 	}
 
+	bias := 1.0
+	var slope float64
 	for i := 0; i < len(t); i++ {
 		for j := 0; j < len(fChpts); j++ {
 			var beforeNextChpt bool
@@ -228,14 +230,17 @@ func generateChangepointFeatures(t, changepoints []time.Time) map[string][]float
 				beforeNextChpt = true
 			}
 			if t[i].Equal(fChpts[j]) || (t[i].After(fChpts[j]) && beforeNextChpt) {
-				chpts[j][i] = 1.0
+				slope = t[i].Sub(fChpts[j]).Seconds()
+				chptFeatures[j*2][i] = bias
+				chptFeatures[j*2+1][i] = slope
 			}
 		}
 	}
 
 	feat := make(map[string][]float64)
 	for i := 0; i < len(fChpts); i++ {
-		feat[fmt.Sprintf("chpnt_%02d", i)] = chpts[i]
+		feat[fmt.Sprintf("chpnt_bias_%02d", i)] = chptFeatures[i*2]
+		feat[fmt.Sprintf("chpnt_slope_%02d", i)] = chptFeatures[i*2+1]
 	}
 	return feat
 }
