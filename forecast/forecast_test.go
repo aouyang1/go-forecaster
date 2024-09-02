@@ -61,6 +61,6 @@ func TestFit(t *testing.T) {
 	assert.InDeltaSlice(t, expected, res, 0.1)
 
 	scores := f.Scores()
-	assert.Less(t, scores.MSE, 0.00001)
-	assert.Less(t, scores.MAPE, 0.00001)
+	assert.Less(t, scores.MSE, 0.0001)
+	assert.Less(t, scores.MAPE, 0.0001)
 }

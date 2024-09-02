@@ -92,7 +92,10 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 
 	features := featureMatrix(trainingT, f.fLabels, x)
 	observations := observationMatrix(trainingY)
-	f.intercept, f.coef = OLS(features, observations)
+	f.intercept, f.coef, err = LassoRegression(features, observations, nil)
+	if err != nil {
+		return err
+	}
 
 	// use input training to include NaNs
 	predicted, err := f.Predict(trainingData.T)

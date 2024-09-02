@@ -387,13 +387,19 @@ func LassoRegression(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64, 
 
 		// loop through all features and minimize loss function
 		for j := 0; j < n; j++ {
+			betaCurr := beta.At(0, j)
+			if i != 0 {
+				if betaCurr == 0 {
+					continue
+				}
+			}
+
 			residual.Mul(beta, obs.T())
 			residual.Scale(-1, residual)
 
 			residual.Add(y, residual)
 
 			num := mat.Dot(obs.ColView(j), residual.RowView(0))
-			betaCurr := beta.At(0, j)
 			betaNext := num/xdot[j] + betaCurr
 
 			gamma := opt.Lambda / xdot[j]
