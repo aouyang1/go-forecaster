@@ -1,15 +1,12 @@
 package forecast
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"sort"
 	"time"
 
-	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/stat"
 )
 
 func featureMatrixChangepoints(t []time.Time, featureLabels []time.Time, features map[time.Time][]float64) *mat.Dense {
@@ -169,12 +166,6 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-var (
-	ErrFeatureLenMismatch = errors.New("some feature length is not consistent")
-	ErrMinimumFeatures    = errors.New("need at least 2 features to coompute VIF")
-	ErrFeatureLen         = errors.New("must have at least 2 points per feature")
-)
-
 func generateChangepointFeatures(t, chpts []time.Time) map[string][]float64 {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
@@ -243,193 +234,4 @@ func generateChangepointFeatures(t, chpts []time.Time) map[string][]float64 {
 		feat[fmt.Sprintf("chpnt_slope_%02d", i)] = chptFeatures[i*2+1]
 	}
 	return feat
-}
-
-func VarianceInflationFactor(features map[string][]float64) (map[string]float64, error) {
-	if len(features) < 2 {
-		return nil, ErrMinimumFeatures
-	}
-	n := len(features)
-	var m int
-	for _, feature := range features {
-		if len(feature) < 2 {
-			return nil, ErrFeatureLen
-		}
-		if m == 0 {
-			m = len(feature)
-			continue
-		}
-		if m != len(feature) {
-			return nil, ErrFeatureLenMismatch
-		}
-	}
-
-	vif := make(map[string]float64)
-	x := mat.NewDense(m, n, nil)
-	y := mat.NewDense(1, m, nil)
-
-	ones := make([]float64, m)
-	floats.AddConst(1.0, ones)
-	x.SetCol(0, ones)
-
-	w := make([]float64, n)
-	weightsMx := mat.NewDense(1, n, nil)
-	for label, labelFeature := range features {
-		y.SetRow(0, labelFeature)
-		c := 1
-		for otherLabel, otherLabelFeature := range features {
-			if otherLabel == label {
-				continue
-			}
-			x.SetCol(c, otherLabelFeature)
-			c++
-		}
-		intercept, weights := OLS(x, y)
-		w[0] = intercept
-		for i, weight := range weights {
-			w[i+1] = weight
-		}
-		weightsMx.SetRow(0, w)
-
-		var predictedMx mat.Dense
-		predictedMx.Mul(weightsMx, x.T())
-		predicted := mat.Row(nil, 0, &predictedMx)
-
-		vif[label] = stat.RSquaredFrom(predicted, labelFeature, nil)
-	}
-	return vif, nil
-}
-
-// OLS computes ordinary least squares using QR factorization
-func OLS(obs, y mat.Matrix) (float64, []float64) {
-	_, n := obs.Dims()
-	qr := new(mat.QR)
-	qr.Factorize(obs)
-
-	q := new(mat.Dense)
-	r := new(mat.Dense)
-
-	qr.QTo(q)
-	qr.RTo(r)
-	yq := new(mat.Dense)
-	yq.Mul(y, q)
-
-	c := make([]float64, n)
-	for i := n - 1; i >= 0; i-- {
-		c[i] = yq.At(0, i)
-		for j := i + 1; j < n; j++ {
-			c[i] -= c[j] * r.At(i, j)
-		}
-		c[i] /= r.At(i, i)
-	}
-	if len(c) == 0 {
-		return math.NaN(), nil
-	}
-	if len(c) == 1 {
-		return c[0], nil
-	}
-	return c[0], c[1:]
-}
-
-var (
-	ErrObsYSizeMismatch  = errors.New("observation and y matrix have different number of features")
-	ErrWarmStartBetaSize = errors.New("warm start beta does not have the same dimensions as X")
-)
-
-type LassoOptions struct {
-	WarmStartBeta []float64
-	Lambda        float64
-	Iterations    int
-	Tolerance     float64
-}
-
-func NewDefaultLassoOptions() *LassoOptions {
-	return &LassoOptions{
-		Lambda:        1.0,
-		Iterations:    1000,
-		Tolerance:     1e-4,
-		WarmStartBeta: nil,
-	}
-}
-
-// LassoRegression computes the lasso regression using coordinate descent. lambda = 0 converges to OLS
-func LassoRegression(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64, error) {
-	if opt == nil {
-		opt = NewDefaultLassoOptions()
-	}
-
-	m, n := obs.Dims()
-
-	_, ym := y.Dims()
-	if m != ym {
-		return 0, nil, fmt.Errorf("observation matrix has %d observations and y matrix as %d observations, %w", m, ym, ErrObsYSizeMismatch)
-	}
-	if opt.WarmStartBeta != nil && len(opt.WarmStartBeta) != n {
-		return 0, nil, fmt.Errorf("warm start beta has %d features instead of %d, %w", len(opt.WarmStartBeta), n, ErrWarmStartBetaSize)
-	}
-
-	// tracks current betas
-	beta := mat.NewDense(1, n, opt.WarmStartBeta)
-
-	// precompute the per feature dot product
-	xdot := make([]float64, n)
-	for i := 0; i < n; i++ {
-		xi := obs.ColView(i)
-		xdot[i] = mat.Dot(xi, xi)
-	}
-
-	// tracks the per coordinate residual
-	residual := mat.NewDense(1, m, nil)
-
-	for i := 0; i < opt.Iterations; i++ {
-		maxCoef := 0.0
-		maxUpdate := 0.0
-
-		// loop through all features and minimize loss function
-		for j := 0; j < n; j++ {
-			betaCurr := beta.At(0, j)
-			if i != 0 {
-				if betaCurr == 0 {
-					continue
-				}
-			}
-
-			residual.Mul(beta, obs.T())
-			residual.Scale(-1, residual)
-
-			residual.Add(y, residual)
-
-			num := mat.Dot(obs.ColView(j), residual.RowView(0))
-			betaNext := num/xdot[j] + betaCurr
-
-			gamma := opt.Lambda / xdot[j]
-			betaNext = SoftThreshold(betaNext, gamma)
-
-			maxCoef = math.Max(maxCoef, betaNext)
-			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
-			beta.Set(0, j, betaNext)
-		}
-
-		// break early if we've achieved the desired tolerance
-		if maxUpdate < opt.Tolerance*maxCoef {
-			break
-		}
-	}
-
-	c := beta.RawRowView(0)
-	if len(c) == 0 {
-		return math.NaN(), nil, nil
-	}
-	if len(c) == 1 {
-		return c[0], nil, nil
-	}
-	return c[0], c[1:], nil
-}
-
-func SoftThreshold(x, gamma float64) float64 {
-	res := math.Max(0, math.Abs(x)-gamma)
-	if math.Signbit(x) {
-		return -res
-	}
-	return res
 }

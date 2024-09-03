@@ -1,4 +1,4 @@
-package forecast
+package models
 
 import (
 	"testing"

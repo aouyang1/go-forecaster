@@ -1,8 +1,12 @@
 # go-forecast
 forecasting library
 
+## Example 1
+Contains a daily seasonal component with 2 anomalous behaviors along with 2 registered change points
 ![Forecast Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_example.png)
 
+## Example 2
+Contains a daily seasonal component with a trend change point which resets
 ![Forecast With Trend Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_with_trend_example.png)
 
 ## Example Use

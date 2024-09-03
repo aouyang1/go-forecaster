@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecast/forecast"
+	"github.com/aouyang1/go-forecast/stats"
 	"github.com/aouyang1/go-forecast/timedataset"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
@@ -101,7 +102,12 @@ func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 
 		residual = f.seriesForecast.Residuals()
 
-		outlierIdxs := DetectOutliers(f.opt.OutlierOptions, residual)
+		outlierIdxs := stats.DetectOutliers(
+			residual,
+			f.opt.OutlierOptions.LowerPercentile,
+			f.opt.OutlierOptions.UpperPercentile,
+			f.opt.OutlierOptions.TukeyFactor,
+		)
 		outlierSet := make(map[int]struct{})
 		for _, idx := range outlierIdxs {
 			outlierSet[idx] = struct{}{}

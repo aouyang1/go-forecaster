@@ -21,13 +21,9 @@ func NewUnivariateDataset(t []time.Time, y []float64) (*TimeDataset, error) {
 		)
 	}
 
-	tSeries := make([]time.Time, len(t))
-	ySeries := make([]float64, len(t))
-	copy(tSeries, t)
-	copy(ySeries, y)
 	td := &TimeDataset{
-		T: tSeries,
-		Y: ySeries,
+		T: t,
+		Y: y,
 	}
 
 	return td, nil

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aouyang1/go-forecast/models"
 	"github.com/aouyang1/go-forecast/timedataset"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
@@ -92,7 +93,7 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 
 	features := featureMatrix(trainingT, f.fLabels, x)
 	observations := observationMatrix(trainingY)
-	f.intercept, f.coef, err = LassoRegression(features, observations, nil)
+	f.intercept, f.coef, err = models.LassoRegression(features, observations, nil)
 	if err != nil {
 		return err
 	}
@@ -170,7 +171,11 @@ func (f *Forecast) ModelEq() (string, error) {
 	eq += fmt.Sprintf("%.2f", f.Intercept())
 	labels := f.fLabels
 	for i := 0; i < len(f.coef); i++ {
-		eq += fmt.Sprintf("+%.2f*%s", coef[labels[i]], labels[i])
+		w := coef[labels[i]]
+		if w == 0 {
+			continue
+		}
+		eq += fmt.Sprintf("+%.7f*%s", w, labels[i])
 	}
 	return eq, nil
 }
