@@ -93,7 +93,10 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 
 	features := featureMatrix(trainingT, f.fLabels, x)
 	observations := observationMatrix(trainingY)
-	f.intercept, f.coef, err = models.LassoRegression(features, observations, nil)
+
+	lassoOpt := models.NewDefaultLassoOptions()
+	lassoOpt.Lambda = 0.0
+	f.intercept, f.coef, err = models.LassoRegression(features, observations, lassoOpt)
 	if err != nil {
 		return err
 	}
