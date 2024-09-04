@@ -1,9 +1,9 @@
 package forecast
 
-import "time"
+import "github.com/aouyang1/go-forecast/changepoint"
 
 type Options struct {
-	Changepoints []time.Time
+	Changepoints []changepoint.Changepoint
 	DailyOrders  int
 	WeeklyOrders int
 }

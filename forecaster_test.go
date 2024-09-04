@@ -11,6 +11,7 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 
+	"github.com/aouyang1/go-forecast/changepoint"
 	"github.com/aouyang1/go-forecast/forecast"
 	"github.com/aouyang1/go-forecast/timedataset"
 	"gonum.org/v1/gonum/floats"
@@ -116,7 +117,10 @@ func generateExampleSeries() ([]time.Time, []float64) {
 func ExampleForecaster() {
 	t, y := generateExampleSeries()
 
-	changepoints := []time.Time{t[len(t)/2], t[len(t)*17/20]}
+	changepoints := []changepoint.Changepoint{
+		changepoint.New("anomaly1", t[len(t)/2]),
+		changepoint.New("anomaly2", t[len(t)*17/20]),
+	}
 
 	opt := &Options{
 		SeriesOptions: &forecast.Options{
@@ -144,17 +148,26 @@ func ExampleForecaster() {
 	if err := f.Fit(td); err != nil {
 		panic(err)
 	}
-	eq, err := f.seriesForecast.ModelEq()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Fprintln(os.Stderr, eq)
 
-	eq, err = f.residualForecast.ModelEq()
+	intercept := f.seriesForecast.Intercept()
+	coef, err := f.seriesForecast.Coefficients()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintln(os.Stderr, eq)
+	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
+	for _, label := range f.residualForecast.FeatureLabels() {
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+	}
+
+	intercept = f.residualForecast.Intercept()
+	coef, err = f.residualForecast.Coefficients()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
+	for _, label := range f.residualForecast.FeatureLabels() {
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+	}
 
 	res, err := f.Predict(td.T)
 	if err != nil {
@@ -201,7 +214,10 @@ func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 func ExampleForecasterWithTrend() {
 	t, y := generateExampleSeriesWithTrend()
 
-	changepoints := []time.Time{t[len(t)/2], t[len(t)*17/20]}
+	changepoints := []changepoint.Changepoint{
+		changepoint.New("trendstart", t[len(t)/2]),
+		changepoint.New("rebaseline", t[len(t)*17/20]),
+	}
 
 	opt := &Options{
 		SeriesOptions: &forecast.Options{
@@ -229,17 +245,26 @@ func ExampleForecasterWithTrend() {
 	if err := f.Fit(td); err != nil {
 		panic(err)
 	}
-	eq, err := f.seriesForecast.ModelEq()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Fprintln(os.Stderr, eq)
 
-	eq, err = f.residualForecast.ModelEq()
+	intercept := f.seriesForecast.Intercept()
+	coef, err := f.seriesForecast.Coefficients()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintln(os.Stderr, eq)
+	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
+	for _, label := range f.residualForecast.FeatureLabels() {
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+	}
+
+	intercept = f.residualForecast.Intercept()
+	coef, err = f.residualForecast.Coefficients()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
+	for _, label := range f.residualForecast.FeatureLabels() {
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+	}
 
 	res, err := f.Predict(td.T)
 	if err != nil {

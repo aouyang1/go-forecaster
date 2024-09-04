@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/aouyang1/go-forecast/changepoint"
 	"github.com/aouyang1/go-forecast/feature"
 	"gonum.org/v1/gonum/mat"
 )
@@ -147,7 +148,7 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-func generateChangepointFeatures(t, chpts []time.Time) map[feature.Feature][]float64 {
+func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) map[feature.Feature][]float64 {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -161,14 +162,14 @@ func generateChangepointFeatures(t, chpts []time.Time) map[feature.Feature][]flo
 	sort.Slice(
 		chpts,
 		func(i, j int) bool {
-			return chpts[i].Before(chpts[j])
+			return chpts[i].T.Before(chpts[j].T)
 		},
 	)
 	chptStart := len(chpts)
 	chptEnd := -1
 	for i := 0; i < len(chpts); i++ {
 		// haven't reached a changepoint in the time window
-		if chpts[i].Before(minTime) {
+		if chpts[i].T.Before(minTime) {
 			continue
 		}
 		if i < chptStart {
@@ -176,7 +177,7 @@ func generateChangepointFeatures(t, chpts []time.Time) map[feature.Feature][]flo
 		}
 
 		// reached end of time window so break
-		if chpts[i].Equal(maxTime) || chpts[i].After(maxTime) {
+		if chpts[i].T.Equal(maxTime) || chpts[i].T.After(maxTime) {
 			chptEnd = i
 			break
 		}
@@ -196,13 +197,16 @@ func generateChangepointFeatures(t, chpts []time.Time) map[feature.Feature][]flo
 	for i := 0; i < len(t); i++ {
 		for j := 0; j < len(fChpts); j++ {
 			var beforeNextChpt bool
+			var deltaT float64
 			if j != len(fChpts)-1 {
-				beforeNextChpt = t[i].Before(fChpts[j+1])
+				beforeNextChpt = t[i].Before(fChpts[j+1].T)
+				deltaT = fChpts[j+1].T.Sub(fChpts[j].T).Seconds()
 			} else {
 				beforeNextChpt = true
+				deltaT = maxTime.Sub(fChpts[j].T).Seconds()
 			}
-			if t[i].Equal(fChpts[j]) || (t[i].After(fChpts[j]) && beforeNextChpt) {
-				slope = t[i].Sub(fChpts[j]).Seconds()
+			if t[i].Equal(fChpts[j].T) || (t[i].After(fChpts[j].T) && beforeNextChpt) {
+				slope = t[i].Sub(fChpts[j].T).Seconds() / deltaT
 				chptFeatures[j*2][i] = bias
 				chptFeatures[j*2+1][i] = slope
 			}
@@ -211,8 +215,12 @@ func generateChangepointFeatures(t, chpts []time.Time) map[feature.Feature][]flo
 
 	feat := make(map[feature.Feature][]float64)
 	for i := 0; i < len(fChpts); i++ {
-		chpntBias := feature.NewChangepoint(strconv.Itoa(i), feature.ChangepointCompBias)
-		chpntSlope := feature.NewChangepoint(strconv.Itoa(i), feature.ChangepointCompSlope)
+		chpntName := strconv.Itoa(i)
+		if fChpts[i].Name != "" {
+			chpntName = fChpts[i].Name
+		}
+		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
+		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
 
 		feat[chpntBias] = chptFeatures[i*2]
 		feat[chpntSlope] = chptFeatures[i*2+1]
