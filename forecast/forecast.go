@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
+	"github.com/aouyang1/go-forecast/feature"
 	"github.com/aouyang1/go-forecast/models"
 	"github.com/aouyang1/go-forecast/timedataset"
 	"gonum.org/v1/gonum/floats"
@@ -27,7 +27,7 @@ type Forecast struct {
 	scores *Scores // score calculations after training
 
 	// model coefficients
-	fLabels   []string // index positions correspond to coefficient values
+	fLabels   []feature.Feature // index positions correspond to coefficient values
 	residual  []float64
 	coef      []float64
 	intercept float64
@@ -41,7 +41,7 @@ func New(opt *Options) (*Forecast, error) {
 	return &Forecast{opt: opt}, nil
 }
 
-func (f *Forecast) generateFeatures(t []time.Time) (map[string][]float64, error) {
+func (f *Forecast) generateFeatures(t []time.Time) (map[feature.Feature][]float64, error) {
 	tFeat := generateTimeFeatures(t, f.opt)
 
 	feat, err := generateFourierFeatures(tFeat, f.opt)
@@ -52,7 +52,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (map[string][]float64, error)
 	// do not include weekly fourier features if time range is less than 1 week
 	if t[len(t)-1].Sub(t[0]) < time.Duration(7*24*time.Hour) {
 		for label := range feat {
-			if strings.HasPrefix(label, "dow") {
+			if val, _ := label.Get("name"); val == "dow" {
 				delete(feat, label)
 			}
 		}
@@ -141,18 +141,18 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
 	return mat.Row(nil, 0, &resMx), nil
 }
 
-func (f *Forecast) FeatureLabels() []string {
-	dst := make([]string, len(f.fLabels))
+func (f *Forecast) FeatureLabels() []feature.Feature {
+	dst := make([]feature.Feature, len(f.fLabels))
 	copy(dst, f.fLabels)
 	return dst
 }
 
-func (f *Forecast) Coefficients() (map[string]float64, error) {
+func (f *Forecast) Coefficients() (map[feature.Feature]float64, error) {
 	labels := f.fLabels
 	if len(labels) == 0 || len(f.coef) == 0 {
 		return nil, ErrNoModelCoefficients
 	}
-	coef := make(map[string]float64)
+	coef := make(map[feature.Feature]float64)
 	for i := 0; i < len(f.coef); i++ {
 		coef[labels[i]] = f.coef[i]
 	}
@@ -178,7 +178,7 @@ func (f *Forecast) ModelEq() (string, error) {
 		if w == 0 {
 			continue
 		}
-		eq += fmt.Sprintf("+%.7f*%s", w, labels[i])
+		eq += fmt.Sprintf("+%.2f*%s", w, labels[i])
 	}
 	return eq, nil
 }

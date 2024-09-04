@@ -4,35 +4,14 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"time"
 
+	"github.com/aouyang1/go-forecast/feature"
 	"gonum.org/v1/gonum/mat"
 )
 
-func featureMatrixChangepoints(t []time.Time, featureLabels []time.Time, features map[time.Time][]float64) *mat.Dense {
-	m := len(t)
-	n := len(features) + 1
-	obs := make([]float64, m*n)
-
-	featNum := 0
-	for i := 0; i < m; i++ {
-		idx := n * i
-		obs[idx] = 1.0
-	}
-	featNum += 1
-
-	for _, label := range featureLabels {
-		feature := features[label]
-		for i := 0; i < len(feature); i++ {
-			idx := n*i + featNum
-			obs[idx] = feature[i]
-		}
-		featNum += 1
-	}
-	return mat.NewDense(m, n, obs)
-}
-
-func featureMatrix(t []time.Time, featureLabels []string, features map[string][]float64) *mat.Dense {
+func featureMatrix(t []time.Time, featureLabels []feature.Feature, features map[feature.Feature][]float64) *mat.Dense {
 	m := len(t)
 	n := len(features) + 1
 	obs := make([]float64, m*n)
@@ -60,18 +39,19 @@ func observationMatrix(y []float64) *mat.Dense {
 	return mat.NewDense(1, n, y)
 }
 
-func generateTimeFeatures(t []time.Time, opt *Options) map[string][]float64 {
+func generateTimeFeatures(t []time.Time, opt *Options) map[feature.Feature][]float64 {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
-	tFeat := make(map[string][]float64)
+	tFeat := make(map[feature.Feature][]float64)
 	if opt.DailyOrders > 0 {
 		hod := make([]float64, len(t))
 		for i, tPnt := range t {
 			hour := float64(tPnt.Unix()) / 3600.0
 			hod[i] = math.Mod(hour, 24.0)
 		}
-		tFeat["hod"] = hod
+		feat := feature.NewTime("hod")
+		tFeat[feat] = hod
 	}
 	if opt.WeeklyOrders > 0 {
 		dow := make([]float64, len(t))
@@ -79,30 +59,31 @@ func generateTimeFeatures(t []time.Time, opt *Options) map[string][]float64 {
 			day := float64(tPnt.Unix()) / 86400.0
 			dow[i] = math.Mod(day, 7.0)
 		}
-		tFeat["dow"] = dow
+		feat := feature.NewTime("dow")
+		tFeat[feat] = dow
 	}
 	return tFeat
 }
 
-func featureLabels(features map[string][]float64) []string {
-	labels := make([]string, 0, len(features))
+func featureLabels(features map[feature.Feature][]float64) []feature.Feature {
+	labels := make([]feature.Feature, 0, len(features))
 	for label := range features {
 		labels = append(labels, label)
 	}
 	sort.Slice(
 		labels,
 		func(i, j int) bool {
-			return labels[i] < labels[j]
+			return labels[i].String() < labels[j].String()
 		},
 	)
 	return labels
 }
 
-func generateFourierFeatures(tFeat map[string][]float64, opt *Options) (map[string][]float64, error) {
+func generateFourierFeatures(tFeat map[feature.Feature][]float64, opt *Options) (map[feature.Feature][]float64, error) {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
-	x := make(map[string][]float64)
+	x := make(map[feature.Feature][]float64)
 	if opt.DailyOrders > 0 {
 		var orders []int
 		for i := 1; i <= opt.DailyOrders; i++ {
@@ -137,17 +118,17 @@ func generateFourierFeatures(tFeat map[string][]float64, opt *Options) (map[stri
 	return x, nil
 }
 
-func generateFourierOrders(tFeatures map[string][]float64, col string, orders []int, period float64) (map[string][]float64, error) {
-	tFeat, exists := tFeatures[col]
+func generateFourierOrders(tFeatures map[feature.Feature][]float64, col string, orders []int, period float64) (map[feature.Feature][]float64, error) {
+	tFeat, exists := tFeatures[feature.NewTime(col)]
 	if !exists {
 		return nil, ErrUnknownTimeFeature
 	}
 
-	x := make(map[string][]float64)
+	x := make(map[feature.Feature][]float64)
 	for _, order := range orders {
 		sinFeat, cosFeat := generateFourierComponent(tFeat, order, period)
-		sinFeatCol := fmt.Sprintf("%s_%02dsin", col, order)
-		cosFeatCol := fmt.Sprintf("%s_%02dcos", col, order)
+		sinFeatCol := feature.NewSeasonality(col, feature.FourierCompSin, order)
+		cosFeatCol := feature.NewSeasonality(col, feature.FourierCompCos, order)
 		x[sinFeatCol] = sinFeat
 		x[cosFeatCol] = cosFeat
 	}
@@ -166,7 +147,7 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-func generateChangepointFeatures(t, chpts []time.Time) map[string][]float64 {
+func generateChangepointFeatures(t, chpts []time.Time) map[feature.Feature][]float64 {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -228,10 +209,13 @@ func generateChangepointFeatures(t, chpts []time.Time) map[string][]float64 {
 		}
 	}
 
-	feat := make(map[string][]float64)
+	feat := make(map[feature.Feature][]float64)
 	for i := 0; i < len(fChpts); i++ {
-		feat[fmt.Sprintf("chpnt_bias_%02d", i)] = chptFeatures[i*2]
-		feat[fmt.Sprintf("chpnt_slope_%02d", i)] = chptFeatures[i*2+1]
+		chpntBias := feature.NewChangepoint(strconv.Itoa(i), feature.ChangepointCompBias)
+		chpntSlope := feature.NewChangepoint(strconv.Itoa(i), feature.ChangepointCompSlope)
+
+		feat[chpntBias] = chptFeatures[i*2]
+		feat[chpntSlope] = chptFeatures[i*2+1]
 	}
 	return feat
 }
