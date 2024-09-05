@@ -89,10 +89,10 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 		return err
 	}
 
-	f.fLabels = featureLabels(x)
+	f.fLabels = x.Labels()
 
-	features := featureMatrix(trainingT, f.fLabels, x)
-	observations := observationMatrix(trainingY)
+	features := x.Matrix()
+	observations := ObservationMatrix(trainingY)
 
 	lassoOpt := models.NewDefaultLassoOptions()
 	lassoOpt.Lambda = 0.0
@@ -129,8 +129,8 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
 	}
 
 	// prune linearly dependent fourier components
-	f.fLabels = featureLabels(x)
-	features := featureMatrix(t, f.fLabels, x).T()
+	f.fLabels = x.Labels()
+	features := x.Matrix().T()
 	weights := []float64{f.intercept}
 	weights = append(weights, f.coef...)
 	w := mat.NewDense(1, len(f.fLabels)+1, weights)

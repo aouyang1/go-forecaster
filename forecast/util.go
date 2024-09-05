@@ -12,32 +12,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-type FeatureSet map[feature.Feature][]float64
-
-func featureMatrix(t []time.Time, featureLabels []feature.Feature, features FeatureSet) *mat.Dense {
-	m := len(t)
-	n := len(features) + 1
-	obs := make([]float64, m*n)
-
-	featNum := 0
-	for i := 0; i < m; i++ {
-		idx := n * i
-		obs[idx] = 1.0
-	}
-	featNum += 1
-
-	for _, label := range featureLabels {
-		feature := features[label]
-		for i := 0; i < len(feature); i++ {
-			idx := n*i + featNum
-			obs[idx] = feature[i]
-		}
-		featNum += 1
-	}
-	return mat.NewDense(m, n, obs)
-}
-
-func observationMatrix(y []float64) *mat.Dense {
+func ObservationMatrix(y []float64) *mat.Dense {
 	n := len(y)
 	return mat.NewDense(1, n, y)
 }
@@ -66,20 +41,6 @@ func generateTimeFeatures(t []time.Time, opt *Options) FeatureSet {
 		tFeat[feat] = dow
 	}
 	return tFeat
-}
-
-func featureLabels(features FeatureSet) []feature.Feature {
-	labels := make([]feature.Feature, 0, len(features))
-	for label := range features {
-		labels = append(labels, label)
-	}
-	sort.Slice(
-		labels,
-		func(i, j int) bool {
-			return labels[i].String() < labels[j].String()
-		},
-	)
-	return labels
 }
 
 func generateFourierFeatures(tFeat FeatureSet, opt *Options) (FeatureSet, error) {
