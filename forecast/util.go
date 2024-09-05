@@ -12,7 +12,9 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func featureMatrix(t []time.Time, featureLabels []feature.Feature, features map[feature.Feature][]float64) *mat.Dense {
+type FeatureSet map[feature.Feature][]float64
+
+func featureMatrix(t []time.Time, featureLabels []feature.Feature, features FeatureSet) *mat.Dense {
 	m := len(t)
 	n := len(features) + 1
 	obs := make([]float64, m*n)
@@ -40,11 +42,11 @@ func observationMatrix(y []float64) *mat.Dense {
 	return mat.NewDense(1, n, y)
 }
 
-func generateTimeFeatures(t []time.Time, opt *Options) map[feature.Feature][]float64 {
+func generateTimeFeatures(t []time.Time, opt *Options) FeatureSet {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
-	tFeat := make(map[feature.Feature][]float64)
+	tFeat := make(FeatureSet)
 	if opt.DailyOrders > 0 {
 		hod := make([]float64, len(t))
 		for i, tPnt := range t {
@@ -66,7 +68,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) map[feature.Feature][]flo
 	return tFeat
 }
 
-func featureLabels(features map[feature.Feature][]float64) []feature.Feature {
+func featureLabels(features FeatureSet) []feature.Feature {
 	labels := make([]feature.Feature, 0, len(features))
 	for label := range features {
 		labels = append(labels, label)
@@ -80,11 +82,11 @@ func featureLabels(features map[feature.Feature][]float64) []feature.Feature {
 	return labels
 }
 
-func generateFourierFeatures(tFeat map[feature.Feature][]float64, opt *Options) (map[feature.Feature][]float64, error) {
+func generateFourierFeatures(tFeat FeatureSet, opt *Options) (FeatureSet, error) {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
-	x := make(map[feature.Feature][]float64)
+	x := make(FeatureSet)
 	if opt.DailyOrders > 0 {
 		var orders []int
 		for i := 1; i <= opt.DailyOrders; i++ {
@@ -119,13 +121,13 @@ func generateFourierFeatures(tFeat map[feature.Feature][]float64, opt *Options) 
 	return x, nil
 }
 
-func generateFourierOrders(tFeatures map[feature.Feature][]float64, col string, orders []int, period float64) (map[feature.Feature][]float64, error) {
+func generateFourierOrders(tFeatures FeatureSet, col string, orders []int, period float64) (FeatureSet, error) {
 	tFeat, exists := tFeatures[feature.NewTime(col)]
 	if !exists {
 		return nil, ErrUnknownTimeFeature
 	}
 
-	x := make(map[feature.Feature][]float64)
+	x := make(FeatureSet)
 	for _, order := range orders {
 		sinFeat, cosFeat := generateFourierComponent(tFeat, order, period)
 		sinFeatCol := feature.NewSeasonality(col, feature.FourierCompSin, order)
@@ -148,7 +150,7 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) map[feature.Feature][]float64 {
+func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) FeatureSet {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -213,7 +215,7 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 		}
 	}
 
-	feat := make(map[feature.Feature][]float64)
+	feat := make(FeatureSet)
 	for i := 0; i < len(fChpts); i++ {
 		chpntName := strconv.Itoa(i)
 		if fChpts[i].Name != "" {

@@ -1,6 +1,10 @@
 # go-forecast
 forecasting library
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/aouyang1/go-forecast)](https://goreportcard.com/report/github.com/aouyang1/go-forecast)
+[![GoDoc](https://godoc.org/github.com/aouyang1/go-forecast?status.svg)](https://godoc.org/github.com/aouyang1/go-forecast)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 ## Example 1
 Contains a daily seasonal component with 2 anomalous behaviors along with 2 registered change points
 ![Forecast Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_example.png)

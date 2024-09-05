@@ -41,7 +41,7 @@ func New(opt *Options) (*Forecast, error) {
 	return &Forecast{opt: opt}, nil
 }
 
-func (f *Forecast) generateFeatures(t []time.Time) (map[feature.Feature][]float64, error) {
+func (f *Forecast) generateFeatures(t []time.Time) (FeatureSet, error) {
 	tFeat := generateTimeFeatures(t, f.opt)
 
 	feat, err := generateFourierFeatures(tFeat, f.opt)
