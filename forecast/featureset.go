@@ -9,7 +9,7 @@ import (
 
 type FeatureSet map[feature.Feature][]float64
 
-func (f FeatureSet) Labels() []feature.Feature {
+func (f FeatureSet) Labels() *FeatureLabels {
 	if f == nil {
 		return nil
 	}
@@ -24,7 +24,7 @@ func (f FeatureSet) Labels() []feature.Feature {
 			return labels[i].String() < labels[j].String()
 		},
 	)
-	return labels
+	return NewFeatureLabels(labels)
 }
 
 func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
@@ -33,12 +33,17 @@ func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 	}
 
 	featureLabels := f.Labels()
-	if len(featureLabels) == 0 {
+	if featureLabels.Len() == 0 {
 		return nil
 	}
 
-	m := len(f[featureLabels[0]])
-	n := len(featureLabels)
+	var m int
+	// use first feature to get length
+	for _, flabel := range featureLabels.Labels() {
+		m = len(f[flabel])
+		break
+	}
+	n := featureLabels.Len()
 	if intercept {
 		n += 1
 	}
@@ -53,7 +58,7 @@ func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 		featNum += 1
 	}
 
-	for _, label := range featureLabels {
+	for _, label := range featureLabels.Labels() {
 		feature := f[label]
 		for i := 0; i < len(feature); i++ {
 			idx := n*i + featNum

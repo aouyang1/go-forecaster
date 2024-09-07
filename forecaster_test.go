@@ -184,19 +184,19 @@ func ExampleForecaster() {
 	page.AddCharts(
 		lineForecaster(td, res),
 		lineTSeries(
+			"Forecast Components",
+			[]string{"Trend", "Seasonality"},
+			td.T,
+			[][]float64{
+				f.TrendComponent(),
+				f.SeasonalityComponent(),
+			},
+		),
+		lineTSeries(
 			"Forecast Residual",
 			[]string{"Residual"},
 			td.T,
 			[][]float64{f.Residuals()},
-		),
-		lineTSeries(
-			"Forecast Components",
-			[]string{"Changepoint", "Seasonality"},
-			td.T,
-			[][]float64{
-				f.ChangepointComponent(),
-				f.SeasonalityComponent(),
-			},
 		),
 	)
 	file, err := os.Create("examples/forecaster.html")
@@ -295,19 +295,19 @@ func ExampleForecasterWithTrend() {
 	page.AddCharts(
 		lineForecaster(td, res),
 		lineTSeries(
+			"Forecast Components",
+			[]string{"Trend", "Seasonality"},
+			td.T,
+			[][]float64{
+				f.TrendComponent(),
+				f.SeasonalityComponent(),
+			},
+		),
+		lineTSeries(
 			"Forecast Residual",
 			[]string{"Residual"},
 			td.T,
 			[][]float64{f.seriesForecast.Residuals()},
-		),
-		lineTSeries(
-			"Forecast Components",
-			[]string{"Changepoint", "Seasonality"},
-			td.T,
-			[][]float64{
-				f.ChangepointComponent(),
-				f.SeasonalityComponent(),
-			},
 		),
 	)
 	file, err := os.Create("examples/forecaster_with_trend.html")

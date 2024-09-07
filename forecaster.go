@@ -146,8 +146,8 @@ func (f *Forecaster) Residuals() []float64 {
 	return f.seriesForecast.Residuals()
 }
 
-func (f *Forecaster) ChangepointComponent() []float64 {
-	return f.seriesForecast.ChangepointComponent()
+func (f *Forecaster) TrendComponent() []float64 {
+	return f.seriesForecast.TrendComponent()
 }
 
 func (f *Forecaster) SeasonalityComponent() []float64 {

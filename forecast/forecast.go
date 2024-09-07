@@ -27,10 +27,10 @@ type Forecast struct {
 	scores *Scores // score calculations after training
 
 	// model coefficients
-	fLabels []feature.Feature // index positions correspond to coefficient values
+	fLabels *FeatureLabels
 
 	residual    []float64
-	changepoint []float64
+	trend       []float64
 	seasonality []float64
 
 	coef      []float64
@@ -98,6 +98,7 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 	features := x.Matrix(true)
 	observations := ObservationMatrix(trainingY)
 
+	// run coordinate descent with lambda set too 0 which is equivalent to OLS
 	lassoOpt := models.NewDefaultLassoOptions()
 	lassoOpt.Lambda = 0.0
 	f.intercept, f.coef, err = models.LassoRegression(features, observations, lassoOpt)
@@ -139,45 +140,8 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 		}
 	}
 
-	if len(changepointFeatureSet) > 0 {
-		changepointWeights := make([]float64, 0, len(changepointFeatureSet))
-		changepointLabels := changepointFeatureSet.Labels()
-		for _, cFeat := range changepointLabels {
-			for j, feat := range f.fLabels {
-				if cFeat == feat {
-					changepointWeights = append(changepointWeights, f.coef[j])
-					break
-				}
-			}
-		}
-		cw := mat.NewDense(1, len(changepointLabels), changepointWeights)
-		changepointFeatures := changepointFeatureSet.Matrix(false).T()
-
-		var resChangepointMx mat.Dense
-		resChangepointMx.Mul(cw, changepointFeatures)
-
-		f.changepoint = mat.Row(nil, 0, &resChangepointMx)
-	}
-
-	if len(seasonalityFeatureSet) > 0 {
-		seasonalityWeights := make([]float64, 0, len(seasonalityFeatureSet))
-		seasonalityLabels := seasonalityFeatureSet.Labels()
-		for _, sFeat := range seasonalityLabels {
-			for j, feat := range f.fLabels {
-				if sFeat == feat {
-					seasonalityWeights = append(seasonalityWeights, f.coef[j])
-					break
-				}
-			}
-		}
-		sw := mat.NewDense(1, len(seasonalityLabels), seasonalityWeights)
-		seasonalityFeatures := seasonalityFeatureSet.Matrix(false).T()
-
-		var resSeasonalityMx mat.Dense
-		resSeasonalityMx.Mul(sw, seasonalityFeatures)
-
-		f.seasonality = mat.Row(nil, 0, &resSeasonalityMx)
-	}
+	f.trend = f.runInference(changepointFeatureSet, true)
+	f.seasonality = f.runInference(seasonalityFeatureSet, false)
 	return nil
 }
 
@@ -188,27 +152,50 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
 		return nil, err
 	}
 
-	// prune linearly dependent fourier components
-	f.fLabels = x.Labels()
-	features := x.Matrix(true).T()
-	weights := []float64{f.intercept}
-	weights = append(weights, f.coef...)
-	w := mat.NewDense(1, len(f.fLabels)+1, weights)
+	res := f.runInference(x, true)
+	return res, nil
+}
+
+func (f *Forecast) runInference(x FeatureSet, withIntercept bool) []float64 {
+	if len(x) == 0 {
+		return nil
+	}
+
+	xLabels := x.Labels()
+
+	n := xLabels.Len()
+	if withIntercept {
+		n += 1
+	}
+
+	xWeights := make([]float64, 0, n)
+	if withIntercept {
+		xWeights = append(xWeights, f.intercept)
+	}
+
+	for _, xFeat := range xLabels.Labels() {
+		if wIdx, exists := f.fLabels.Index(xFeat); exists {
+			xWeights = append(xWeights, f.coef[wIdx])
+		}
+	}
+
+	wMx := mat.NewDense(1, n, xWeights)
+	featMx := x.Matrix(withIntercept).T()
 
 	var resMx mat.Dense
-	resMx.Mul(w, features)
+	resMx.Mul(wMx, featMx)
 
-	return mat.Row(nil, 0, &resMx), nil
+	yhat := mat.Row(nil, 0, &resMx)
+
+	return yhat
 }
 
 func (f *Forecast) FeatureLabels() []feature.Feature {
-	dst := make([]feature.Feature, len(f.fLabels))
-	copy(dst, f.fLabels)
-	return dst
+	return f.fLabels.Labels()
 }
 
 func (f *Forecast) Coefficients() (map[feature.Feature]float64, error) {
-	labels := f.fLabels
+	labels := f.fLabels.Labels()
 	if len(labels) == 0 || len(f.coef) == 0 {
 		return nil, ErrNoModelCoefficients
 	}
@@ -232,7 +219,7 @@ func (f *Forecast) ModelEq() (string, error) {
 	}
 
 	eq += fmt.Sprintf("%.2f", f.Intercept())
-	labels := f.fLabels
+	labels := f.fLabels.Labels()
 	for i := 0; i < len(f.coef); i++ {
 		w := coef[labels[i]]
 		if w == 0 {
@@ -256,9 +243,9 @@ func (f *Forecast) Residuals() []float64 {
 	return res
 }
 
-func (f *Forecast) ChangepointComponent() []float64 {
-	res := make([]float64, len(f.changepoint))
-	copy(res, f.changepoint)
+func (f *Forecast) TrendComponent() []float64 {
+	res := make([]float64, len(f.trend))
+	copy(res, f.trend)
 	return res
 }
 
