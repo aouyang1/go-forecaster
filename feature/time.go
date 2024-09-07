@@ -24,3 +24,7 @@ func (t Time) Get(label string) (string, bool) {
 	}
 	return "", false
 }
+
+func (t Time) Type() FeatureType {
+	return FeatureTypeTime
+}

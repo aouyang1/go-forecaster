@@ -21,29 +21,36 @@ import (
 	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
-func lineResidual(t []time.Time, res []float64) *charts.Line {
+func lineTSeries(title string, seriesName []string, t []time.Time, y [][]float64) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(
 			opts.Title{
-				Title: "Forecast Residual",
+				Title: title,
 			},
 		),
 	)
 
-	lineDataResidual := make([]opts.LineData, 0, len(res))
+	lineData := make([][]opts.LineData, len(y))
 
 	filteredT := make([]time.Time, 0, len(t))
-	for i := 0; i < len(res); i++ {
-		if math.IsNaN(res[i]) {
-			continue
+	for i := 0; i < len(y); i++ {
+		lineData[i] = make([]opts.LineData, 0, len(y[i]))
+		for j := 0; j < len(y[i]); j++ {
+			if math.IsNaN(y[i][j]) {
+				continue
+			}
+			if i == 0 {
+				filteredT = append(filteredT, t[i])
+			}
+			lineData[i] = append(lineData[i], opts.LineData{Value: y[i][j]})
 		}
-		filteredT = append(filteredT, t[i])
-		lineDataResidual = append(lineDataResidual, opts.LineData{Value: res[i]})
 	}
 
-	line.SetXAxis(filteredT).
-		AddSeries("Residual", lineDataResidual)
+	line = line.SetXAxis(filteredT)
+	for i, series := range seriesName {
+		line = line.AddSeries(series, lineData[i])
+	}
 
 	return line
 }
@@ -149,8 +156,8 @@ func ExampleForecaster() {
 		panic(err)
 	}
 
-	intercept := f.seriesForecast.Intercept()
-	coef, err := f.seriesForecast.Coefficients()
+	intercept := f.SeriesIntercept()
+	coef, err := f.SeriesCoefficients()
 	if err != nil {
 		panic(err)
 	}
@@ -159,8 +166,8 @@ func ExampleForecaster() {
 		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
 	}
 
-	intercept = f.residualForecast.Intercept()
-	coef, err = f.residualForecast.Coefficients()
+	intercept = f.ResidualIntercept()
+	coef, err = f.ResidualCoefficients()
 	if err != nil {
 		panic(err)
 	}
@@ -176,7 +183,21 @@ func ExampleForecaster() {
 	page := components.NewPage()
 	page.AddCharts(
 		lineForecaster(td, res),
-		lineResidual(td.T, f.seriesForecast.Residuals()),
+		lineTSeries(
+			"Forecast Residual",
+			[]string{"Residual"},
+			td.T,
+			[][]float64{f.Residuals()},
+		),
+		lineTSeries(
+			"Forecast Components",
+			[]string{"Changepoint", "Seasonality"},
+			td.T,
+			[][]float64{
+				f.ChangepointComponent(),
+				f.SeasonalityComponent(),
+			},
+		),
 	)
 	file, err := os.Create("examples/forecaster.html")
 	if err != nil {
@@ -246,8 +267,8 @@ func ExampleForecasterWithTrend() {
 		panic(err)
 	}
 
-	intercept := f.seriesForecast.Intercept()
-	coef, err := f.seriesForecast.Coefficients()
+	intercept := f.SeriesIntercept()
+	coef, err := f.SeriesCoefficients()
 	if err != nil {
 		panic(err)
 	}
@@ -256,8 +277,8 @@ func ExampleForecasterWithTrend() {
 		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
 	}
 
-	intercept = f.residualForecast.Intercept()
-	coef, err = f.residualForecast.Coefficients()
+	intercept = f.ResidualIntercept()
+	coef, err = f.ResidualCoefficients()
 	if err != nil {
 		panic(err)
 	}
@@ -273,7 +294,21 @@ func ExampleForecasterWithTrend() {
 	page := components.NewPage()
 	page.AddCharts(
 		lineForecaster(td, res),
-		lineResidual(td.T, f.seriesForecast.Residuals()),
+		lineTSeries(
+			"Forecast Residual",
+			[]string{"Residual"},
+			td.T,
+			[][]float64{f.seriesForecast.Residuals()},
+		),
+		lineTSeries(
+			"Forecast Components",
+			[]string{"Changepoint", "Seasonality"},
+			td.T,
+			[][]float64{
+				f.ChangepointComponent(),
+				f.SeasonalityComponent(),
+			},
+		),
 	)
 	file, err := os.Create("examples/forecaster_with_trend.html")
 	if err != nil {

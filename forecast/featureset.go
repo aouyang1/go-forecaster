@@ -27,7 +27,7 @@ func (f FeatureSet) Labels() []feature.Feature {
 	return labels
 }
 
-func (f FeatureSet) Matrix() *mat.Dense {
+func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 	if f == nil {
 		return nil
 	}
@@ -38,15 +38,20 @@ func (f FeatureSet) Matrix() *mat.Dense {
 	}
 
 	m := len(f[featureLabels[0]])
-	n := len(featureLabels) + 1
+	n := len(featureLabels)
+	if intercept {
+		n += 1
+	}
 	obs := make([]float64, m*n)
 
 	featNum := 0
-	for i := 0; i < m; i++ {
-		idx := n * i
-		obs[idx] = 1.0
+	if intercept {
+		for i := 0; i < m; i++ {
+			idx := n * i
+			obs[idx] = 1.0
+		}
+		featNum += 1
 	}
-	featNum += 1
 
 	for _, label := range featureLabels {
 		feature := f[label]

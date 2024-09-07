@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/aouyang1/go-forecast/feature"
 	"github.com/aouyang1/go-forecast/forecast"
 	"github.com/aouyang1/go-forecast/stats"
 	"github.com/aouyang1/go-forecast/timedataset"
@@ -139,4 +140,32 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	r.Upper = upper
 	r.Lower = lower
 	return r, nil
+}
+
+func (f *Forecaster) Residuals() []float64 {
+	return f.seriesForecast.Residuals()
+}
+
+func (f *Forecaster) ChangepointComponent() []float64 {
+	return f.seriesForecast.ChangepointComponent()
+}
+
+func (f *Forecaster) SeasonalityComponent() []float64 {
+	return f.seriesForecast.SeasonalityComponent()
+}
+
+func (f *Forecaster) SeriesIntercept() float64 {
+	return f.seriesForecast.Intercept()
+}
+
+func (f *Forecaster) SeriesCoefficients() (map[feature.Feature]float64, error) {
+	return f.seriesForecast.Coefficients()
+}
+
+func (f *Forecaster) ResidualIntercept() float64 {
+	return f.residualForecast.Intercept()
+}
+
+func (f *Forecaster) ResidualCoefficients() (map[feature.Feature]float64, error) {
+	return f.residualForecast.Coefficients()
 }

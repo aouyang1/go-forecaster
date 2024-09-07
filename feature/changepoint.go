@@ -34,3 +34,7 @@ func (c Changepoint) Get(label string) (string, bool) {
 	}
 	return "", false
 }
+
+func (c Changepoint) Type() FeatureType {
+	return FeatureTypeChangepoint
+}

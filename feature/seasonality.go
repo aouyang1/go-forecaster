@@ -38,3 +38,7 @@ func (s Seasonality) Get(label string) (string, bool) {
 	}
 	return "", false
 }
+
+func (s Seasonality) Type() FeatureType {
+	return FeatureTypeSeasonality
+}
