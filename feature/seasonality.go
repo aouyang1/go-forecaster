@@ -1,6 +1,7 @@
 package feature
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -19,8 +20,8 @@ type Seasonality struct {
 	Order       int         `json:"order"`
 }
 
-func NewSeasonality(name string, fcomp FourierComp, order int) Seasonality {
-	return Seasonality{name, fcomp, order}
+func NewSeasonality(name string, fcomp FourierComp, order int) *Seasonality {
+	return &Seasonality{name, fcomp, order}
 }
 
 func (s Seasonality) String() string {
@@ -41,4 +42,31 @@ func (s Seasonality) Get(label string) (string, bool) {
 
 func (s Seasonality) Type() FeatureType {
 	return FeatureTypeSeasonality
+}
+
+func (s Seasonality) Decode() map[string]string {
+	res := make(map[string]string)
+	res["name"] = s.Name
+	res["fourier_component"] = string(s.FourierComp)
+	res["order"] = strconv.Itoa(s.Order)
+	return res
+}
+
+func (s *Seasonality) UnmarshalJSON(data []byte) error {
+	var labelStr struct {
+		Name        string      `json:"name"`
+		FourierComp FourierComp `json:"fourier_component"`
+		Order       string      `json:"order"`
+	}
+	if err := json.Unmarshal(data, &labelStr); err == nil {
+		s.Name = labelStr.Name
+		s.FourierComp = labelStr.FourierComp
+		s.Order, err = strconv.Atoi(labelStr.Order)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	// try standard UnmarshalJSON
+	return json.Unmarshal(data, s)
 }

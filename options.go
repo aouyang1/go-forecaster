@@ -3,10 +3,10 @@ package main
 import "github.com/aouyang1/go-forecast/forecast"
 
 type OutlierOptions struct {
-	NumPasses       int
-	UpperPercentile float64
-	LowerPercentile float64
-	TukeyFactor     float64
+	NumPasses       int     `json:"num_passes"`
+	UpperPercentile float64 `json:"upper_percentile"`
+	LowerPercentile float64 `json:"lower_percentile"`
+	TukeyFactor     float64 `json:"tukey_factor"`
 }
 
 func NewOutlierOptions() *OutlierOptions {
@@ -19,12 +19,12 @@ func NewOutlierOptions() *OutlierOptions {
 }
 
 type Options struct {
-	SeriesOptions   *forecast.Options
-	ResidualOptions *forecast.Options
+	SeriesOptions   *forecast.Options `json:"-"`
+	ResidualOptions *forecast.Options `json:"-"`
 
-	OutlierOptions *OutlierOptions
-	ResidualWindow int
-	ResidualZscore float64
+	OutlierOptions *OutlierOptions `json:"outlier_options"`
+	ResidualWindow int             `json:"residual_window"`
+	ResidualZscore float64         `json:"residual_zscore"`
 }
 
 func NewOptions() *Options {

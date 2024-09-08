@@ -6,7 +6,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/aouyang1/go-forecast/feature"
 	"github.com/aouyang1/go-forecast/forecast"
 	"github.com/aouyang1/go-forecast/stats"
 	"github.com/aouyang1/go-forecast/timedataset"
@@ -158,7 +157,7 @@ func (f *Forecaster) SeriesIntercept() float64 {
 	return f.seriesForecast.Intercept()
 }
 
-func (f *Forecaster) SeriesCoefficients() (map[feature.Feature]float64, error) {
+func (f *Forecaster) SeriesCoefficients() (map[string]float64, error) {
 	return f.seriesForecast.Coefficients()
 }
 
@@ -166,6 +165,6 @@ func (f *Forecaster) ResidualIntercept() float64 {
 	return f.residualForecast.Intercept()
 }
 
-func (f *Forecaster) ResidualCoefficients() (map[feature.Feature]float64, error) {
+func (f *Forecaster) ResidualCoefficients() (map[string]float64, error) {
 	return f.residualForecast.Coefficients()
 }

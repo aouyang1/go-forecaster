@@ -163,7 +163,7 @@ func ExampleForecaster() {
 	}
 	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
 	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
 	}
 
 	intercept = f.ResidualIntercept()
@@ -173,7 +173,7 @@ func ExampleForecaster() {
 	}
 	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
 	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
 	}
 
 	res, err := f.Predict(td.T)
@@ -274,7 +274,7 @@ func ExampleForecasterWithTrend() {
 	}
 	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
 	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
 	}
 
 	intercept = f.ResidualIntercept()
@@ -284,7 +284,7 @@ func ExampleForecasterWithTrend() {
 	}
 	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
 	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label])
+		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
 	}
 
 	res, err := f.Predict(td.T)

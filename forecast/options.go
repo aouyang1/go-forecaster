@@ -3,9 +3,9 @@ package forecast
 import "github.com/aouyang1/go-forecast/changepoint"
 
 type Options struct {
-	Changepoints []changepoint.Changepoint
-	DailyOrders  int
-	WeeklyOrders int
+	Changepoints []changepoint.Changepoint `json:"changepoints"`
+	DailyOrders  int                       `json:"daily_orders"`
+	WeeklyOrders int                       `json:"weekly_oroders"`
 }
 
 func NewDefaultOptions() *Options {

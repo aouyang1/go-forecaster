@@ -18,7 +18,6 @@ var (
 	ErrLabelExists              = errors.New("label already exists in TimeDataset")
 	ErrMismatchedDataLen        = errors.New("input data has different length than time")
 	ErrFeatureLabelsInitialized = errors.New("feature labels already initialized")
-	ErrUnknownTimeFeature       = errors.New("unknown time feature")
 	ErrNoModelCoefficients      = errors.New("no model coefficients from fit")
 )
 
@@ -55,8 +54,8 @@ func (f *Forecast) generateFeatures(t []time.Time) (FeatureSet, error) {
 
 	// do not include weekly fourier features if time range is less than 1 week
 	if t[len(t)-1].Sub(t[0]) < time.Duration(7*24*time.Hour) {
-		for label := range feat {
-			if val, _ := label.Get("name"); val == "dow" {
+		for label, f := range feat {
+			if val, _ := f.F.Get("name"); val == "dow" {
 				delete(feat, label)
 			}
 		}
@@ -131,12 +130,12 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 
 	changepointFeatureSet := make(FeatureSet)
 	seasonalityFeatureSet := make(FeatureSet)
-	for f, values := range x {
-		switch f.Type() {
+	for label, feat := range x {
+		switch feat.F.Type() {
 		case feature.FeatureTypeChangepoint:
-			changepointFeatureSet[f] = values
+			changepointFeatureSet[label] = feat
 		case feature.FeatureTypeSeasonality:
-			seasonalityFeatureSet[f] = values
+			seasonalityFeatureSet[label] = feat
 		}
 	}
 
@@ -194,20 +193,42 @@ func (f *Forecast) FeatureLabels() []feature.Feature {
 	return f.fLabels.Labels()
 }
 
-func (f *Forecast) Coefficients() (map[feature.Feature]float64, error) {
+func (f *Forecast) Coefficients() (map[string]float64, error) {
 	labels := f.fLabels.Labels()
 	if len(labels) == 0 || len(f.coef) == 0 {
 		return nil, ErrNoModelCoefficients
 	}
-	coef := make(map[feature.Feature]float64)
+	coef := make(map[string]float64)
 	for i := 0; i < len(f.coef); i++ {
-		coef[labels[i]] = f.coef[i]
+		coef[labels[i].String()] = f.coef[i]
 	}
 	return coef, nil
 }
 
 func (f *Forecast) Intercept() float64 {
 	return f.intercept
+}
+
+func (f *Forecast) Model() Model {
+	fws := make([]FeatureWeight, 0, len(f.coef))
+	labels := f.fLabels.Labels()
+	for i, c := range f.coef {
+		fw := FeatureWeight{
+			Labels: labels[i].Decode(),
+			Type:   labels[i].Type(),
+			Value:  c,
+		}
+		fws = append(fws, fw)
+	}
+	w := Weights{
+		Intercept:    f.intercept,
+		Coefficients: fws,
+	}
+	m := Model{
+		Options: f.opt,
+		Weights: w,
+	}
+	return m
 }
 
 func (f *Forecast) ModelEq() (string, error) {
@@ -221,7 +242,7 @@ func (f *Forecast) ModelEq() (string, error) {
 	eq += fmt.Sprintf("%.2f", f.Intercept())
 	labels := f.fLabels.Labels()
 	for i := 0; i < len(f.coef); i++ {
-		w := coef[labels[i]]
+		w := coef[labels[i].String()]
 		if w == 0 {
 			continue
 		}

@@ -1,6 +1,7 @@
 package feature
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -17,8 +18,8 @@ type Changepoint struct {
 	ChangepointComp ChangepointComp `json:"changepoint_component"`
 }
 
-func NewChangepoint(name string, comp ChangepointComp) Changepoint {
-	return Changepoint{name, comp}
+func NewChangepoint(name string, comp ChangepointComp) *Changepoint {
+	return &Changepoint{name, comp}
 }
 
 func (c Changepoint) String() string {
@@ -37,4 +38,15 @@ func (c Changepoint) Get(label string) (string, bool) {
 
 func (c Changepoint) Type() FeatureType {
 	return FeatureTypeChangepoint
+}
+
+func (c Changepoint) Decode() map[string]string {
+	res := make(map[string]string)
+	res["name"] = c.Name
+	res["changepoint_component"] = string(c.ChangepointComp)
+	return res
+}
+
+func (c *Changepoint) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, c)
 }

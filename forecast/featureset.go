@@ -7,7 +7,11 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-type FeatureSet map[feature.Feature][]float64
+type Feature struct {
+	F    feature.Feature
+	Data []float64
+}
+type FeatureSet map[string]Feature
 
 func (f FeatureSet) Labels() *FeatureLabels {
 	if f == nil {
@@ -15,8 +19,8 @@ func (f FeatureSet) Labels() *FeatureLabels {
 	}
 
 	labels := make([]feature.Feature, 0, len(f))
-	for label := range f {
-		labels = append(labels, label)
+	for _, feat := range f {
+		labels = append(labels, feat.F)
 	}
 	sort.Slice(
 		labels,
@@ -40,7 +44,7 @@ func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 	var m int
 	// use first feature to get length
 	for _, flabel := range featureLabels.Labels() {
-		m = len(f[flabel])
+		m = len(f[flabel.String()].Data)
 		break
 	}
 	n := featureLabels.Len()
@@ -59,10 +63,10 @@ func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 	}
 
 	for _, label := range featureLabels.Labels() {
-		feature := f[label]
-		for i := 0; i < len(feature); i++ {
+		feature := f[label.String()]
+		for i := 0; i < len(feature.Data); i++ {
 			idx := n*i + featNum
-			obs[idx] = feature[i]
+			obs[idx] = feature.Data[i]
 		}
 		featNum += 1
 	}

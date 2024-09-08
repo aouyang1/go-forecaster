@@ -49,7 +49,7 @@ func TestFit(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, label := range labels {
-		res = append(res, coef[label])
+		res = append(res, coef[label.String()])
 	}
 
 	expected := []float64{
