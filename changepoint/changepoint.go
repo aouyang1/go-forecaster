@@ -3,8 +3,8 @@ package changepoint
 import "time"
 
 type Changepoint struct {
-	T    time.Time
-	Name string
+	T    time.Time `json:"time"`
+	Name string    `json:"name"`
 }
 
 func New(name string, t time.Time) Changepoint {

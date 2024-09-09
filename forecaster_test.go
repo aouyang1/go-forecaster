@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -156,25 +157,12 @@ func ExampleForecaster() {
 		panic(err)
 	}
 
-	intercept := f.SeriesIntercept()
-	coef, err := f.SeriesCoefficients()
+	m := f.Model()
+	out, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
-	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
-	}
-
-	intercept = f.ResidualIntercept()
-	coef, err = f.ResidualCoefficients()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
-	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
-	}
+	fmt.Fprintln(os.Stderr, string(out))
 
 	res, err := f.Predict(td.T)
 	if err != nil {
@@ -267,25 +255,12 @@ func ExampleForecasterWithTrend() {
 		panic(err)
 	}
 
-	intercept := f.SeriesIntercept()
-	coef, err := f.SeriesCoefficients()
+	m := f.Model()
+	out, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
-	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
-	}
-
-	intercept = f.ResidualIntercept()
-	coef, err = f.ResidualCoefficients()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Fprintf(os.Stderr, "intercept: %.5f\n", intercept)
-	for _, label := range f.residualForecast.FeatureLabels() {
-		fmt.Fprintf(os.Stderr, "%s: %.5f\n", label, coef[label.String()])
-	}
+	fmt.Fprintln(os.Stderr, string(out))
 
 	res, err := f.Predict(td.T)
 	if err != nil {

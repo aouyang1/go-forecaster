@@ -168,3 +168,12 @@ func (f *Forecaster) ResidualIntercept() float64 {
 func (f *Forecaster) ResidualCoefficients() (map[string]float64, error) {
 	return f.residualForecast.Coefficients()
 }
+
+func (f *Forecaster) Model() Model {
+	m := Model{
+		Options:  f.opt,
+		Series:   f.seriesForecast.Model(),
+		Residual: f.residualForecast.Model(),
+	}
+	return m
+}
