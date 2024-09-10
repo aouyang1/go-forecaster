@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -150,7 +151,10 @@ func LassoRegression2(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64,
 	}
 
 	// tracks current betas
-	beta := mat.NewDense(1, n, opt.WarmStartBeta)
+	beta := make([]float64, n)
+	if opt.WarmStartBeta != nil {
+		copy(beta, opt.WarmStartBeta)
+	}
 
 	// precompute the per feature dot product
 	xdot := make([]float64, n)
@@ -170,7 +174,7 @@ func LassoRegression2(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64,
 		betaDiff := 0.0
 		// loop through all features and minimize loss function
 		for j := 0; j < n; j++ {
-			betaCurr := beta.At(0, j)
+			betaCurr := beta[j]
 			if i != 0 {
 				if betaCurr == 0 {
 					continue
@@ -191,7 +195,7 @@ func LassoRegression2(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64,
 			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
 			betaDiff = betaNext - betaCurr
 			betaXDelta.Scale(betaDiff, obsCol.T())
-			beta.Set(0, j, betaNext)
+			beta[j] = betaNext
 		}
 
 		// break early if we've achieved the desired tolerance
@@ -200,14 +204,96 @@ func LassoRegression2(obs, y *mat.Dense, opt *LassoOptions) (float64, []float64,
 		}
 	}
 
-	c := beta.RawRowView(0)
-	if len(c) == 0 {
+	if len(beta) == 0 {
 		return math.NaN(), nil, nil
 	}
-	if len(c) == 1 {
-		return c[0], nil, nil
+	if len(beta) == 1 {
+		return beta[0], nil, nil
 	}
-	return c[0], c[1:], nil
+	return beta[0], beta[1:], nil
+}
+
+// LassoRegression3 computes the lasso regression using coordinate descent. lambda = 0 converges to OLS
+func LassoRegression3(obs [][]float64, y []float64, opt *LassoOptions) (float64, []float64, error) {
+	if opt == nil {
+		opt = NewDefaultLassoOptions()
+	}
+
+	n := len(obs)
+	if n == 0 {
+		return 0, nil, errors.New("observation matrix has no observations")
+	}
+	m := len(obs[0])
+
+	ym := len(y)
+	if m != ym {
+		return 0, nil, fmt.Errorf("observation matrix has %d observations and y matrix as %d observations, %w", m, ym, ErrObsYSizeMismatch)
+	}
+	if opt.WarmStartBeta != nil && len(opt.WarmStartBeta) != n {
+		return 0, nil, fmt.Errorf("warm start beta has %d features instead of %d, %w", len(opt.WarmStartBeta), n, ErrWarmStartBetaSize)
+	}
+
+	// tracks current betas
+	beta := make([]float64, n)
+	if opt.WarmStartBeta != nil {
+		copy(beta, opt.WarmStartBeta)
+	}
+
+	// precompute the per feature dot product
+	xdot := make([]float64, n)
+	for i := 0; i < n; i++ {
+		xi := obs[i]
+		xdot[i] = floats.Dot(xi, xi)
+	}
+
+	// tracks the per coordinate residual
+	residual := make([]float64, m)
+	betaX := make([]float64, m)
+	betaXDelta := make([]float64, m)
+
+	for i := 0; i < opt.Iterations; i++ {
+		maxCoef := 0.0
+		maxUpdate := 0.0
+		betaDiff := 0.0
+		// loop through all features and minimize loss function
+		for j := 0; j < n; j++ {
+			betaCurr := beta[j]
+			if i != 0 {
+				if betaCurr == 0 {
+					continue
+				}
+			}
+
+			floats.Add(betaX, betaXDelta)
+			floats.SubTo(residual, y, betaX)
+
+			obsCol := obs[j]
+			num := floats.Dot(obsCol, residual)
+			betaNext := num/xdot[j] + betaCurr
+
+			gamma := opt.Lambda / xdot[j]
+			betaNext = SoftThreshold(betaNext, gamma)
+
+			maxCoef = math.Max(maxCoef, betaNext)
+			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
+			betaDiff = betaNext - betaCurr
+			floats.ScaleTo(betaXDelta, betaDiff, obsCol)
+			beta[j] = betaNext
+		}
+
+		// break early if we've achieved the desired tolerance
+		if maxUpdate < opt.Tolerance*maxCoef {
+			break
+		}
+	}
+
+	if len(beta) == 0 {
+		return math.NaN(), nil, nil
+	}
+	if len(beta) == 1 {
+		return beta[0], nil, nil
+	}
+	return beta[0], beta[1:], nil
 }
 
 func SoftThreshold(x, gamma float64) float64 {

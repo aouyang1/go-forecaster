@@ -124,7 +124,7 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 	// run coordinate descent with lambda set too 0 which is equivalent to OLS
 	lassoOpt := models.NewDefaultLassoOptions()
 	lassoOpt.Lambda = 0.0
-	f.intercept, f.coef, err = models.LassoRegression(features, observations, lassoOpt)
+	f.intercept, f.coef, err = models.LassoRegression2(features, observations, lassoOpt)
 	if err != nil {
 		return err
 	}
