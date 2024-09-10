@@ -13,7 +13,10 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-var ErrEmptyTimeDataset = errors.New("no timedataset or uninitialized")
+var (
+	ErrEmptyTimeDataset = errors.New("no timedataset or uninitialized")
+	ErrNoOptionsInModel = errors.New("no options set in model")
+)
 
 type Forecaster struct {
 	opt *Options
@@ -42,6 +45,30 @@ func New(opt *Options) (*Forecaster, error) {
 		return nil, fmt.Errorf("unable to initialize forecast residual, %w", err)
 	}
 	f.residualForecast = residualForecast
+	return f, nil
+}
+
+func NewFromModel(model Model) (*Forecaster, error) {
+	if model.Options == nil {
+		return nil, ErrNoOptionsInModel
+	}
+	opt := model.Options
+	opt.SeriesOptions = model.Series.Options
+	opt.ResidualOptions = model.Residual.Options
+
+	seriesForecast, err := forecast.NewFromModel(model.Series)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load from series model, %w", err)
+	}
+	residualForecast, err := forecast.NewFromModel(model.Residual)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load from residual model, %w", err)
+	}
+	f := &Forecaster{
+		opt:              opt,
+		seriesForecast:   seriesForecast,
+		residualForecast: residualForecast,
+	}
 	return f, nil
 }
 

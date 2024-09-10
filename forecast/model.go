@@ -15,13 +15,13 @@ type Model struct {
 }
 
 type Weights struct {
-	Coefficients []FeatureWeight `json:"coefficients"`
-	Intercept    float64         `json:"intercept"`
+	Coef      []FeatureWeight `json:"coefficients"`
+	Intercept float64         `json:"intercept"`
 }
 
 func (w *Weights) FeatureLabels() (*FeatureLabels, error) {
-	labels := make([]feature.Feature, 0, len(w.Coefficients))
-	for _, fw := range w.Coefficients {
+	labels := make([]feature.Feature, 0, len(w.Coef))
+	for _, fw := range w.Coef {
 		feat, err := fw.ToFeature()
 		if err != nil {
 			return nil, err
@@ -29,6 +29,14 @@ func (w *Weights) FeatureLabels() (*FeatureLabels, error) {
 		labels = append(labels, feat)
 	}
 	return NewFeatureLabels(labels), nil
+}
+
+func (w *Weights) Coefficients() []float64 {
+	coef := make([]float64, 0, len(w.Coef))
+	for _, fw := range w.Coef {
+		coef = append(coef, fw.Value)
+	}
+	return coef
 }
 
 type FeatureWeight struct {

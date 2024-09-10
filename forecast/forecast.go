@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	ErrNonMontonic              = errors.New("time feature is not monotonic")
 	ErrNoTrainingData           = errors.New("no training data")
 	ErrLabelExists              = errors.New("label already exists in TimeDataset")
 	ErrMismatchedDataLen        = errors.New("input data has different length than time")
@@ -42,6 +43,21 @@ func New(opt *Options) (*Forecast, error) {
 	}
 
 	return &Forecast{opt: opt}, nil
+}
+
+func NewFromModel(model Model) (*Forecast, error) {
+	fLabels, err := model.Weights.FeatureLabels()
+	if err != nil {
+		return nil, err
+	}
+
+	f := &Forecast{
+		opt:       model.Options,
+		fLabels:   fLabels,
+		intercept: model.Weights.Intercept,
+		coef:      model.Weights.Coefficients(),
+	}
+	return f, nil
 }
 
 func (f *Forecast) generateFeatures(t []time.Time) (FeatureSet, error) {
@@ -78,11 +94,19 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 	// remove any NaNs from training set
 	trainingT := make([]time.Time, 0, len(trainingData.T))
 	trainingY := make([]float64, 0, len(trainingData.Y))
+
+	// check for monontic timestamps
+	var lastT time.Time
 	for i := 0; i < len(trainingData.T); i++ {
+		currT := trainingData.T[i]
+		if currT.Before(lastT) || currT.Equal(lastT) {
+			return fmt.Errorf("non-monotonic at %d, %w", i, ErrNonMontonic)
+		}
+		lastT = currT
 		if math.IsNaN(trainingData.Y[i]) {
 			continue
 		}
-		trainingT = append(trainingT, trainingData.T[i])
+		trainingT = append(trainingT, currT)
 		trainingY = append(trainingY, trainingData.Y[i])
 	}
 
@@ -221,8 +245,8 @@ func (f *Forecast) Model() Model {
 		fws = append(fws, fw)
 	}
 	w := Weights{
-		Intercept:    f.intercept,
-		Coefficients: fws,
+		Intercept: f.intercept,
+		Coef:      fws,
 	}
 	m := Model{
 		Options: f.opt,

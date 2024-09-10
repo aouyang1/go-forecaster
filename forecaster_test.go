@@ -92,7 +92,7 @@ func generateExampleSeries() ([]time.Time, []float64) {
 	t := make([]time.Time, 0, minutes)
 	ct := time.Now().Add(-time.Duration(6) * time.Hour)
 	for i := 0; i < minutes; i++ {
-		t = append(t, ct.Add(-time.Duration(i)*time.Minute))
+		t = append(t, ct.Add(time.Duration(i)*time.Minute))
 	}
 	y := make([]float64, 0, minutes)
 	for i := 0; i < minutes; i++ {
