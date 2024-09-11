@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/aouyang1/go-forecast/feature"
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -51,6 +52,7 @@ func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 	if intercept {
 		n += 1
 	}
+
 	obs := make([]float64, m*n)
 
 	featNum := 0
@@ -71,4 +73,42 @@ func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 		featNum += 1
 	}
 	return mat.NewDense(m, n, obs)
+}
+
+func (f FeatureSet) MatrixSlice(intercept bool) [][]float64 {
+	if f == nil {
+		return nil
+	}
+
+	featureLabels := f.Labels()
+	if featureLabels.Len() == 0 {
+		return nil
+	}
+
+	var m int
+	// use first feature to get length
+	for _, flabel := range featureLabels.Labels() {
+		m = len(f[flabel.String()].Data)
+		break
+	}
+	n := featureLabels.Len()
+	if intercept {
+		n += 1
+	}
+
+	obs := make([][]float64, n)
+	featNum := 0
+	if intercept {
+		ones := make([]float64, m)
+		floats.AddConst(1.0, ones)
+		obs[featNum] = ones
+		featNum++
+	}
+
+	for _, label := range featureLabels.Labels() {
+		feature := f[label.String()]
+		obs[featNum] = feature.Data
+		featNum += 1
+	}
+	return obs
 }

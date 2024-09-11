@@ -56,6 +56,7 @@ func NewFromModel(model Model) (*Forecast, error) {
 		fLabels:   fLabels,
 		intercept: model.Weights.Intercept,
 		coef:      model.Weights.Coefficients(),
+		scores:    model.Scores,
 	}
 	return f, nil
 }
@@ -118,13 +119,13 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 
 	f.fLabels = x.Labels()
 
-	features := x.Matrix(true)
-	observations := ObservationMatrix(trainingY)
+	features := x.MatrixSlice(true)
+	observations := trainingY
 
 	// run coordinate descent with lambda set too 0 which is equivalent to OLS
 	lassoOpt := models.NewDefaultLassoOptions()
 	lassoOpt.Lambda = 0.0
-	f.intercept, f.coef, err = models.LassoRegression2(features, observations, lassoOpt)
+	f.intercept, f.coef, err = models.LassoRegression(features, observations, lassoOpt)
 	if err != nil {
 		return err
 	}
@@ -251,6 +252,7 @@ func (f *Forecast) Model() Model {
 	m := Model{
 		Options: f.opt,
 		Weights: w,
+		Scores:  f.scores,
 	}
 	return m
 }

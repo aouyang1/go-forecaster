@@ -11,9 +11,9 @@ import (
 var ErrResLenMismatch = errors.New("predicted and actual have different lengths")
 
 type Scores struct {
-	MSE  float64 // mean squared error
-	MAPE float64 // mean average percent error
-	R2   float64 // r-squared
+	MSE  float64 `json:"mean_squared_error"`
+	MAPE float64 `json:"mean_average_percent_error"`
+	R2   float64 `json:"r_squared"`
 }
 
 func NewScores(predicted, actual []float64) (*Scores, error) {
@@ -25,10 +25,15 @@ func NewScores(predicted, actual []float64) (*Scores, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to compute mean average percent error, %w", err)
 	}
+	rs, err := RSquared(predicted, actual)
+	if err != nil {
+		return nil, fmt.Errorf("unable to compute r-squared, %w", err)
+	}
+
 	return &Scores{
 		MSE:  mse,
 		MAPE: mape,
-		R2:   stat.RSquaredFrom(predicted, actual, nil),
+		R2:   rs,
 	}, nil
 }
 
@@ -62,4 +67,21 @@ func MAPE(predicted, actual []float64) (float64, error) {
 	}
 	mape /= float64(len(actual))
 	return mape, nil
+}
+
+func RSquared(predicted, actual []float64) (float64, error) {
+	if len(predicted) != len(actual) {
+		return 0, ErrResLenMismatch
+	}
+
+	predict_copy := make([]float64, 0, len(predicted))
+	actual_copy := make([]float64, 0, len(actual))
+	for i := 0; i < len(predicted); i++ {
+		if math.IsNaN(actual[i]) || math.IsNaN(predicted[i]) {
+			continue
+		}
+		predict_copy = append(predict_copy, predicted[i])
+		actual_copy = append(actual_copy, actual[i])
+	}
+	return stat.RSquaredFrom(predict_copy, actual_copy, nil), nil
 }

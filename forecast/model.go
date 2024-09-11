@@ -11,6 +11,7 @@ var ErrUnknownFeatureType = errors.New("unkown feature type")
 
 type Model struct {
 	Options *Options `json:"options"`
+	Scores  *Scores  `json:"scores"`
 	Weights Weights  `json:"weights"`
 }
 
