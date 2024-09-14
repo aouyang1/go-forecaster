@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aouyang1/go-forecast/changepoint"
-	"github.com/aouyang1/go-forecast/feature"
+	"github.com/aouyang1/go-forecaster/changepoint"
+	"github.com/aouyang1/go-forecaster/feature"
 	"gonum.org/v1/gonum/mat"
 )
 

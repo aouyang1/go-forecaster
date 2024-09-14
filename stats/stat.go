@@ -5,7 +5,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/aouyang1/go-forecast/models"
+	"github.com/aouyang1/go-forecaster/models"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"

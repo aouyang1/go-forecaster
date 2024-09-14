@@ -1,4 +1,4 @@
-package main
+package forecaster
 
 import (
 	"encoding/json"
@@ -12,9 +12,9 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 
-	"github.com/aouyang1/go-forecast/changepoint"
-	"github.com/aouyang1/go-forecast/forecast"
-	"github.com/aouyang1/go-forecast/timedataset"
+	"github.com/aouyang1/go-forecaster/changepoint"
+	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
 
 	"github.com/go-echarts/go-echarts/v2/charts"

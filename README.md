@@ -1,4 +1,4 @@
-# go-forecast
+# go-forecaster
 forecasting library
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/aouyang1/go-forecast)](https://goreportcard.com/report/github.com/aouyang1/go-forecast)
@@ -18,7 +18,7 @@ Contains a daily seasonal component with a trend change point which resets
 import (
   "fmt"
 
-  forecaster "github.com/aouyang1/go-forecast"
+  "github.com/aouyang1/go-forecast"
   "github.com/aouyang1/go-forecast/timedataset"
 )
 

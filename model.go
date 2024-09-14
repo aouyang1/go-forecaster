@@ -1,6 +1,6 @@
-package main
+package forecaster
 
-import "github.com/aouyang1/go-forecast/forecast"
+import "github.com/aouyang1/go-forecaster/forecast"
 
 type Model struct {
 	Options  *Options       `json:"options"`

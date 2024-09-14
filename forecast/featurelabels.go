@@ -1,6 +1,6 @@
 package forecast
 
-import "github.com/aouyang1/go-forecast/feature"
+import "github.com/aouyang1/go-forecaster/feature"
 
 type FeatureLabels struct {
 	idx    map[string]int

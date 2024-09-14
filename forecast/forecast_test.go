@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aouyang1/go-forecast/timedataset"
+	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 )
 

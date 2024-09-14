@@ -6,9 +6,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/aouyang1/go-forecast/feature"
-	"github.com/aouyang1/go-forecast/models"
-	"github.com/aouyang1/go-forecast/timedataset"
+	"github.com/aouyang1/go-forecaster/feature"
+	"github.com/aouyang1/go-forecaster/models"
+	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )

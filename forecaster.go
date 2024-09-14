@@ -1,4 +1,4 @@
-package main
+package forecaster
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/aouyang1/go-forecast/forecast"
-	"github.com/aouyang1/go-forecast/stats"
-	"github.com/aouyang1/go-forecast/timedataset"
+	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/stats"
+	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
 )

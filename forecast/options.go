@@ -1,6 +1,6 @@
 package forecast
 
-import "github.com/aouyang1/go-forecast/changepoint"
+import "github.com/aouyang1/go-forecaster/changepoint"
 
 type Options struct {
 	Changepoints []changepoint.Changepoint `json:"changepoints"`

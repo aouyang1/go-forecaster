@@ -1,4 +1,4 @@
-module github.com/aouyang1/go-forecast
+module github.com/aouyang1/go-forecaster
 
 go 1.22.4
 

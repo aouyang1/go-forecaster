@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/aouyang1/go-forecast/feature"
+	"github.com/aouyang1/go-forecaster/feature"
 )
 
 var ErrUnknownFeatureType = errors.New("unkown feature type")

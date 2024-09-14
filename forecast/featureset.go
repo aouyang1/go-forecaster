@@ -3,7 +3,7 @@ package forecast
 import (
 	"sort"
 
-	"github.com/aouyang1/go-forecast/feature"
+	"github.com/aouyang1/go-forecaster/feature"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
