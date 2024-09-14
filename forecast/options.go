@@ -5,7 +5,7 @@ import "github.com/aouyang1/go-forecaster/changepoint"
 type Options struct {
 	Changepoints []changepoint.Changepoint `json:"changepoints"`
 	DailyOrders  int                       `json:"daily_orders"`
-	WeeklyOrders int                       `json:"weekly_oroders"`
+	WeeklyOrders int                       `json:"weekly_orders"`
 }
 
 func NewDefaultOptions() *Options {

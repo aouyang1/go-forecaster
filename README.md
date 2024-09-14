@@ -18,8 +18,8 @@ Contains a daily seasonal component with a trend change point which resets
 import (
   "fmt"
 
-  "github.com/aouyang1/go-forecast"
-  "github.com/aouyang1/go-forecast/timedataset"
+  "github.com/aouyang1/go-forecaster"
+  "github.com/aouyang1/go-forecaster/timedataset"
 )
 
 func MyForecast(t []time.Time, y []float64) (*forecaster.Results, error) {
@@ -34,7 +34,7 @@ func MyForecast(t []time.Time, y []float64) (*forecaster.Results, error) {
 	if err := f.Fit(td); err != nil {
 		return nil, err
 	}
-	eq, err := f.seriesForecast.ModelEq()
+	eq, err := f.SeriesModelEq()
 	if err != nil {
 	  return nil, err
 	}

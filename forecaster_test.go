@@ -282,7 +282,7 @@ func ExampleForecasterWithTrend() {
 			"Forecast Residual",
 			[]string{"Residual"},
 			td.T,
-			[][]float64{f.seriesForecast.Residuals()},
+			[][]float64{f.Residuals()},
 		),
 	)
 	file, err := os.Create("examples/forecaster_with_trend.html")

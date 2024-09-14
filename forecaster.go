@@ -14,8 +14,15 @@ import (
 )
 
 var (
-	ErrEmptyTimeDataset = errors.New("no timedataset or uninitialized")
-	ErrNoOptionsInModel = errors.New("no options set in model")
+	ErrInsufficientResidual = errors.New("insufficient samples from residual after outlier removal")
+	ErrEmptyTimeDataset     = errors.New("no timedataset or uninitialized")
+	ErrNoOptionsInModel     = errors.New("no options set in model")
+)
+
+const (
+	MinResidualWindow       = 2
+	MinResidualSize         = 2
+	MinResidualWindowFactor = 4
 )
 
 type Forecaster struct {
@@ -119,7 +126,21 @@ func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 		}
 	}
 
-	// compute rolling window standard deviation of residual foor uncertaninty bands
+	if len(residual) < MinResidualSize {
+		return ErrInsufficientResidual
+	}
+	// compute rolling window standard deviation of residual for uncertaninty bands
+	// the window is not necessarily a block of continuous time but could jump across
+	// outlier points
+
+	// limit residual window to a quarter of the resulting residual output
+	if len(residual)/MinResidualWindowFactor < f.opt.ResidualWindow {
+		f.opt.ResidualWindow = len(residual) / MinResidualWindowFactor
+	}
+	if f.opt.ResidualWindow < MinResidualWindow {
+		f.opt.ResidualWindow = MinResidualWindow
+	}
+
 	stddevSeries := make([]float64, len(residual)-f.opt.ResidualWindow+1)
 	numWindows := len(residual) - f.opt.ResidualWindow + 1
 
@@ -128,8 +149,9 @@ func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 		stddevSeries[i] = f.opt.ResidualZscore * stddev
 	}
 
-	start := f.opt.ResidualWindow/2 - 1
-	end := len(td.T) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2
+	start := f.opt.ResidualWindow / 2
+	end := len(td.T) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2 + 1
+
 	residualData, err := timedataset.NewUnivariateDataset(td.T[start:end], stddevSeries)
 	if err != nil {
 		return fmt.Errorf("unable to create univariate dataset for residual, %w", err)
@@ -149,6 +171,13 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	residualRes, err := f.residualForecast.Predict(t)
 	if err != nil {
 		return nil, fmt.Errorf("unable to predict residual forecasts, %w", err)
+	}
+
+	// cap residual predictions to be greater than or equal to 0
+	for i := 0; i < len(residualRes); i++ {
+		if residualRes[i] < 0.0 {
+			residualRes[i] = 0.0
+		}
 	}
 
 	r := &Results{
@@ -203,4 +232,12 @@ func (f *Forecaster) Model() Model {
 		Residual: f.residualForecast.Model(),
 	}
 	return m
+}
+
+func (f *Forecaster) SeriesModelEq() (string, error) {
+	return f.seriesForecast.ModelEq()
+}
+
+func (f *Forecaster) ResidualModelEq() (string, error) {
+	return f.residualForecast.ModelEq()
 }

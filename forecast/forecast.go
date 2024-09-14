@@ -16,6 +16,7 @@ import (
 var (
 	ErrNonMontonic              = errors.New("time feature is not monotonic")
 	ErrNoTrainingData           = errors.New("no training data")
+	ErrInsufficientTrainingData = errors.New("insufficient training data after removing Nans")
 	ErrLabelExists              = errors.New("label already exists in TimeDataset")
 	ErrMismatchedDataLen        = errors.New("input data has different length than time")
 	ErrFeatureLabelsInitialized = errors.New("feature labels already initialized")
@@ -111,6 +112,9 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 		trainingY = append(trainingY, trainingData.Y[i])
 	}
 
+	if len(trainingT) <= 1 {
+		return ErrInsufficientTrainingData
+	}
 	// generate features
 	x, err := f.generateFeatures(trainingT)
 	if err != nil {
