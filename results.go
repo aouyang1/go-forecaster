@@ -3,8 +3,8 @@ package forecaster
 import "time"
 
 type Results struct {
-	T        []time.Time
-	Forecast []float64
-	Upper    []float64
-	Lower    []float64
+	T        []time.Time `json:"time"`
+	Forecast []float64   `json:"forecast"`
+	Upper    []float64   `json:"upper"`
+	Lower    []float64   `json:"lower"`
 }

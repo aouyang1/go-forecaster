@@ -1,25 +1,12 @@
 package feature
 
-type FeatureType int
+type FeatureType string
 
 const (
-	FeatureTypeChangepoint FeatureType = iota
-	FeatureTypeSeasonality
-	FeatureTypeTime
+	FeatureTypeChangepoint FeatureType = "changepoint"
+	FeatureTypeSeasonality FeatureType = "seasonality"
+	FeatureTypeTime        FeatureType = "time"
 )
-
-func (f FeatureType) String() string {
-	switch f {
-	case FeatureTypeChangepoint:
-		return "changepoint"
-	case FeatureTypeSeasonality:
-		return "seasonality"
-	case FeatureTypeTime:
-		return "time"
-	default:
-		return ""
-	}
-}
 
 type Feature interface {
 	String() string
