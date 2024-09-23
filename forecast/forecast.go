@@ -80,7 +80,13 @@ func (f *Forecast) generateFeatures(t []time.Time) (FeatureSet, error) {
 	}
 
 	// generate changepoint features
-	chptFeat := generateChangepointFeatures(t, f.opt.Changepoints)
+	var chptFeat FeatureSet
+	if f.opt.ChangepointOptions.Auto {
+		chptFeat = generateAutoChangepointFeatures(t, f.opt.ChangepointOptions.AutoNumChangepoints)
+	} else {
+		chptFeat = generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints)
+	}
+	// chptFeat := generateChangepointFeatures(t, f.opt.Changepoints)
 	for chptLabel, feature := range chptFeat {
 		feat[chptLabel] = feature
 	}
@@ -128,7 +134,7 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 
 	// run coordinate descent with lambda set too 0 which is equivalent to OLS
 	lassoOpt := models.NewDefaultLassoOptions()
-	lassoOpt.Lambda = 0.0
+	lassoOpt.Lambda = f.opt.Regularization
 	f.intercept, f.coef, err = models.LassoRegression(features, observations, lassoOpt)
 	if err != nil {
 		return err

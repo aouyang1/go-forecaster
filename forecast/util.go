@@ -194,3 +194,56 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 	}
 	return feat
 }
+
+func generateAutoChangepointFeatures(t []time.Time, n int) FeatureSet {
+	var minTime, maxTime time.Time
+	for _, tPnt := range t {
+		if minTime.IsZero() || tPnt.Before(minTime) {
+			minTime = tPnt
+		}
+		if maxTime.IsZero() || tPnt.After(maxTime) {
+			maxTime = tPnt
+		}
+	}
+
+	window := maxTime.Sub(minTime)
+	changepointWinNs := int64(window.Nanoseconds()) / int64(n)
+	chpts := make([]changepoint.Changepoint, 0, n)
+
+	for i := 0; i < n; i++ {
+		chpntTime := minTime.Add(time.Duration(changepointWinNs * int64(i)))
+		chpts = append(
+			chpts,
+			changepoint.New("auto_"+strconv.Itoa(i), chpntTime),
+		)
+	}
+	chptFeatures := make([][]float64, len(chpts)*2)
+	for i := 0; i < len(chpts)*2; i++ {
+		chpt := make([]float64, len(t))
+		chptFeatures[i] = chpt
+	}
+
+	bias := 1.0
+	var slope float64
+	for i := 0; i < len(t); i++ {
+		for j := 0; j < len(chpts); j++ {
+			if t[i].Equal(chpts[j].T) || t[i].After(chpts[j].T) {
+				deltaT := maxTime.Sub(chpts[j].T).Seconds()
+				slope = t[i].Sub(chpts[j].T).Seconds() / deltaT
+				chptFeatures[j*2][i] = bias
+				chptFeatures[j*2+1][i] = slope
+			}
+		}
+	}
+
+	feat := make(FeatureSet)
+	for i := 0; i < len(chpts); i++ {
+		chpntName := chpts[i].Name
+		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
+		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
+
+		feat[chpntBias.String()] = Feature{chpntBias, chptFeatures[i*2]}
+		feat[chpntSlope.String()] = Feature{chpntSlope, chptFeatures[i*2+1]}
+	}
+	return feat
+}

@@ -98,7 +98,7 @@ func TestFitFromModel(t *testing.T) {
 
 	model := f.Model()
 
-	// gennerate new forecast from thhe previous model and perform inference
+	// generate new forecast from thhe previous model and perform inference
 	f, err = NewFromModel(model)
 	if err != nil {
 		t.Fatal(err)
