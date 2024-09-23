@@ -28,6 +28,7 @@ const (
 	MinResidualWindowFactor = 4
 )
 
+// Forecaster fits a forecast model and can be used to generate forecasts
 type Forecaster struct {
 	opt *Options
 
@@ -38,9 +39,11 @@ type Forecaster struct {
 	fitResults      *Results
 }
 
+// New creates a new instance of a Forecaster using thhe provided options. If no options are provided
+// a default is used.
 func New(opt *Options) (*Forecaster, error) {
 	if opt == nil {
-		opt = NewOptions()
+		opt = NewDefaultOptions()
 	}
 
 	f := &Forecaster{
@@ -61,6 +64,8 @@ func New(opt *Options) (*Forecaster, error) {
 	return f, nil
 }
 
+// NewFromModel creates a new instance of Forecaster from a pre-existing model. This should be generated from
+// from a previous forecaster call to Model().
 func NewFromModel(model Model) (*Forecaster, error) {
 	if model.Options == nil {
 		return nil, ErrNoOptionsInModel
@@ -85,6 +90,7 @@ func NewFromModel(model Model) (*Forecaster, error) {
 	return f, nil
 }
 
+// Fit uses the input time dataset and fits the forecast model
 func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 	if trainingData == nil {
 		return ErrEmptyTimeDataset
@@ -176,6 +182,7 @@ func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 	return nil
 }
 
+// Predict takes in any set of time samples and generates a forecast, upper, lower values per time point
 func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	seriesRes, err := f.seriesForecast.Predict(t)
 	if err != nil {
@@ -210,34 +217,43 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	return r, nil
 }
 
+// Residuals returns the difference between the final series fit against the training data
 func (f *Forecaster) Residuals() []float64 {
 	return f.seriesForecast.Residuals()
 }
 
+// TrendComponent returns the trend component created by changepoints after fitting
 func (f *Forecaster) TrendComponent() []float64 {
 	return f.seriesForecast.TrendComponent()
 }
 
+// SeasonalityComponent returns the seasonality component after fitting the fourier series
 func (f *Forecaster) SeasonalityComponent() []float64 {
 	return f.seriesForecast.SeasonalityComponent()
 }
 
+// SeriesIntercept returns the intercept of the series fit
 func (f *Forecaster) SeriesIntercept() float64 {
 	return f.seriesForecast.Intercept()
 }
 
+// SeriesCoefficients returns all coefficient weight associated with the component label string
 func (f *Forecaster) SeriesCoefficients() (map[string]float64, error) {
 	return f.seriesForecast.Coefficients()
 }
 
+// ResidualIntercept returns the intercept of the uncertainty fit
 func (f *Forecaster) ResidualIntercept() float64 {
 	return f.residualForecast.Intercept()
 }
 
+// ResidualCoefficients returns all uncertainty coefficient weights associated with the component label string
 func (f *Forecaster) ResidualCoefficients() (map[string]float64, error) {
 	return f.residualForecast.Coefficients()
 }
 
+// Model generates a serializeable representaioon of the fit options, series model, and uncertainty model. This
+// can be used to initialize a new Forecaster for immediate predictions skipping the training step.
 func (f *Forecaster) Model() Model {
 	m := Model{
 		Options:  f.opt,
@@ -247,22 +263,30 @@ func (f *Forecaster) Model() Model {
 	return m
 }
 
+// SeriesModelEq returns a string representation of the fit series model represented as
+// y ~ b + m1x1 + m2x2 ...
 func (f *Forecaster) SeriesModelEq() (string, error) {
 	return f.seriesForecast.ModelEq()
 }
 
+// ResidualModelEq returns a string representation of the fit uncertainty model represented as
+// y ~ b + m1x1 + m2x2 ...
 func (f *Forecaster) ResidualModelEq() (string, error) {
 	return f.residualForecast.ModelEq()
 }
 
+// TrainingData returns the training data used to fit the current forecaster model
 func (f *Forecaster) TrainingData() *timedataset.TimeDataset {
 	return f.fitTrainingData
 }
 
+// FitResults returns the results of the fit which includes the forecast, upper, and lower values
 func (f *Forecaster) FitResults() *Results {
 	return f.fitResults
 }
 
+// PlotFit uses the Apache Echarts library to generate an html file showing the resulting fit,
+// model components, and fit residual
 func (f *Forecaster) PlotFit(path string) error {
 	td := f.TrainingData()
 	page := components.NewPage()

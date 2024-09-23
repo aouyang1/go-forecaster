@@ -9,6 +9,8 @@ import (
 	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
+// LineTSeries generates an echart multi-line chart for some arbitrary time/value combination. The input
+// y is a slice of series that much have the same length as the input time slice.
 func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
@@ -43,6 +45,8 @@ func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64
 	return line
 }
 
+// LineForecaster generates an echart line chart for a give fit result plotting the expected values
+// along with the forecasted, upper, lower values.
 func LineForecaster(trainingData *timedataset.TimeDataset, res *Results) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
