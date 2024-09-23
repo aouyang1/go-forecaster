@@ -18,6 +18,10 @@ func NewDefaultOptions() *Options {
 	}
 }
 
+const (
+	DefaultAutoNumChangepoints int = 100
+)
+
 type ChangepointOptions struct {
 	Changepoints        []changepoint.Changepoint `json:"changepoints"`
 	Auto                bool                      `json:"auto"`
@@ -27,7 +31,7 @@ type ChangepointOptions struct {
 func NewDefaultChangepointOptions() ChangepointOptions {
 	return ChangepointOptions{
 		Auto:                false,
-		AutoNumChangepoints: 100,
+		AutoNumChangepoints: DefaultAutoNumChangepoints,
 		Changepoints:        nil,
 	}
 }
