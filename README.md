@@ -2,7 +2,7 @@
 forecasting library
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/aouyang1/go-forecast)](https://goreportcard.com/report/github.com/aouyang1/go-forecast)
-[![GoDoc](https://godoc.org/github.com/aouyang1/go-forecast?status.svg)](https://godoc.org/github.com/aouyang1/go-forecast)
+[![GoDoc](https://pkg.go.dev/badge/github.com/aouyang1/go-forecaster.svg)](https://pkg.go.dev/github.com/aouyang1/go-forecaster)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## Example 1
