@@ -3,12 +3,15 @@ package forecaster
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/forecast"
 	"github.com/aouyang1/go-forecaster/stats"
 	"github.com/aouyang1/go-forecaster/timedataset"
+	"github.com/go-echarts/go-echarts/v2/components"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
 )
@@ -30,6 +33,9 @@ type Forecaster struct {
 
 	seriesForecast   *forecast.Forecast
 	residualForecast *forecast.Forecast
+
+	fitTrainingData *timedataset.TimeDataset
+	fitResults      *Results
 }
 
 func New(opt *Options) (*Forecaster, error) {
@@ -160,6 +166,13 @@ func (f *Forecaster) Fit(trainingData *timedataset.TimeDataset) error {
 	if err := f.residualForecast.Fit(residualData); err != nil {
 		return fmt.Errorf("unable to forecast residual, %w", err)
 	}
+
+	f.fitTrainingData = trainingData
+	f.fitResults, err = f.Predict(trainingData.T)
+	if err != nil {
+		return fmt.Errorf("unable to get predicted values from training set, %w", err)
+	}
+
 	return nil
 }
 
@@ -240,4 +253,40 @@ func (f *Forecaster) SeriesModelEq() (string, error) {
 
 func (f *Forecaster) ResidualModelEq() (string, error) {
 	return f.residualForecast.ModelEq()
+}
+
+func (f *Forecaster) TrainingData() *timedataset.TimeDataset {
+	return f.fitTrainingData
+}
+
+func (f *Forecaster) FitResults() *Results {
+	return f.fitResults
+}
+
+func (f *Forecaster) PlotFit(path string) error {
+	td := f.TrainingData()
+	page := components.NewPage()
+	page.AddCharts(
+		LineForecaster(td, f.fitResults),
+		LineTSeries(
+			"Forecast Components",
+			[]string{"Trend", "Seasonality"},
+			td.T,
+			[][]float64{
+				f.TrendComponent(),
+				f.SeasonalityComponent(),
+			},
+		),
+		LineTSeries(
+			"Forecast Residual",
+			[]string{"Residual"},
+			td.T,
+			[][]float64{f.Residuals()},
+		),
+	)
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	return page.Render(io.MultiWriter(file))
 }

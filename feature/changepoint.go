@@ -48,5 +48,15 @@ func (c Changepoint) Decode() map[string]string {
 }
 
 func (c *Changepoint) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, c)
+	var labelStr struct {
+		Name            string          `json:"name"`
+		ChangepointComp ChangepointComp `json:"changepoint_component"`
+	}
+	err := json.Unmarshal(data, &labelStr)
+	if err != nil {
+		return err
+	}
+	c.Name = labelStr.Name
+	c.ChangepointComp = labelStr.ChangepointComp
+	return nil
 }
