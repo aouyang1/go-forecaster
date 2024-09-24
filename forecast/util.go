@@ -32,7 +32,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) FeatureSet {
 			hod[i] = math.Mod(hour, 24.0)
 		}
 		feat := feature.NewTime("hod")
-		tFeat[feat.String()] = Feature{feat, hod}
+		tFeat[feat.String()] = FeatureData{feat, hod}
 	}
 	if opt.WeeklyOrders > 0 {
 		dow := make([]float64, len(t))
@@ -41,7 +41,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) FeatureSet {
 			dow[i] = math.Mod(day, 7.0)
 		}
 		feat := feature.NewTime("dow")
-		tFeat[feat.String()] = Feature{feat, dow}
+		tFeat[feat.String()] = FeatureData{feat, dow}
 	}
 	return tFeat
 }
@@ -96,8 +96,8 @@ func generateFourierOrders(tFeatures FeatureSet, col string, orders []int, perio
 		sinFeat, cosFeat := generateFourierComponent(tFeat.Data, order, period)
 		sinFeatCol := feature.NewSeasonality(col, feature.FourierCompSin, order)
 		cosFeatCol := feature.NewSeasonality(col, feature.FourierCompCos, order)
-		x[sinFeatCol.String()] = Feature{sinFeatCol, sinFeat}
-		x[cosFeatCol.String()] = Feature{cosFeatCol, cosFeat}
+		x[sinFeatCol.String()] = FeatureData{sinFeatCol, sinFeat}
+		x[cosFeatCol.String()] = FeatureData{cosFeatCol, cosFeat}
 	}
 
 	return x, nil
@@ -189,8 +189,8 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
 		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
 
-		feat[chpntBias.String()] = Feature{chpntBias, chptFeatures[i*2]}
-		feat[chpntSlope.String()] = Feature{chpntSlope, chptFeatures[i*2+1]}
+		feat[chpntBias.String()] = FeatureData{chpntBias, chptFeatures[i*2]}
+		feat[chpntSlope.String()] = FeatureData{chpntSlope, chptFeatures[i*2+1]}
 	}
 	return feat
 }
@@ -242,8 +242,8 @@ func generateAutoChangepointFeatures(t []time.Time, n int) FeatureSet {
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
 		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
 
-		feat[chpntBias.String()] = Feature{chpntBias, chptFeatures[i*2]}
-		feat[chpntSlope.String()] = Feature{chpntSlope, chptFeatures[i*2+1]}
+		feat[chpntBias.String()] = FeatureData{chpntBias, chptFeatures[i*2]}
+		feat[chpntSlope.String()] = FeatureData{chpntSlope, chptFeatures[i*2+1]}
 	}
 	return feat
 }

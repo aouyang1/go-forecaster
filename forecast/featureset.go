@@ -8,12 +8,11 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-type Feature struct {
-	F    feature.Feature
-	Data []float64
-}
-type FeatureSet map[string]Feature
+// FeatureSet represents a mapping to each feature data keyed by the string representation
+// of the feature.
+type FeatureSet map[string]FeatureData
 
+// Labels returns the sorted slice of all tracked features in the FeatureSet
 func (f FeatureSet) Labels() *FeatureLabels {
 	if f == nil {
 		return nil
@@ -32,6 +31,9 @@ func (f FeatureSet) Labels() *FeatureLabels {
 	return NewFeatureLabels(labels)
 }
 
+// Matrix returns a metric representation of the FeatureSet to be used with matrix methods
+// The matrix has m rows representing the number of observations and n columns representing
+// the number of features.
 func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 	if f == nil {
 		return nil
@@ -75,6 +77,9 @@ func (f FeatureSet) Matrix(intercept bool) *mat.Dense {
 	return mat.NewDense(m, n, obs)
 }
 
+// MatrixSlice returns the FeatureSet as a matrix but in the form of a slice of slices where
+// each row represent feature. Takes an intercept input if we want to include the intercept
+// term.
 func (f FeatureSet) MatrixSlice(intercept bool) [][]float64 {
 	if f == nil {
 		return nil

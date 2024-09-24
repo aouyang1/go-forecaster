@@ -2,6 +2,8 @@ package forecast
 
 import "github.com/aouyang1/go-forecaster/feature"
 
+// FeatureLabels tracks a slice of features and their index locations that match up
+// with the ordering of the coefficients assigned to each of these features.
 type FeatureLabels struct {
 	idx    map[string]int
 	labels []feature.Feature
