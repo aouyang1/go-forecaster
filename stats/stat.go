@@ -12,6 +12,7 @@ var (
 	ErrFeatureLen         = errors.New("must have at least 2 points per feature")
 )
 
+// DetectOutliers uses the Tukey Method to return a slice of indexes that are classified as outliers
 func DetectOutliers(y []float64, lowerPerc, upperPerc, tukeyFactor float64) []int {
 	lowerPerc = math.Max(lowerPerc, 0.0)
 	upperPerc = math.Min(upperPerc, 1.0)

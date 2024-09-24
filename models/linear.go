@@ -45,6 +45,7 @@ var (
 	ErrWarmStartBetaSize = errors.New("warm start beta does not have the same dimensions as X")
 )
 
+// LassoOptions represents input options too run the Lasso Regression
 type LassoOptions struct {
 	WarmStartBeta []float64
 	Lambda        float64
@@ -52,6 +53,7 @@ type LassoOptions struct {
 	Tolerance     float64
 }
 
+// NewDefaultLassoOptions returns a default set of Lasso Regression options
 func NewDefaultLassoOptions() *LassoOptions {
 	return &LassoOptions{
 		Lambda:        1.0,
@@ -146,6 +148,7 @@ func LassoRegression(obs [][]float64, y []float64, opt *LassoOptions) (float64, 
 	return beta[0], beta[1:], nil
 }
 
+// SoftThreshold returns 0 if the value is less than or equal to the gamma input
 func SoftThreshold(x, gamma float64) float64 {
 	res := math.Max(0, math.Abs(x)-gamma)
 	if math.Signbit(x) {
