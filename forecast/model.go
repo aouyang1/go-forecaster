@@ -24,7 +24,7 @@ type Weights struct {
 }
 
 // FeatureLabels returns all of the feature labels in the same order as the coefficients
-func (w *Weights) FeatureLabels() (*FeatureLabels, error) {
+func (w *Weights) FeatureLabels() (*feature.Labels, error) {
 	labels := make([]feature.Feature, 0, len(w.Coef))
 	for _, fw := range w.Coef {
 		feat, err := fw.ToFeature()
@@ -33,7 +33,7 @@ func (w *Weights) FeatureLabels() (*FeatureLabels, error) {
 		}
 		labels = append(labels, feat)
 	}
-	return NewFeatureLabels(labels), nil
+	return feature.NewLabels(labels), nil
 }
 
 // Coefficients returns a slice copy of the coefficients ignoring the intercept.

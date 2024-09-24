@@ -32,7 +32,7 @@ type Forecast struct {
 	scores *Scores // score calculations after training
 
 	// model coefficients
-	fLabels *FeatureLabels
+	fLabels *feature.Labels
 
 	residual    []float64
 	trend       []float64
@@ -72,7 +72,7 @@ func NewFromModel(model Model) (*Forecast, error) {
 	return f, nil
 }
 
-func (f *Forecast) generateFeatures(t []time.Time) (FeatureSet, error) {
+func (f *Forecast) generateFeatures(t []time.Time) (feature.Set, error) {
 	tFeat := generateTimeFeatures(t, f.opt)
 
 	feat, err := generateFourierFeatures(tFeat, f.opt)
@@ -90,7 +90,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (FeatureSet, error) {
 	}
 
 	// generate changepoint features
-	var chptFeat FeatureSet
+	var chptFeat feature.Set
 	if f.opt.ChangepointOptions.Auto {
 		if f.opt.ChangepointOptions.AutoNumChangepoints == 0 {
 			f.opt.ChangepointOptions.AutoNumChangepoints = DefaultAutoNumChangepoints
@@ -179,8 +179,8 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 		return err
 	}
 
-	changepointFeatureSet := make(FeatureSet)
-	seasonalityFeatureSet := make(FeatureSet)
+	changepointFeatureSet := make(feature.Set)
+	seasonalityFeatureSet := make(feature.Set)
 	for label, feat := range x {
 		switch feat.F.Type() {
 		case feature.FeatureTypeChangepoint:
@@ -212,7 +212,7 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
 	return res, nil
 }
 
-func (f *Forecast) runInference(x FeatureSet, withIntercept bool) []float64 {
+func (f *Forecast) runInference(x feature.Set, withIntercept bool) []float64 {
 	if len(x) == 0 {
 		return nil
 	}

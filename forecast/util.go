@@ -20,11 +20,11 @@ func ObservationMatrix(y []float64) *mat.Dense {
 	return mat.NewDense(1, n, y)
 }
 
-func generateTimeFeatures(t []time.Time, opt *Options) FeatureSet {
+func generateTimeFeatures(t []time.Time, opt *Options) feature.Set {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
-	tFeat := make(FeatureSet)
+	tFeat := make(feature.Set)
 	if opt.DailyOrders > 0 {
 		hod := make([]float64, len(t))
 		for i, tPnt := range t {
@@ -32,7 +32,10 @@ func generateTimeFeatures(t []time.Time, opt *Options) FeatureSet {
 			hod[i] = math.Mod(hour, 24.0)
 		}
 		feat := feature.NewTime("hod")
-		tFeat[feat.String()] = FeatureData{feat, hod}
+		tFeat[feat.String()] = feature.Data{
+			F:    feat,
+			Data: hod,
+		}
 	}
 	if opt.WeeklyOrders > 0 {
 		dow := make([]float64, len(t))
@@ -41,16 +44,19 @@ func generateTimeFeatures(t []time.Time, opt *Options) FeatureSet {
 			dow[i] = math.Mod(day, 7.0)
 		}
 		feat := feature.NewTime("dow")
-		tFeat[feat.String()] = FeatureData{feat, dow}
+		tFeat[feat.String()] = feature.Data{
+			F:    feat,
+			Data: dow,
+		}
 	}
 	return tFeat
 }
 
-func generateFourierFeatures(tFeat FeatureSet, opt *Options) (FeatureSet, error) {
+func generateFourierFeatures(tFeat feature.Set, opt *Options) (feature.Set, error) {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
-	x := make(FeatureSet)
+	x := make(feature.Set)
 	if opt.DailyOrders > 0 {
 		var orders []int
 		for i := 1; i <= opt.DailyOrders; i++ {
@@ -85,19 +91,25 @@ func generateFourierFeatures(tFeat FeatureSet, opt *Options) (FeatureSet, error)
 	return x, nil
 }
 
-func generateFourierOrders(tFeatures FeatureSet, col string, orders []int, period float64) (FeatureSet, error) {
+func generateFourierOrders(tFeatures feature.Set, col string, orders []int, period float64) (feature.Set, error) {
 	tFeat, exists := tFeatures[feature.NewTime(col).String()]
 	if !exists {
 		return nil, ErrUnknownTimeFeature
 	}
 
-	x := make(FeatureSet)
+	x := make(feature.Set)
 	for _, order := range orders {
 		sinFeat, cosFeat := generateFourierComponent(tFeat.Data, order, period)
 		sinFeatCol := feature.NewSeasonality(col, feature.FourierCompSin, order)
 		cosFeatCol := feature.NewSeasonality(col, feature.FourierCompCos, order)
-		x[sinFeatCol.String()] = FeatureData{sinFeatCol, sinFeat}
-		x[cosFeatCol.String()] = FeatureData{cosFeatCol, cosFeat}
+		x[sinFeatCol.String()] = feature.Data{
+			F:    sinFeatCol,
+			Data: sinFeat,
+		}
+		x[cosFeatCol.String()] = feature.Data{
+			F:    cosFeatCol,
+			Data: cosFeat,
+		}
 	}
 
 	return x, nil
@@ -115,7 +127,7 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) FeatureSet {
+func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) feature.Set {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -180,7 +192,7 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 		}
 	}
 
-	feat := make(FeatureSet)
+	feat := make(feature.Set)
 	for i := 0; i < len(fChpts); i++ {
 		chpntName := strconv.Itoa(i)
 		if fChpts[i].Name != "" {
@@ -189,13 +201,19 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
 		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
 
-		feat[chpntBias.String()] = FeatureData{chpntBias, chptFeatures[i*2]}
-		feat[chpntSlope.String()] = FeatureData{chpntSlope, chptFeatures[i*2+1]}
+		feat[chpntBias.String()] = feature.Data{
+			F:    chpntBias,
+			Data: chptFeatures[i*2],
+		}
+		feat[chpntSlope.String()] = feature.Data{
+			F:    chpntSlope,
+			Data: chptFeatures[i*2+1],
+		}
 	}
 	return feat
 }
 
-func generateAutoChangepointFeatures(t []time.Time, n int) FeatureSet {
+func generateAutoChangepointFeatures(t []time.Time, n int) feature.Set {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -236,14 +254,20 @@ func generateAutoChangepointFeatures(t []time.Time, n int) FeatureSet {
 		}
 	}
 
-	feat := make(FeatureSet)
+	feat := make(feature.Set)
 	for i := 0; i < len(chpts); i++ {
 		chpntName := chpts[i].Name
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
 		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
 
-		feat[chpntBias.String()] = FeatureData{chpntBias, chptFeatures[i*2]}
-		feat[chpntSlope.String()] = FeatureData{chpntSlope, chptFeatures[i*2+1]}
+		feat[chpntBias.String()] = feature.Data{
+			F:    chpntBias,
+			Data: chptFeatures[i*2],
+		}
+		feat[chpntSlope.String()] = feature.Data{
+			F:    chpntSlope,
+			Data: chptFeatures[i*2+1],
+		}
 	}
 	return feat
 }
