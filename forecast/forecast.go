@@ -21,8 +21,12 @@ var (
 	ErrMismatchedDataLen        = errors.New("input data has different length than time")
 	ErrFeatureLabelsInitialized = errors.New("feature labels already initialized")
 	ErrNoModelCoefficients      = errors.New("no model coefficients from fit")
+	ErrUntrainedForecast        = errors.New("forecast has not been trained yet")
 )
 
+// Forecast represents a single forecast model of a time series. This is a linear model using
+// coordinate descent to calculate the weights. This will decompose the series into an intercept,
+// trend components (based on changepoint times), and seasonal components.
 type Forecast struct {
 	opt    *Options
 	scores *Scores // score calculations after training
@@ -36,8 +40,11 @@ type Forecast struct {
 
 	coef      []float64
 	intercept float64
+	trained   bool
 }
 
+// New creates a new forecast instance withh thhe given options. If none are provided, a default
+// is used
 func New(opt *Options) (*Forecast, error) {
 	if opt == nil {
 		opt = NewDefaultOptions()
@@ -46,6 +53,8 @@ func New(opt *Options) (*Forecast, error) {
 	return &Forecast{opt: opt}, nil
 }
 
+// NewFromModel creates a new forecast instance given a forecast Model to initialize. This
+// instance can be used for inferrence immediately and does not need to be trained again.
 func NewFromModel(model Model) (*Forecast, error) {
 	fLabels, err := model.Weights.FeatureLabels()
 	if err != nil {
@@ -58,6 +67,7 @@ func NewFromModel(model Model) (*Forecast, error) {
 		intercept: model.Weights.Intercept,
 		coef:      model.Weights.Coefficients(),
 		scores:    model.Scores,
+		trained:   true,
 	}
 	return f, nil
 }
@@ -97,6 +107,8 @@ func (f *Forecast) generateFeatures(t []time.Time) (FeatureSet, error) {
 	return feat, nil
 }
 
+// Fit takes the input training data and fits a forecast model for possible changepoints,
+// seasonal components, and intercept
 func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 	if trainingData == nil {
 		return ErrNoTrainingData
@@ -142,6 +154,7 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 	if err != nil {
 		return err
 	}
+	f.trained = true
 
 	// use input training to include NaNs
 	predicted, err := f.Predict(trainingData.T)
@@ -182,7 +195,13 @@ func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
 	return nil
 }
 
+// Predict takes a slice of times in any order and produces the predicted value for those
+// times given a pre-trained model.
 func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
+	if !f.trained {
+		return nil, ErrUntrainedForecast
+	}
+
 	// generate features
 	x, err := f.generateFeatures(t)
 	if err != nil {
@@ -227,10 +246,13 @@ func (f *Forecast) runInference(x FeatureSet, withIntercept bool) []float64 {
 	return yhat
 }
 
+// FeatureLabels returns the slice of feature labels in the order of the coefficients
 func (f *Forecast) FeatureLabels() []feature.Feature {
 	return f.fLabels.Labels()
 }
 
+// Coefficients returns a forecast model map of coefficients keyed by the string
+// representation of each feature label
 func (f *Forecast) Coefficients() (map[string]float64, error) {
 	labels := f.fLabels.Labels()
 	if len(labels) == 0 || len(f.coef) == 0 {
@@ -243,10 +265,14 @@ func (f *Forecast) Coefficients() (map[string]float64, error) {
 	return coef, nil
 }
 
+// Intercept returns the intercept of the forecast model
 func (f *Forecast) Intercept() float64 {
 	return f.intercept
 }
 
+// Model returns the serializeable format of the forecast model composing of the
+// forecast options, intercept, coefficients with their feature labels, and the
+// model fit scores
 func (f *Forecast) Model() Model {
 	fws := make([]FeatureWeight, 0, len(f.coef))
 	labels := f.fLabels.Labels()
@@ -270,6 +296,8 @@ func (f *Forecast) Model() Model {
 	return m
 }
 
+// ModelEq returns a string representation of the model linear equation in the format of
+// y ~ b + m1x1 + m2x2 + ...
 func (f *Forecast) ModelEq() (string, error) {
 	eq := "y ~ "
 
@@ -290,6 +318,8 @@ func (f *Forecast) ModelEq() (string, error) {
 	return eq, nil
 }
 
+// Scores returns the fit scores for evaluating how well the resulting model
+// fit the training data
 func (f *Forecast) Scores() Scores {
 	if f.scores == nil {
 		return Scores{}
@@ -297,18 +327,23 @@ func (f *Forecast) Scores() Scores {
 	return *f.scores
 }
 
+// Residuals returns a slice of values representing the difference between the
+// training data and the fit data
 func (f *Forecast) Residuals() []float64 {
 	res := make([]float64, len(f.residual))
 	copy(res, f.residual)
 	return res
 }
 
+// TrendComponent represents the overall trend component of the model which is determined
+// by the changepoints.
 func (f *Forecast) TrendComponent() []float64 {
 	res := make([]float64, len(f.trend))
 	copy(res, f.trend)
 	return res
 }
 
+// SeasonalityComponent represents the overall seasonal component of the model
 func (f *Forecast) SeasonalityComponent() []float64 {
 	res := make([]float64, len(f.seasonality))
 	copy(res, f.seasonality)
