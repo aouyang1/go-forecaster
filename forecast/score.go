@@ -10,12 +10,14 @@ import (
 
 var ErrResLenMismatch = errors.New("predicted and actual have different lengths")
 
+// Scores tracks the fit scores
 type Scores struct {
 	MSE  float64 `json:"mean_squared_error"`
 	MAPE float64 `json:"mean_average_percent_error"`
 	R2   float64 `json:"r_squared"`
 }
 
+// NewScores calculates the fit scores given the predicted and actual input slice values
 func NewScores(predicted, actual []float64) (*Scores, error) {
 	mse, err := MSE(predicted, actual)
 	if err != nil {
@@ -37,6 +39,8 @@ func NewScores(predicted, actual []float64) (*Scores, error) {
 	}, nil
 }
 
+// MSE computes the mean squared error. This is the same as sum((y-yhat)^2).
+// A score of 0 means a perfect match with no errors.
 func MSE(predicted, actual []float64) (float64, error) {
 	if len(predicted) != len(actual) {
 		return 0, ErrResLenMismatch
@@ -53,6 +57,8 @@ func MSE(predicted, actual []float64) (float64, error) {
 	return mse, nil
 }
 
+// MAPE calculates the mean average percent error. This is the same as sum(abs((y-yhat)/y)).
+// A score of 0 means a perfect match with no errors.
 func MAPE(predicted, actual []float64) (float64, error) {
 	if len(predicted) != len(actual) {
 		return 0, ErrResLenMismatch
@@ -69,6 +75,8 @@ func MAPE(predicted, actual []float64) (float64, error) {
 	return mape, nil
 }
 
+// RSquared computes the r squared value between the predicted and actual where 1.0 means perfect
+// fit and 0 represents no relationship
 func RSquared(predicted, actual []float64) (float64, error) {
 	if len(predicted) != len(actual) {
 		return 0, ErrResLenMismatch
