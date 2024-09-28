@@ -37,6 +37,7 @@ func NewDefaultOptions() *Options {
 	return &Options{
 		SeriesOptions:   forecast.NewDefaultOptions(),
 		ResidualOptions: forecast.NewDefaultOptions(),
+		OutlierOptions:  NewOutlierOptions(),
 		ResidualWindow:  100,
 		ResidualZscore:  4.0,
 	}

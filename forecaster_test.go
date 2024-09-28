@@ -13,7 +13,6 @@ import (
 
 	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/forecast"
-	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
 )
 
@@ -80,15 +79,12 @@ func ExampleForecaster() {
 		ResidualWindow: 100,
 		ResidualZscore: 4.0,
 	}
-	td, err := timedataset.NewUnivariateDataset(t, y)
-	if err != nil {
-		panic(err)
-	}
+
 	f, err := New(opt)
 	if err != nil {
 		panic(err)
 	}
-	if err := f.Fit(td); err != nil {
+	if err := f.Fit(t, y); err != nil {
 		panic(err)
 	}
 
@@ -155,15 +151,11 @@ func ExampleForecasterAutoChangepoint() {
 		ResidualWindow: 100,
 		ResidualZscore: 4.0,
 	}
-	td, err := timedataset.NewUnivariateDataset(t, y)
-	if err != nil {
-		panic(err)
-	}
 	f, err := New(opt)
 	if err != nil {
 		panic(err)
 	}
-	if err := f.Fit(td); err != nil {
+	if err := f.Fit(t, y); err != nil {
 		panic(err)
 	}
 
@@ -207,15 +199,11 @@ func ExampleForecasterWithTrend() {
 		ResidualWindow: 100,
 		ResidualZscore: 4.0,
 	}
-	td, err := timedataset.NewUnivariateDataset(t, y)
-	if err != nil {
-		panic(err)
-	}
 	f, err := New(opt)
 	if err != nil {
 		panic(err)
 	}
-	if err := f.Fit(td); err != nil {
+	if err := f.Fit(t, y); err != nil {
 		panic(err)
 	}
 

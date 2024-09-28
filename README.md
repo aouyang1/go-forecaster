@@ -23,15 +23,11 @@ import (
 )
 
 func MyForecast(t []time.Time, y []float64) (*forecaster.Results, error) {
-	td, err := timedataset.NewUnivariateDataset(t, y)
+	f, err := forecaster.New(nil)
 	if err != nil {
 		return nil, err
 	}
-	f, err := forecaster.New(opt)
-	if err != nil {
-		return nil, err
-	}
-	if err := f.Fit(td); err != nil {
+	if err := f.Fit(t, y); err != nil {
 		return nil, err
 	}
 	eq, err := f.SeriesModelEq()
