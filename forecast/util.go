@@ -192,25 +192,7 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 		}
 	}
 
-	feat := make(feature.Set)
-	for i := 0; i < len(fChpts); i++ {
-		chpntName := strconv.Itoa(i)
-		if fChpts[i].Name != "" {
-			chpntName = fChpts[i].Name
-		}
-		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
-		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
-
-		feat[chpntBias.String()] = feature.Data{
-			F:    chpntBias,
-			Data: chptFeatures[i*2],
-		}
-		feat[chpntSlope.String()] = feature.Data{
-			F:    chpntSlope,
-			Data: chptFeatures[i*2+1],
-		}
-	}
-	return feat
+	return makeChangepointFeatureSet(fChpts, chptFeatures)
 }
 
 func generateAutoChangepointFeatures(t []time.Time, n int) feature.Set {
@@ -254,9 +236,16 @@ func generateAutoChangepointFeatures(t []time.Time, n int) feature.Set {
 		}
 	}
 
+	return makeChangepointFeatureSet(chpts, chptFeatures)
+}
+
+func makeChangepointFeatureSet(chpts []changepoint.Changepoint, chptFeatures [][]float64) feature.Set {
 	feat := make(feature.Set)
 	for i := 0; i < len(chpts); i++ {
-		chpntName := chpts[i].Name
+		chpntName := strconv.Itoa(i)
+		if chpts[i].Name != "" {
+			chpntName = chpts[i].Name
+		}
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
 		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
 
