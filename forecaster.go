@@ -94,9 +94,28 @@ func NewFromModel(model Model) (*Forecaster, error) {
 func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 	td, err := timedataset.NewUnivariateDataset(t, y)
 	if err != nil {
-		return fmt.Errorf("unable to create copy of training dataset, %w", err)
+		return fmt.Errorf("unable to create training dataset, %w", err)
+	}
+	f.fitTrainingData = td.Copy()
+
+	residual, err := f.fitSeriesWithOutliers(td.T, td.Y)
+	if err != nil {
+		return err
 	}
 
+	if err := f.fitResidual(td.T, residual); err != nil {
+		return err
+	}
+
+	f.fitResults, err = f.Predict(t)
+	if err != nil {
+		return fmt.Errorf("unable to get predicted values from training set, %w", err)
+	}
+
+	return nil
+}
+
+func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64) ([]float64, error) {
 	// iterate to remove outliers
 	numPasses := 0
 	if f.opt.OutlierOptions != nil {
@@ -105,8 +124,8 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 
 	var residual []float64
 	for i := 0; i <= numPasses; i++ {
-		if err := f.seriesForecast.Fit(td); err != nil {
-			return fmt.Errorf("unable to forecast series, %w", err)
+		if err := f.seriesForecast.Fit(t, y); err != nil {
+			return nil, fmt.Errorf("unable to forecast series, %w", err)
 		}
 
 		residual = f.seriesForecast.Residuals()
@@ -132,14 +151,17 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 			break
 		}
 
-		for i := 0; i < len(td.T); i++ {
+		for i := 0; i < len(t); i++ {
 			if _, exists := outlierSet[i]; exists {
-				td.Y[i] = math.NaN()
+				y[i] = math.NaN()
 				continue
 			}
 		}
 	}
+	return residual, nil
+}
 
+func (f *Forecaster) fitResidual(t []time.Time, residual []float64) error {
 	if len(residual) < MinResidualSize {
 		return ErrInsufficientResidual
 	}
@@ -166,21 +188,15 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 	// shifting by half the residual window since computing the residual series is similar to a
 	// finite impulse response filtering having a group delay of window/2.
 	start := f.opt.ResidualWindow / 2
-	end := len(td.T) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2 + 1
+	end := len(t) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2 + 1
 
-	residualData, err := timedataset.NewUnivariateDataset(td.T[start:end], stddevSeries)
+	residualData, err := timedataset.NewUnivariateDataset(t[start:end], stddevSeries)
 	if err != nil {
 		return fmt.Errorf("unable to create univariate dataset for residual, %w", err)
 	}
 
-	if err := f.residualForecast.Fit(residualData); err != nil {
+	if err := f.residualForecast.Fit(residualData.T, residualData.Y); err != nil {
 		return fmt.Errorf("unable to forecast residual, %w", err)
-	}
-
-	f.fitTrainingData, _ = timedataset.NewUnivariateDataset(t, y)
-	f.fitResults, err = f.Predict(t)
-	if err != nil {
-		return fmt.Errorf("unable to get predicted values from training set, %w", err)
 	}
 
 	return nil

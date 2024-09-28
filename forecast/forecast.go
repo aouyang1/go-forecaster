@@ -14,8 +14,6 @@ import (
 )
 
 var (
-	ErrNonMontonic              = errors.New("time feature is not monotonic")
-	ErrNoTrainingData           = errors.New("no training data")
 	ErrInsufficientTrainingData = errors.New("insufficient training data after removing Nans")
 	ErrLabelExists              = errors.New("label already exists in TimeDataset")
 	ErrMismatchedDataLen        = errors.New("input data has different length than time")
@@ -109,27 +107,22 @@ func (f *Forecast) generateFeatures(t []time.Time) (feature.Set, error) {
 
 // Fit takes the input training data and fits a forecast model for possible changepoints,
 // seasonal components, and intercept
-func (f *Forecast) Fit(trainingData *timedataset.TimeDataset) error {
-	if trainingData == nil {
-		return ErrNoTrainingData
+func (f *Forecast) Fit(t []time.Time, y []float64) error {
+	trainingData, err := timedataset.NewUnivariateDataset(t, y)
+	if err != nil {
+		return err
 	}
 
 	// remove any NaNs from training set
 	trainingT := make([]time.Time, 0, len(trainingData.T))
 	trainingY := make([]float64, 0, len(trainingData.Y))
 
-	// check for monontic timestamps
-	var lastT time.Time
+	// drop out nans
 	for i := 0; i < len(trainingData.T); i++ {
-		currT := trainingData.T[i]
-		if currT.Before(lastT) || currT.Equal(lastT) {
-			return fmt.Errorf("non-monotonic at %d, %w", i, ErrNonMontonic)
-		}
-		lastT = currT
 		if math.IsNaN(trainingData.Y[i]) {
 			continue
 		}
-		trainingT = append(trainingT, currT)
+		trainingT = append(trainingT, trainingData.T[i])
 		trainingY = append(trainingY, trainingData.Y[i])
 	}
 

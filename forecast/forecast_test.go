@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,15 +27,11 @@ func TestFit(t *testing.T) {
 	opt := &Options{
 		DailyOrders: 3,
 	}
-	td, err := timedataset.NewUnivariateDataset(tWin, y)
-	if err != nil {
-		t.Fatal(err)
-	}
 	f, err := New(opt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Fit(td); err != nil {
+	if err := f.Fit(tWin, y); err != nil {
 		t.Fatal(err)
 	}
 
@@ -84,15 +79,11 @@ func TestFitFromModel(t *testing.T) {
 	opt := &Options{
 		DailyOrders: 3,
 	}
-	td, err := timedataset.NewUnivariateDataset(tWin, y)
-	if err != nil {
-		t.Fatal(err)
-	}
 	f, err := New(opt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Fit(td); err != nil {
+	if err := f.Fit(tWin, y); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +95,7 @@ func TestFitFromModel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	predicted, err := f.Predict(td.T)
+	predicted, err := f.Predict(tWin)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +120,7 @@ func TestFitFromModel(t *testing.T) {
 	}
 	assert.InDeltaSlice(t, expected, res, 0.1)
 
-	scores, err := NewScores(predicted, td.Y)
+	scores, err := NewScores(predicted, y)
 	if err != nil {
 		t.Fatal(err)
 	}
