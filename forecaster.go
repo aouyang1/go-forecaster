@@ -309,9 +309,24 @@ func (f *Forecaster) FitResults() *Results {
 // model components, and fit residual
 func (f *Forecaster) PlotFit(path string) error {
 	td := f.TrainingData()
+	lastTime := td.T[len(td.T)-1]
+
+	horizonCnt := 60 * 6
+	horizonInterval := time.Minute
+
+	horizon := make([]time.Time, 0, horizonCnt)
+	for i := 0; i < horizonCnt; i++ {
+		horizon = append(horizon, lastTime.Add(time.Duration(i+1)*horizonInterval))
+	}
+
+	forecastRes, err := f.Predict(horizon)
+	if err != nil {
+		return fmt.Errorf("unable to predict with horizon, %w", err)
+	}
+
 	page := components.NewPage()
 	page.AddCharts(
-		LineForecaster(td, f.fitResults),
+		LineForecaster(td, f.fitResults, forecastRes),
 		LineTSeries(
 			"Forecast Components",
 			[]string{"Trend", "Seasonality"},

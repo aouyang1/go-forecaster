@@ -47,7 +47,7 @@ func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64
 
 // LineForecaster generates an echart line chart for a give fit result plotting the expected values
 // along with the forecasted, upper, lower values.
-func LineForecaster(trainingData *timedataset.TimeDataset, res *Results) *charts.Line {
+func LineForecaster(trainingData *timedataset.TimeDataset, fitRes, forecastRes *Results) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(
@@ -57,19 +57,30 @@ func LineForecaster(trainingData *timedataset.TimeDataset, res *Results) *charts
 		),
 	)
 
-	lineDataActual := make([]opts.LineData, 0, len(trainingData.T))
-	lineDataForecast := make([]opts.LineData, 0, len(res.T))
-	lineDataUpper := make([]opts.LineData, 0, len(res.T))
-	lineDataLower := make([]opts.LineData, 0, len(res.T))
+	dataTime := make([]time.Time, 0, len(fitRes.T)+len(forecastRes.T))
+	dataTime = append(dataTime, fitRes.T...)
+	dataTime = append(dataTime, forecastRes.T...)
 
-	for i := 0; i < len(res.T); i++ {
+	lineDataActual := make([]opts.LineData, 0, len(trainingData.T))
+
+	lineDataForecast := make([]opts.LineData, 0, len(fitRes.T)+len(forecastRes.T))
+	lineDataUpper := make([]opts.LineData, 0, len(fitRes.T)+len(forecastRes.T))
+	lineDataLower := make([]opts.LineData, 0, len(fitRes.T)+len(forecastRes.T))
+
+	for i := 0; i < len(fitRes.T); i++ {
 		lineDataActual = append(lineDataActual, opts.LineData{Value: trainingData.Y[i]})
-		lineDataForecast = append(lineDataForecast, opts.LineData{Value: res.Forecast[i]})
-		lineDataUpper = append(lineDataUpper, opts.LineData{Value: res.Upper[i]})
-		lineDataLower = append(lineDataLower, opts.LineData{Value: res.Lower[i]})
+		lineDataForecast = append(lineDataForecast, opts.LineData{Value: fitRes.Forecast[i]})
+		lineDataUpper = append(lineDataUpper, opts.LineData{Value: fitRes.Upper[i]})
+		lineDataLower = append(lineDataLower, opts.LineData{Value: fitRes.Lower[i]})
 	}
 
-	line.SetXAxis(res.T).
+	for i := 0; i < len(forecastRes.T); i++ {
+		lineDataForecast = append(lineDataForecast, opts.LineData{Value: forecastRes.Forecast[i]})
+		lineDataUpper = append(lineDataUpper, opts.LineData{Value: forecastRes.Upper[i]})
+		lineDataLower = append(lineDataLower, opts.LineData{Value: forecastRes.Lower[i]})
+	}
+
+	line.SetXAxis(dataTime).
 		AddSeries("Actual", lineDataActual).
 		AddSeries("Forecast", lineDataForecast).
 		AddSeries("Upper", lineDataUpper).

@@ -147,15 +147,12 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 	chptStart := len(chpts)
 	chptEnd := -1
 	for i := 0; i < len(chpts); i++ {
-		// haven't reached a changepoint in the time window
-		if chpts[i].T.Before(minTime) {
-			continue
-		}
 		if i < chptStart {
 			chptStart = i
 		}
 
-		// reached end of time window so break
+		// reached end of time window so break so that we don't unnecessarily model or predict
+		// using features that are always going to have no weight
 		if chpts[i].T.Equal(maxTime) || chpts[i].T.After(maxTime) {
 			chptEnd = i
 			break
