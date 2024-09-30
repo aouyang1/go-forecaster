@@ -13,6 +13,11 @@ Contains a daily seasonal component with 2 anomalous behaviors along with 2 regi
 Contains a daily seasonal component with a trend change point which resets
 ![Forecast With Trend Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_with_trend_example.png)
 
+## Example 3
+Auto-changepoint detection and fit
+![Forecast With Auto-Changepoint Detection Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_with_autochangepoint_example.png)
+
+
 ## Example Use
 ```
 import (

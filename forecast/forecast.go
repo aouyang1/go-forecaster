@@ -89,15 +89,13 @@ func (f *Forecast) generateFeatures(t []time.Time) (feature.Set, error) {
 
 	// generate changepoint features
 	var chptFeat feature.Set
-	if f.opt.ChangepointOptions.Auto {
+	if f.opt.ChangepointOptions.Auto && !f.trained {
 		if f.opt.ChangepointOptions.AutoNumChangepoints == 0 {
 			f.opt.ChangepointOptions.AutoNumChangepoints = DefaultAutoNumChangepoints
 		}
-		chptFeat = generateAutoChangepointFeatures(t, f.opt.ChangepointOptions.AutoNumChangepoints)
-	} else {
-		chptFeat = generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints)
+		f.opt.ChangepointOptions.Changepoints = generateAutoChangepoints(t, f.opt.ChangepointOptions.AutoNumChangepoints)
 	}
-	// chptFeat := generateChangepointFeatures(t, f.opt.Changepoints)
+	chptFeat = generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints)
 	for chptLabel, feature := range chptFeat {
 		feat[chptLabel] = feature
 	}
