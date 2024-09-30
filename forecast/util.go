@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"strconv"
 	"time"
 
@@ -127,72 +126,7 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) feature.Set {
-	var minTime, maxTime time.Time
-	for _, tPnt := range t {
-		if minTime.IsZero() || tPnt.Before(minTime) {
-			minTime = tPnt
-		}
-		if maxTime.IsZero() || tPnt.After(maxTime) {
-			maxTime = tPnt
-		}
-	}
-
-	sort.Slice(
-		chpts,
-		func(i, j int) bool {
-			return chpts[i].T.Before(chpts[j].T)
-		},
-	)
-	chptStart := len(chpts)
-	chptEnd := -1
-	for i := 0; i < len(chpts); i++ {
-		if i < chptStart {
-			chptStart = i
-		}
-
-		// reached end of time window so break so that we don't unnecessarily model or predict
-		// using features that are always going to have no weight
-		if chpts[i].T.Equal(maxTime) || chpts[i].T.After(maxTime) {
-			chptEnd = i
-			break
-		}
-	}
-	if chptEnd == -1 {
-		chptEnd = len(chpts)
-	}
-	fChpts := chpts[chptStart:chptEnd]
-	chptFeatures := make([][]float64, len(fChpts)*2)
-	for i := 0; i < len(fChpts)*2; i++ {
-		chpt := make([]float64, len(t))
-		chptFeatures[i] = chpt
-	}
-
-	bias := 1.0
-	var slope float64
-	for i := 0; i < len(t); i++ {
-		for j := 0; j < len(fChpts); j++ {
-			var beforeNextChpt bool
-			var deltaT float64
-			if j != len(fChpts)-1 {
-				beforeNextChpt = t[i].Before(fChpts[j+1].T)
-				deltaT = fChpts[j+1].T.Sub(fChpts[j].T).Seconds()
-			} else {
-				beforeNextChpt = true
-				deltaT = maxTime.Sub(fChpts[j].T).Seconds()
-			}
-			if t[i].Equal(fChpts[j].T) || (t[i].After(fChpts[j].T) && beforeNextChpt) {
-				slope = t[i].Sub(fChpts[j].T).Seconds() / deltaT
-				chptFeatures[j*2][i] = bias
-				chptFeatures[j*2+1][i] = slope
-			}
-		}
-	}
-
-	return makeChangepointFeatureSet(fChpts, chptFeatures)
-}
-
-func generateAutoChangepointFeatures(t []time.Time, n int) feature.Set {
+func generateAutoChangepoints(t []time.Time, n int) []changepoint.Changepoint {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -214,6 +148,20 @@ func generateAutoChangepointFeatures(t []time.Time, n int) feature.Set {
 			changepoint.New("auto_"+strconv.Itoa(i), chpntTime),
 		)
 	}
+	return chpts
+}
+
+func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) feature.Set {
+	var minTime, maxTime time.Time
+	for _, tPnt := range t {
+		if minTime.IsZero() || tPnt.Before(minTime) {
+			minTime = tPnt
+		}
+		if maxTime.IsZero() || tPnt.After(maxTime) {
+			maxTime = tPnt
+		}
+	}
+
 	chptFeatures := make([][]float64, len(chpts)*2)
 	for i := 0; i < len(chpts)*2; i++ {
 		chpt := make([]float64, len(t))
