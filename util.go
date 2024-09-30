@@ -27,19 +27,21 @@ func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64
 	for i := 0; i < len(y); i++ {
 		lineData[i] = make([]opts.LineData, 0, len(y[i]))
 		for j := 0; j < len(y[i]); j++ {
-			if math.IsNaN(y[i][j]) {
-				continue
-			}
 			if i == 0 {
 				filteredT = append(filteredT, t[i])
 			}
-			lineData[i] = append(lineData[i], opts.LineData{Value: y[i][j]})
+
+			if math.IsNaN(y[i][j]) {
+				lineData[i] = append(lineData[i], opts.LineData{Value: "-"})
+			} else {
+				lineData[i] = append(lineData[i], opts.LineData{Value: y[i][j]})
+			}
 		}
 	}
 
-	line = line.SetXAxis(filteredT)
+	line.SetXAxis(filteredT)
 	for i, series := range seriesName {
-		line = line.AddSeries(series, lineData[i])
+		line.AddSeries(series, lineData[i])
 	}
 
 	return line

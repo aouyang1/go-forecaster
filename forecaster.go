@@ -37,6 +37,7 @@ type Forecaster struct {
 
 	fitTrainingData *timedataset.TimeDataset
 	fitResults      *Results
+	residual        []float64
 }
 
 // New creates a new instance of a Forecaster using thhe provided options. If no options are provided
@@ -103,6 +104,16 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 		return err
 	}
 
+	f.residual = make([]float64, len(t))
+	var j int
+	for i := 0; i < len(t); i++ {
+		if t[i].Equal(td.T[j]) {
+			f.residual[i] = residual[j]
+			j += 1
+		} else {
+			f.residual[i] = math.NaN()
+		}
+	}
 	if err := f.fitResidual(td.T, residual); err != nil {
 		return err
 	}
@@ -239,7 +250,7 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 
 // Residuals returns the difference between the final series fit against the training data
 func (f *Forecaster) Residuals() []float64 {
-	return f.seriesForecast.Residuals()
+	return f.residual
 }
 
 // TrendComponent returns the trend component created by changepoints after fitting
@@ -315,14 +326,25 @@ func (f *Forecaster) PlotFit(path string) error {
 	horizonInterval := time.Minute
 
 	horizon := make([]time.Time, 0, horizonCnt)
+	zpad := make([]float64, 0, horizonCnt)
 	for i := 0; i < horizonCnt; i++ {
 		horizon = append(horizon, lastTime.Add(time.Duration(i+1)*horizonInterval))
+		zpad = append(zpad, math.NaN())
 	}
 
 	forecastRes, err := f.Predict(horizon)
 	if err != nil {
 		return fmt.Errorf("unable to predict with horizon, %w", err)
 	}
+
+	residuals := f.Residuals()
+	residuals = append(residuals, zpad...)
+
+	trendComp := f.TrendComponent()
+	trendComp = append(trendComp, zpad...)
+
+	seasonComp := f.SeasonalityComponent()
+	seasonComp = append(seasonComp, zpad...)
 
 	page := components.NewPage()
 	page.AddCharts(
@@ -332,15 +354,15 @@ func (f *Forecaster) PlotFit(path string) error {
 			[]string{"Trend", "Seasonality"},
 			td.T,
 			[][]float64{
-				f.TrendComponent(),
-				f.SeasonalityComponent(),
+				trendComp,
+				seasonComp,
 			},
 		),
 		LineTSeries(
 			"Forecast Residual",
 			[]string{"Residual"},
 			td.T,
-			[][]float64{f.Residuals()},
+			[][]float64{residuals},
 		),
 	)
 	file, err := os.Create(path)
