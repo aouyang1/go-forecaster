@@ -20,6 +20,7 @@ var (
 	ErrInsufficientResidual = errors.New("insufficient samples from residual after outlier removal")
 	ErrEmptyTimeDataset     = errors.New("no timedataset or uninitialized")
 	ErrNoOptionsInModel     = errors.New("no options set in model")
+	ErrCannotInferInterval  = errors.New("cannot infer interval from training data time")
 )
 
 const (
@@ -316,14 +317,31 @@ func (f *Forecaster) FitResults() *Results {
 	return f.fitResults
 }
 
+// PlotOpts sets the horizon to forecast out. By default will use 10% of the training size assuming
+// even intervals between points and the first two points are used to infer the horizon interval.
+type PlotOpts struct {
+	HorizonCnt      int
+	HorizonInterval time.Duration
+}
+
 // PlotFit uses the Apache Echarts library to generate an html file showing the resulting fit,
 // model components, and fit residual
-func (f *Forecaster) PlotFit(path string) error {
+func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 	td := f.TrainingData()
 	lastTime := td.T[len(td.T)-1]
 
-	horizonCnt := 60 * 6
-	horizonInterval := time.Minute
+	if len(td.T) < 2 {
+		return ErrCannotInferInterval
+	}
+	horizonCnt := len(td.T) / 10
+	horizonInterval := td.T[1].Sub(td.T[0])
+	if opt != nil {
+		horizonCnt = opt.HorizonCnt
+		horizonInterval = opt.HorizonInterval
+	}
+	if horizonCnt < 1 {
+		horizonCnt = 1
+	}
 
 	horizon := make([]time.Time, 0, horizonCnt)
 	zpad := make([]float64, 0, horizonCnt)

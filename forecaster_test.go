@@ -95,7 +95,7 @@ func ExampleForecaster() {
 	}
 	fmt.Fprintln(os.Stderr, string(out))
 
-	if err := f.PlotFit("examples/forecaster.html"); err != nil {
+	if err := f.PlotFit("examples/forecaster.html", nil); err != nil {
 		panic(err)
 	}
 	// Output:
@@ -166,7 +166,7 @@ func ExampleForecasterAutoChangepoint() {
 	}
 	fmt.Fprintln(os.Stderr, string(out))
 
-	if err := f.PlotFit("examples/forecaster_auto_changepoint.html"); err != nil {
+	if err := f.PlotFit("examples/forecaster_auto_changepoint.html", nil); err != nil {
 		panic(err)
 	}
 	// Output:
@@ -214,7 +214,7 @@ func ExampleForecasterWithTrend() {
 	}
 	fmt.Fprintln(os.Stderr, string(out))
 
-	if err := f.PlotFit("examples/forecaster_with_trend.html"); err != nil {
+	if err := f.PlotFit("examples/forecaster_with_trend.html", nil); err != nil {
 		panic(err)
 	}
 	// Output:
