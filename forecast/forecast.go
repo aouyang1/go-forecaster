@@ -32,9 +32,8 @@ type Forecast struct {
 	// model coefficients
 	fLabels *feature.Labels
 
-	residual    []float64
-	trend       []float64
-	seasonality []float64
+	residual        []float64
+	trainComponents Components
 
 	coef      []float64
 	intercept float64
@@ -148,10 +147,12 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	f.trained = true
 
 	// use input training to include NaNs
-	predicted, err := f.Predict(trainingData.T)
+	predicted, comp, err := f.Predict(trainingData.T)
 	if err != nil {
 		return err
 	}
+	f.trainComponents = comp
+
 	scores, err := NewScores(predicted, trainingData.Y)
 	if err != nil {
 		return err
@@ -164,10 +165,20 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	floats.Scale(-1.0, residual)
 	f.residual = residual
 
-	// compute changepoint and seasonal components
-	x, err = f.generateFeatures(trainingData.T)
+	return nil
+}
+
+// Predict takes a slice of times in any order and produces the predicted value for those
+// times given a pre-trained model.
+func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
+	if !f.trained {
+		return nil, Components{}, ErrUntrainedForecast
+	}
+
+	// generate features
+	x, err := f.generateFeatures(t)
 	if err != nil {
-		return err
+		return nil, Components{}, err
 	}
 
 	changepointFeatureSet := make(feature.Set)
@@ -181,26 +192,13 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 		}
 	}
 
-	f.trend = f.runInference(changepointFeatureSet, true)
-	f.seasonality = f.runInference(seasonalityFeatureSet, false)
-	return nil
-}
-
-// Predict takes a slice of times in any order and produces the predicted value for those
-// times given a pre-trained model.
-func (f *Forecast) Predict(t []time.Time) ([]float64, error) {
-	if !f.trained {
-		return nil, ErrUntrainedForecast
-	}
-
-	// generate features
-	x, err := f.generateFeatures(t)
-	if err != nil {
-		return nil, err
+	comp := Components{
+		Trend:       f.runInference(changepointFeatureSet, true),
+		Seasonality: f.runInference(seasonalityFeatureSet, false),
 	}
 
 	res := f.runInference(x, true)
-	return res, nil
+	return res, comp, nil
 }
 
 func (f *Forecast) runInference(x feature.Set, withIntercept bool) []float64 {
@@ -329,14 +327,14 @@ func (f *Forecast) Residuals() []float64 {
 // TrendComponent represents the overall trend component of the model which is determined
 // by the changepoints.
 func (f *Forecast) TrendComponent() []float64 {
-	res := make([]float64, len(f.trend))
-	copy(res, f.trend)
+	res := make([]float64, len(f.trainComponents.Trend))
+	copy(res, f.trainComponents.Trend)
 	return res
 }
 
 // SeasonalityComponent represents the overall seasonal component of the model
 func (f *Forecast) SeasonalityComponent() []float64 {
-	res := make([]float64, len(f.seasonality))
-	copy(res, f.seasonality)
+	res := make([]float64, len(f.trainComponents.Seasonality))
+	copy(res, f.trainComponents.Seasonality)
 	return res
 }
