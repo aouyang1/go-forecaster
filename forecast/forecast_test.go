@@ -95,7 +95,7 @@ func TestFitFromModel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	predicted, err := f.Predict(tWin)
+	predicted, _, err := f.Predict(tWin)
 	if err != nil {
 		t.Fatal(err)
 	}

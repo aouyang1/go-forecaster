@@ -216,11 +216,11 @@ func (f *Forecaster) fitResidual(t []time.Time, residual []float64) error {
 
 // Predict takes in any set of time samples and generates a forecast, upper, lower values per time point
 func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
-	seriesRes, err := f.seriesForecast.Predict(t)
+	seriesRes, seriesComp, err := f.seriesForecast.Predict(t)
 	if err != nil {
 		return nil, fmt.Errorf("unable to predict series forecasts, %w", err)
 	}
-	residualRes, err := f.residualForecast.Predict(t)
+	residualRes, residualComp, err := f.residualForecast.Predict(t)
 	if err != nil {
 		return nil, fmt.Errorf("unable to predict residual forecasts, %w", err)
 	}
@@ -233,8 +233,10 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	}
 
 	r := &Results{
-		T:        t,
-		Forecast: seriesRes,
+		T:                  t,
+		Forecast:           seriesRes,
+		SeriesComponents:   seriesComp,
+		ResidualComponents: residualComp,
 	}
 	upper := make([]float64, len(seriesRes))
 	lower := make([]float64, len(seriesRes))
@@ -343,10 +345,14 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 		horizonCnt = 1
 	}
 
+	t := make([]time.Time, 0, len(td.T)+horizonCnt)
+	copy(t, td.T)
 	horizon := make([]time.Time, 0, horizonCnt)
 	zpad := make([]float64, 0, horizonCnt)
 	for i := 0; i < horizonCnt; i++ {
-		horizon = append(horizon, lastTime.Add(time.Duration(i+1)*horizonInterval))
+		nextT := lastTime.Add(time.Duration(i+1) * horizonInterval)
+		horizon = append(horizon, nextT)
+		t = append(t, nextT)
 		zpad = append(zpad, math.NaN())
 	}
 
@@ -359,10 +365,10 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 	residuals = append(residuals, zpad...)
 
 	trendComp := f.TrendComponent()
-	trendComp = append(trendComp, zpad...)
+	trendComp = append(trendComp, forecastRes.SeriesComponents.Trend...)
 
 	seasonComp := f.SeasonalityComponent()
-	seasonComp = append(seasonComp, zpad...)
+	seasonComp = append(seasonComp, forecastRes.SeriesComponents.Seasonality...)
 
 	page := components.NewPage()
 	page.AddCharts(
@@ -370,7 +376,7 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 		LineTSeries(
 			"Forecast Components",
 			[]string{"Trend", "Seasonality"},
-			td.T,
+			t,
 			[][]float64{
 				trendComp,
 				seasonComp,
@@ -379,7 +385,7 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 		LineTSeries(
 			"Forecast Residual",
 			[]string{"Residual"},
-			td.T,
+			t,
 			[][]float64{residuals},
 		),
 	)
