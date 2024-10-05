@@ -32,6 +32,7 @@ type Forecast struct {
 	// model coefficients
 	fLabels *feature.Labels
 
+	trainEndTime    time.Time
 	residual        []float64
 	trainComponents Components
 
@@ -94,7 +95,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (feature.Set, error) {
 		}
 		f.opt.ChangepointOptions.Changepoints = generateAutoChangepoints(t, f.opt.ChangepointOptions.AutoNumChangepoints)
 	}
-	chptFeat = generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints)
+	chptFeat = generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints, f.trainEndTime)
 	for chptLabel, feature := range chptFeat {
 		feat[chptLabel] = feature
 	}
@@ -126,6 +127,8 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	if len(trainingT) <= 1 {
 		return ErrInsufficientTrainingData
 	}
+
+	f.trainEndTime = trainingT[len(trainingT)-1]
 	// generate features
 	x, err := f.generateFeatures(trainingT)
 	if err != nil {

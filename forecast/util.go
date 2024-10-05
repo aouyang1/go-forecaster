@@ -151,21 +151,18 @@ func generateAutoChangepoints(t []time.Time, n int) []changepoint.Changepoint {
 	return chpts
 }
 
-func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint) feature.Set {
-	var minTime, maxTime time.Time
-	for _, tPnt := range t {
-		if minTime.IsZero() || tPnt.Before(minTime) {
-			minTime = tPnt
-		}
-		if maxTime.IsZero() || tPnt.After(maxTime) {
-			maxTime = tPnt
-		}
-	}
-
+func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint, trainingEndTime time.Time) feature.Set {
+	// create a slice of features where it goes in the order of bias, slope for each changepoint
 	chptFeatures := make([][]float64, len(chpts)*2)
 	for i := 0; i < len(chpts)*2; i++ {
 		chpt := make([]float64, len(t))
 		chptFeatures[i] = chpt
+	}
+
+	// compute dt betweenn training end time and changepoint time
+	deltaT := make([]float64, len(chpts))
+	for i, chpt := range chpts {
+		deltaT[i] = trainingEndTime.Sub(chpt.T).Seconds()
 	}
 
 	bias := 1.0
@@ -173,8 +170,7 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint)
 	for i := 0; i < len(t); i++ {
 		for j := 0; j < len(chpts); j++ {
 			if t[i].Equal(chpts[j].T) || t[i].After(chpts[j].T) {
-				deltaT := maxTime.Sub(chpts[j].T).Seconds()
-				slope = t[i].Sub(chpts[j].T).Seconds() / deltaT
+				slope = t[i].Sub(chpts[j].T).Seconds() / deltaT[j]
 				chptFeatures[j*2][i] = bias
 				chptFeatures[j*2+1][i] = slope
 			}
