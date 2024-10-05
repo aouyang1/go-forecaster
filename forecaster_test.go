@@ -88,7 +88,10 @@ func ExampleForecaster() {
 		panic(err)
 	}
 
-	m := f.Model()
+	m, err := f.Model()
+	if err != nil {
+		panic(err)
+	}
 	out, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		panic(err)
@@ -159,7 +162,10 @@ func ExampleForecasterAutoChangepoint() {
 		panic(err)
 	}
 
-	m := f.Model()
+	m, err := f.Model()
+	if err != nil {
+		panic(err)
+	}
 	out, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		panic(err)
@@ -207,7 +213,11 @@ func ExampleForecasterWithTrend() {
 		panic(err)
 	}
 
-	m := f.Model()
+	m, err := f.Model()
+	if err != nil {
+		panic(err)
+	}
+
 	out, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		panic(err)

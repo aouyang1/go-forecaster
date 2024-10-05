@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -40,9 +41,7 @@ func TestLassoRegression(t *testing.T) {
 	opt.Tolerance = 1e-6
 
 	intercept, coef, err := LassoRegression(obs, y, opt)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	assert.InDelta(t, 2.0, intercept, 0.00001)
 	assert.InDelta(t, 3.0, coef[0], 0.00001)
 	assert.InDelta(t, 4.0, coef[1], 0.00001)

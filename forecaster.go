@@ -288,13 +288,21 @@ func (f *Forecaster) ResidualCoefficients() (map[string]float64, error) {
 
 // Model generates a serializeable representaioon of the fit options, series model, and uncertainty model. This
 // can be used to initialize a new Forecaster for immediate predictions skipping the training step.
-func (f *Forecaster) Model() Model {
+func (f *Forecaster) Model() (Model, error) {
+	seriesModel, err := f.seriesForecast.Model()
+	if err != nil {
+		return Model{}, fmt.Errorf("unable to fetch series model, %w", err)
+	}
+	residualModel, err := f.residualForecast.Model()
+	if err != nil {
+		return Model{}, fmt.Errorf("unable to fetch residual moodel, %w", err)
+	}
 	m := Model{
 		Options:  f.opt,
-		Series:   f.seriesForecast.Model(),
-		Residual: f.residualForecast.Model(),
+		Series:   seriesModel,
+		Residual: residualModel,
 	}
-	return m
+	return m, nil
 }
 
 // SeriesModelEq returns a string representation of the fit series model represented as
