@@ -3,6 +3,7 @@ package forecast
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
 )
@@ -12,9 +13,10 @@ var ErrUnknownFeatureType = errors.New("unknown feature type")
 // Model represents a serializeable format of a forecast storing the forecast options, fit scores,
 // and coefficients
 type Model struct {
-	Options *Options `json:"options"`
-	Scores  *Scores  `json:"scores"`
-	Weights Weights  `json:"weights"`
+	TrainEndTime time.Time `json:"train_end_time"`
+	Options      *Options  `json:"options"`
+	Scores       *Scores   `json:"scores"`
+	Weights      Weights   `json:"weights"`
 }
 
 // Weights stores the intercept and the coefficients for the forecast model

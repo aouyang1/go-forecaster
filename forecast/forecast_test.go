@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFit(t *testing.T) {
@@ -28,21 +29,18 @@ func TestFit(t *testing.T) {
 		DailyOrders: 3,
 	}
 	f, err := New(opt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Fit(tWin, y); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
+	err = f.Fit(tWin, y)
+	require.Nil(t, err)
 
 	labels := f.FeatureLabels()
 	res := make([]float64, 0, len(labels)+1)
 	res = append(res, f.Intercept())
 
 	coef, err := f.Coefficients()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	for _, label := range labels {
 		res = append(res, coef[label.String()])
 	}
@@ -80,34 +78,28 @@ func TestFitFromModel(t *testing.T) {
 		DailyOrders: 3,
 	}
 	f, err := New(opt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Fit(tWin, y); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	model := f.Model()
+	err = f.Fit(tWin, y)
+	require.Nil(t, err)
+
+	model, err := f.Model()
+	require.Nil(t, err)
 
 	// generate new forecast from thhe previous model and perform inference
-	f, err = NewFromModel(model)
-	if err != nil {
-		t.Fatal(err)
-	}
+	fNew, err := NewFromModel(model)
+	require.Nil(t, err)
 
-	predicted, _, err := f.Predict(tWin)
-	if err != nil {
-		t.Fatal(err)
-	}
+	predicted, _, err := fNew.Predict(tWin)
+	require.Nil(t, err)
 
-	labels := f.FeatureLabels()
+	labels := fNew.FeatureLabels()
 	res := make([]float64, 0, len(labels)+1)
 	res = append(res, f.Intercept())
 
-	coef, err := f.Coefficients()
-	if err != nil {
-		t.Fatal(err)
-	}
+	coef, err := fNew.Coefficients()
+	require.Nil(t, err)
+
 	for _, label := range labels {
 		res = append(res, coef[label.String()])
 	}
@@ -121,9 +113,7 @@ func TestFitFromModel(t *testing.T) {
 	assert.InDeltaSlice(t, expected, res, 0.1)
 
 	scores, err := NewScores(predicted, y)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	assert.Less(t, scores.MSE, 0.0001)
 	assert.Less(t, scores.MAPE, 0.0001)
 }

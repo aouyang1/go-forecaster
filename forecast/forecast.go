@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	ErrUninitializedForecast    = errors.New("uninitialized forecast")
 	ErrInsufficientTrainingData = errors.New("insufficient training data after removing Nans")
 	ErrLabelExists              = errors.New("label already exists in TimeDataset")
 	ErrMismatchedDataLen        = errors.New("input data has different length than time")
@@ -60,17 +61,22 @@ func NewFromModel(model Model) (*Forecast, error) {
 	}
 
 	f := &Forecast{
-		opt:       model.Options,
-		fLabels:   fLabels,
-		intercept: model.Weights.Intercept,
-		coef:      model.Weights.Coefficients(),
-		scores:    model.Scores,
-		trained:   true,
+		opt:          model.Options,
+		fLabels:      fLabels,
+		trainEndTime: model.TrainEndTime,
+		intercept:    model.Weights.Intercept,
+		coef:         model.Weights.Coefficients(),
+		scores:       model.Scores,
+		trained:      true,
 	}
 	return f, nil
 }
 
 func (f *Forecast) generateFeatures(t []time.Time) (feature.Set, error) {
+	if f == nil {
+		return nil, ErrUninitializedForecast
+	}
+
 	tFeat := generateTimeFeatures(t, f.opt)
 
 	feat, err := generateFourierFeatures(tFeat, f.opt)
@@ -106,6 +112,10 @@ func (f *Forecast) generateFeatures(t []time.Time) (feature.Set, error) {
 // Fit takes the input training data and fits a forecast model for possible changepoints,
 // seasonal components, and intercept
 func (f *Forecast) Fit(t []time.Time, y []float64) error {
+	if f == nil {
+		return ErrUninitializedForecast
+	}
+
 	trainingData, err := timedataset.NewUnivariateDataset(t, y)
 	if err != nil {
 		return err
@@ -174,6 +184,10 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 // Predict takes a slice of times in any order and produces the predicted value for those
 // times given a pre-trained model.
 func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
+	if f == nil {
+		return nil, Components{}, ErrUninitializedForecast
+	}
+
 	if !f.trained {
 		return nil, Components{}, ErrUntrainedForecast
 	}
@@ -205,6 +219,10 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 }
 
 func (f *Forecast) runInference(x feature.Set, withIntercept bool) []float64 {
+	if f == nil {
+		return nil
+	}
+
 	if len(x) == 0 {
 		return nil
 	}
@@ -240,12 +258,20 @@ func (f *Forecast) runInference(x feature.Set, withIntercept bool) []float64 {
 
 // FeatureLabels returns the slice of feature labels in the order of the coefficients
 func (f *Forecast) FeatureLabels() []feature.Feature {
+	if f == nil {
+		return nil
+	}
+
 	return f.fLabels.Labels()
 }
 
 // Coefficients returns a forecast model map of coefficients keyed by the string
 // representation of each feature label
 func (f *Forecast) Coefficients() (map[string]float64, error) {
+	if f == nil {
+		return nil, ErrUninitializedForecast
+	}
+
 	labels := f.fLabels.Labels()
 	if len(labels) == 0 || len(f.coef) == 0 {
 		return nil, ErrNoModelCoefficients
@@ -259,13 +285,23 @@ func (f *Forecast) Coefficients() (map[string]float64, error) {
 
 // Intercept returns the intercept of the forecast model
 func (f *Forecast) Intercept() float64 {
+	if f == nil {
+		return 0
+	}
 	return f.intercept
 }
 
 // Model returns the serializeable format of the forecast model composing of the
 // forecast options, intercept, coefficients with their feature labels, and the
 // model fit scores
-func (f *Forecast) Model() Model {
+func (f *Forecast) Model() (Model, error) {
+	if f == nil {
+		return Model{}, ErrUninitializedForecast
+	}
+	if !f.trained {
+		return Model{}, ErrUntrainedForecast
+	}
+
 	fws := make([]FeatureWeight, 0, len(f.coef))
 	labels := f.fLabels.Labels()
 	for i, c := range f.coef {
@@ -281,16 +317,21 @@ func (f *Forecast) Model() Model {
 		Coef:      fws,
 	}
 	m := Model{
-		Options: f.opt,
-		Weights: w,
-		Scores:  f.scores,
+		TrainEndTime: f.trainEndTime,
+		Options:      f.opt,
+		Weights:      w,
+		Scores:       f.scores,
 	}
-	return m
+	return m, nil
 }
 
 // ModelEq returns a string representation of the model linear equation in the format of
 // y ~ b + m1x1 + m2x2 + ...
 func (f *Forecast) ModelEq() (string, error) {
+	if f == nil {
+		return "", ErrUninitializedForecast
+	}
+
 	eq := "y ~ "
 
 	coef, err := f.Coefficients()
@@ -313,6 +354,9 @@ func (f *Forecast) ModelEq() (string, error) {
 // Scores returns the fit scores for evaluating how well the resulting model
 // fit the training data
 func (f *Forecast) Scores() Scores {
+	if f == nil {
+		return Scores{}
+	}
 	if f.scores == nil {
 		return Scores{}
 	}
@@ -322,6 +366,9 @@ func (f *Forecast) Scores() Scores {
 // Residuals returns a slice of values representing the difference between the
 // training data and the fit data
 func (f *Forecast) Residuals() []float64 {
+	if f == nil {
+		return nil
+	}
 	res := make([]float64, len(f.residual))
 	copy(res, f.residual)
 	return res
@@ -330,6 +377,9 @@ func (f *Forecast) Residuals() []float64 {
 // TrendComponent represents the overall trend component of the model which is determined
 // by the changepoints.
 func (f *Forecast) TrendComponent() []float64 {
+	if f == nil {
+		return nil
+	}
 	res := make([]float64, len(f.trainComponents.Trend))
 	copy(res, f.trainComponents.Trend)
 	return res
@@ -337,6 +387,9 @@ func (f *Forecast) TrendComponent() []float64 {
 
 // SeasonalityComponent represents the overall seasonal component of the model
 func (f *Forecast) SeasonalityComponent() []float64 {
+	if f == nil {
+		return nil
+	}
 	res := make([]float64, len(f.trainComponents.Seasonality))
 	copy(res, f.trainComponents.Seasonality)
 	return res
