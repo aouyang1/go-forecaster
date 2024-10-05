@@ -27,4 +27,6 @@ go.work.sum
 cpu.prof
 mem.prof
 
-examples/*.html
+examples/forecaster.html
+examples/forecaster_auto_changepoint.html
+examples/forecaster_with_trend.html
