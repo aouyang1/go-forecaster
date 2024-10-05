@@ -15,7 +15,7 @@ Contains a daily seasonal component with a trend change point which resets
 
 ## Example 3
 Auto-changepoint detection and fit
-![Forecast With Auto-Changepoint Detection Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_with_autochangepoint_example.png)
+![Forecast With Auto-Changepoint Detection Example](https://github.com/aouyang1/go-forecast/blob/main/examples/forecast_with_auto_changepoint_example.png)
 
 
 ## Example Use
