@@ -152,32 +152,42 @@ func generateAutoChangepoints(t []time.Time, n int) []changepoint.Changepoint {
 }
 
 func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint, trainingEndTime time.Time) feature.Set {
+	filteredChpts := make([]changepoint.Changepoint, 0, len(chpts))
+	for _, chpt := range chpts {
+		// skip over changepoints that are after the training end time since they'll
+		// not have been modeled producing zeroes in the feature set
+		if chpt.T.After(trainingEndTime) {
+			continue
+		}
+		filteredChpts = append(filteredChpts, chpt)
+	}
+
 	// create a slice of features where it goes in the order of bias, slope for each changepoint
-	chptFeatures := make([][]float64, len(chpts)*2)
-	for i := 0; i < len(chpts)*2; i++ {
+	chptFeatures := make([][]float64, len(filteredChpts)*2)
+	for i := 0; i < len(filteredChpts)*2; i++ {
 		chpt := make([]float64, len(t))
 		chptFeatures[i] = chpt
 	}
 
-	// compute dt betweenn training end time and changepoint time
-	deltaT := make([]float64, len(chpts))
-	for i, chpt := range chpts {
+	// compute dt between training end time and changepoint time
+	deltaT := make([]float64, len(filteredChpts))
+	for i, chpt := range filteredChpts {
 		deltaT[i] = trainingEndTime.Sub(chpt.T).Seconds()
 	}
 
 	bias := 1.0
 	var slope float64
 	for i := 0; i < len(t); i++ {
-		for j := 0; j < len(chpts); j++ {
-			if t[i].Equal(chpts[j].T) || t[i].After(chpts[j].T) {
-				slope = t[i].Sub(chpts[j].T).Seconds() / deltaT[j]
+		for j := 0; j < len(filteredChpts); j++ {
+			if t[i].Equal(filteredChpts[j].T) || t[i].After(filteredChpts[j].T) {
+				slope = t[i].Sub(filteredChpts[j].T).Seconds() / deltaT[j]
 				chptFeatures[j*2][i] = bias
 				chptFeatures[j*2+1][i] = slope
 			}
 		}
 	}
 
-	return makeChangepointFeatureSet(chpts, chptFeatures)
+	return makeChangepointFeatureSet(filteredChpts, chptFeatures)
 }
 
 func makeChangepointFeatureSet(chpts []changepoint.Changepoint, chptFeatures [][]float64) feature.Set {

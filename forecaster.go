@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/stats"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/go-echarts/go-echarts/v2/components"
@@ -100,7 +101,7 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 	}
 	f.fitTrainingData = td.Copy()
 
-	residual, err := f.fitSeriesWithOutliers(td.T, td.Y)
+	residual, err := f.fitSeriesWithOutliers(td.T, td.Y, f.seriesForecast)
 	if err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 	return nil
 }
 
-func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64) ([]float64, error) {
+func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64, seriesForecast *forecast.Forecast) ([]float64, error) {
 	// iterate to remove outliers
 	numPasses := 0
 	if f.opt.OutlierOptions != nil {
@@ -136,11 +137,11 @@ func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64) ([]float6
 
 	var residual []float64
 	for i := 0; i <= numPasses; i++ {
-		if err := f.seriesForecast.Fit(t, y); err != nil {
+		if err := seriesForecast.Fit(t, y); err != nil {
 			return nil, fmt.Errorf("unable to forecast series, %w", err)
 		}
 
-		residual = f.seriesForecast.Residuals()
+		residual = seriesForecast.Residuals()
 
 		// break out if no outlier options provided
 		if f.opt.OutlierOptions == nil {
@@ -171,6 +172,43 @@ func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64) ([]float6
 		}
 	}
 	return residual, nil
+}
+
+// scoreSeriesWithCV runs the series fit with a set number of folds, and scores each one.
+// This needs more research in how to get reasonable scores in the presence of changepoints
+func (f *Forecaster) scoreSeriesWithCV(t []time.Time, y []float64) error {
+	folds, err := models.TimeSeriesCVSplit(t, y, 5)
+	if err != nil {
+		return err
+	}
+	for i, fold := range folds {
+		fmt.Printf("evaluating fold, %d\n", i)
+		td, err := timedataset.NewUnivariateDataset(fold.TrainX, fold.TrainY)
+		if err != nil {
+			return fmt.Errorf("unable to create dataset from fold, %d, %w", i, err)
+		}
+
+		seriesForecast, err := forecast.New(f.opt.SeriesOptions)
+		if err != nil {
+			return fmt.Errorf("unable to initialize forecast series for cross validation, %w", err)
+		}
+
+		if _, err := f.fitSeriesWithOutliers(td.T, td.Y, seriesForecast); err != nil {
+			return err
+		}
+
+		seriesRes, _, err := seriesForecast.Predict(fold.TestX)
+		if err != nil {
+			return fmt.Errorf("unable to predict series forecasts for cross validation, %w", err)
+		}
+
+		score, err := forecast.NewScores(seriesRes, fold.TestY)
+		if err != nil {
+			return fmt.Errorf("unable to compute test scores for fold, %d, %w", i, err)
+		}
+		fmt.Printf("fold: %d, scores: %+v\n", i, score)
+	}
+	return nil
 }
 
 func (f *Forecaster) fitResidual(t []time.Time, residual []float64) error {
