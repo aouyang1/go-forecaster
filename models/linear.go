@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
@@ -155,4 +156,47 @@ func SoftThreshold(x, gamma float64) float64 {
 		return -res
 	}
 	return res
+}
+
+var (
+	ErrInsufficientSamples       = errors.New("insufficient samples for the determined folds")
+	ErrInconsistentSampleLengths = errors.New("features or targets do not have the same number of samples")
+)
+
+type FoldDataset struct {
+	TrainX []time.Time
+	TrainY []float64
+
+	TestX []time.Time
+	TestY []float64
+}
+
+func TimeSeriesCVSplit(t []time.Time, y []float64, nFold int) ([]FoldDataset, error) {
+	nSamples := len(t)
+
+	if len(y) != nSamples {
+		return nil, ErrInconsistentSampleLengths
+	}
+
+	foldSamp := nSamples / (nFold + 1)
+	if foldSamp == 0 {
+		return nil, ErrInsufficientSamples
+	}
+
+	folds := make([]FoldDataset, nFold)
+	for i := 0; i < nFold; i++ {
+		trainX := t[:(i+1)*foldSamp]
+		trainY := y[:(i+1)*foldSamp]
+
+		testX := t[(i+1)*foldSamp : (i+2)*foldSamp]
+		testY := y[(i+1)*foldSamp : (i+2)*foldSamp]
+		si := FoldDataset{
+			TrainX: trainX,
+			TrainY: trainY,
+			TestX:  testX,
+			TestY:  testY,
+		}
+		folds[i] = si
+	}
+	return folds, nil
 }
