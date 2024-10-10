@@ -14,6 +14,6 @@ type Results struct {
 	Upper    []float64   `json:"upper"`
 	Lower    []float64   `json:"lower"`
 
-	SeriesComponents   forecast.Components `json:"series_components"`
-	ResidualComponents forecast.Components `json:"residual_components"`
+	SeriesComponents      forecast.Components `json:"series_components"`
+	UncertaintyComponents forecast.Components `json:"uncertainty_components"`
 }

@@ -68,7 +68,7 @@ func ExampleForecaster() {
 				Changepoints: changepoints,
 			},
 		},
-		ResidualOptions: &forecast.Options{
+		UncertaintyOptions: &forecast.Options{
 			DailyOrders:  12,
 			WeeklyOrders: 12,
 			ChangepointOptions: forecast.ChangepointOptions{
@@ -142,7 +142,7 @@ func ExampleForecasterAutoChangepoint() {
 				AutoNumChangepoints: 100,
 			},
 		},
-		ResidualOptions: &forecast.Options{
+		UncertaintyOptions: &forecast.Options{
 			DailyOrders:  12,
 			WeeklyOrders: 12,
 			ChangepointOptions: forecast.ChangepointOptions{
@@ -194,7 +194,7 @@ func ExampleForecasterWithTrend() {
 				Changepoints: changepoints,
 			},
 		},
-		ResidualOptions: &forecast.Options{
+		UncertaintyOptions: &forecast.Options{
 			DailyOrders:  12,
 			WeeklyOrders: 12,
 			ChangepointOptions: forecast.ChangepointOptions{

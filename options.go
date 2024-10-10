@@ -24,8 +24,8 @@ func NewOutlierOptions() *OutlierOptions {
 
 // Options represents all forecaster options for outlier removal, forecast fit, and uncertainty fit
 type Options struct {
-	SeriesOptions   *forecast.Options `json:"-"`
-	ResidualOptions *forecast.Options `json:"-"`
+	SeriesOptions      *forecast.Options `json:"-"`
+	UncertaintyOptions *forecast.Options `json:"-"`
 
 	OutlierOptions *OutlierOptions `json:"outlier_options"`
 	ResidualWindow int             `json:"residual_window"`
@@ -35,10 +35,10 @@ type Options struct {
 // NewDefaultOptions generates a default set of options for a forecaster
 func NewDefaultOptions() *Options {
 	return &Options{
-		SeriesOptions:   forecast.NewDefaultOptions(),
-		ResidualOptions: forecast.NewDefaultOptions(),
-		OutlierOptions:  NewOutlierOptions(),
-		ResidualWindow:  100,
-		ResidualZscore:  4.0,
+		SeriesOptions:      forecast.NewDefaultOptions(),
+		UncertaintyOptions: forecast.NewDefaultOptions(),
+		OutlierOptions:     NewOutlierOptions(),
+		ResidualWindow:     100,
+		ResidualZscore:     4.0,
 	}
 }
