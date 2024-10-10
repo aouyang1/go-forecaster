@@ -236,9 +236,6 @@ func (f *Forecaster) generateUncertaintySeries(residual []float64) ([]float64, e
 			}
 		}
 		_, stddev := stat.MeanStdDev(resWindow[ptr:], nil)
-		if math.IsNaN(stddev) {
-			fmt.Println(i, resWindow[ptr:])
-		}
 		stddevSeries[i] = f.opt.ResidualZscore * stddev
 	}
 	return stddevSeries, nil
