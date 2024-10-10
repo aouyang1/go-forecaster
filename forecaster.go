@@ -34,12 +34,13 @@ const (
 type Forecaster struct {
 	opt *Options
 
-	seriesForecast   *forecast.Forecast
-	residualForecast *forecast.Forecast
+	seriesForecast      *forecast.Forecast
+	uncertaintyForecast *forecast.Forecast
 
 	fitTrainingData *timedataset.TimeDataset
 	fitResults      *Results
 	residual        []float64
+	uncertainty     []float64
 }
 
 // New creates a new instance of a Forecaster using thhe provided options. If no options are provided
@@ -55,15 +56,15 @@ func New(opt *Options) (*Forecaster, error) {
 
 	seriesForecast, err := forecast.New(f.opt.SeriesOptions)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize forecast series, %w", err)
+		return nil, fmt.Errorf("unable to initialize series forecast, %w", err)
 	}
 	f.seriesForecast = seriesForecast
 
-	residualForecast, err := forecast.New(f.opt.ResidualOptions)
+	uncertaintyForecast, err := forecast.New(f.opt.UncertaintyOptions)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize forecast residual, %w", err)
+		return nil, fmt.Errorf("unable to initialize uncertainty forecast, %w", err)
 	}
-	f.residualForecast = residualForecast
+	f.uncertaintyForecast = uncertaintyForecast
 	return f, nil
 }
 
@@ -75,20 +76,20 @@ func NewFromModel(model Model) (*Forecaster, error) {
 	}
 	opt := model.Options
 	opt.SeriesOptions = model.Series.Options
-	opt.ResidualOptions = model.Residual.Options
+	opt.UncertaintyOptions = model.Uncertainty.Options
 
 	seriesForecast, err := forecast.NewFromModel(model.Series)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load from series model, %w", err)
 	}
-	residualForecast, err := forecast.NewFromModel(model.Residual)
+	uncertaintyForecast, err := forecast.NewFromModel(model.Uncertainty)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load from residual model, %w", err)
+		return nil, fmt.Errorf("unable to load from uncertainty model, %w", err)
 	}
 	f := &Forecaster{
-		opt:              opt,
-		seriesForecast:   seriesForecast,
-		residualForecast: residualForecast,
+		opt:                 opt,
+		seriesForecast:      seriesForecast,
+		uncertaintyForecast: uncertaintyForecast,
 	}
 	return f, nil
 }
@@ -106,6 +107,8 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 		return err
 	}
 
+	// create residual to align with original time window since td.T may have changed
+	// after outlier removal
 	f.residual = make([]float64, len(t))
 	var j int
 	for i := 0; i < len(t); i++ {
@@ -116,7 +119,31 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 			f.residual[i] = math.NaN()
 		}
 	}
-	if err := f.fitResidual(td.T, residual); err != nil {
+
+	uncertaintySeries, err := f.generateUncertaintySeries(residual)
+	if err != nil {
+		return fmt.Errorf("unable to generate uncertainty series, %w", err)
+	}
+
+	// shifting time by half the residual window since computing the uncertainty series is similar to a
+	// finite impulse response filtering having a group delay of window/2.
+	start := f.opt.ResidualWindow / 2
+	end := len(t) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2 + 1
+
+	// create uncertainty to align with original time window since td.T may have changed
+	// after outlier removal
+	f.uncertainty = make([]float64, len(t))
+	var k int
+	for i := 0; i < len(t); i++ {
+		if t[i].Equal(td.T[k+start]) && k < len(uncertaintySeries) {
+			f.uncertainty[i] = uncertaintySeries[k]
+			k += 1
+		} else {
+			f.uncertainty[i] = math.NaN()
+		}
+	}
+
+	if err := f.fitUncertainty(td.T[start:end], uncertaintySeries, f.uncertaintyForecast); err != nil {
 		return err
 	}
 
@@ -174,52 +201,17 @@ func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64, seriesFor
 	return residual, nil
 }
 
-// scoreSeriesWithCV runs the series fit with a set number of folds, and scores each one.
-// This needs more research in how to get reasonable scores in the presence of changepoints
-func (f *Forecaster) scoreSeriesWithCV(t []time.Time, y []float64) error {
-	folds, err := models.TimeSeriesCVSplit(t, y, 5)
-	if err != nil {
-		return err
-	}
-	for i, fold := range folds {
-		fmt.Printf("evaluating fold, %d\n", i)
-		td, err := timedataset.NewUnivariateDataset(fold.TrainX, fold.TrainY)
-		if err != nil {
-			return fmt.Errorf("unable to create dataset from fold, %d, %w", i, err)
-		}
-
-		seriesForecast, err := forecast.New(f.opt.SeriesOptions)
-		if err != nil {
-			return fmt.Errorf("unable to initialize forecast series for cross validation, %w", err)
-		}
-
-		if _, err := f.fitSeriesWithOutliers(td.T, td.Y, seriesForecast); err != nil {
-			return err
-		}
-
-		seriesRes, _, err := seriesForecast.Predict(fold.TestX)
-		if err != nil {
-			return fmt.Errorf("unable to predict series forecasts for cross validation, %w", err)
-		}
-
-		score, err := forecast.NewScores(seriesRes, fold.TestY)
-		if err != nil {
-			return fmt.Errorf("unable to compute test scores for fold, %d, %w", i, err)
-		}
-		fmt.Printf("fold: %d, scores: %+v\n", i, score)
-	}
-	return nil
-}
-
-func (f *Forecaster) fitResidual(t []time.Time, residual []float64) error {
+// generateUncertaintySeries creates the uncertainty series by computing the rolling standard deviation
+// of the residual scaled by the configured z-score.
+func (f *Forecaster) generateUncertaintySeries(residual []float64) ([]float64, error) {
 	if len(residual) < MinResidualSize {
-		return ErrInsufficientResidual
+		return nil, ErrInsufficientResidual
 	}
 	// compute rolling window standard deviation of residual for uncertaninty bands
 	// the window is not necessarily a block of continuous time but could jump across
 	// outlier points
 
-	// limit residual window to a quarter of the resulting residual output
+	// limit residual window to some factor of the resulting residual output
 	if len(residual)/MinResidualWindowFactor < f.opt.ResidualWindow {
 		f.opt.ResidualWindow = len(residual) / MinResidualWindowFactor
 	}
@@ -231,22 +223,32 @@ func (f *Forecaster) fitResidual(t []time.Time, residual []float64) error {
 	numWindows := len(residual) - f.opt.ResidualWindow + 1
 
 	for i := 0; i < numWindows; i++ {
-		_, stddev := stat.MeanStdDev(residual[i:i+f.opt.ResidualWindow], nil)
+		resWindow := residual[i : i+f.opt.ResidualWindow]
+
+		// move all nans to the front so we only compute standard deviation off of non-nan values
+		var ptr int
+		for j := 0; j < len(resWindow); j++ {
+			if math.IsNaN(resWindow[j]) {
+				val := resWindow[ptr]
+				resWindow[ptr] = resWindow[j]
+				resWindow[j] = val
+				ptr += 1
+			}
+		}
+		_, stddev := stat.MeanStdDev(resWindow[ptr:], nil)
 		stddevSeries[i] = f.opt.ResidualZscore * stddev
 	}
+	return stddevSeries, nil
+}
 
-	// shifting by half the residual window since computing the residual series is similar to a
-	// finite impulse response filtering having a group delay of window/2.
-	start := f.opt.ResidualWindow / 2
-	end := len(t) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2 + 1
-
-	residualData, err := timedataset.NewUnivariateDataset(t[start:end], stddevSeries)
+func (f *Forecaster) fitUncertainty(t []time.Time, uncertaintySeries []float64, uncertaintyForecast *forecast.Forecast) error {
+	uncertaintyData, err := timedataset.NewUnivariateDataset(t, uncertaintySeries)
 	if err != nil {
-		return fmt.Errorf("unable to create univariate dataset for residual, %w", err)
+		return fmt.Errorf("unable to create univariate dataset for uncertainty, %w", err)
 	}
 
-	if err := f.residualForecast.Fit(residualData.T, residualData.Y); err != nil {
-		return fmt.Errorf("unable to forecast residual, %w", err)
+	if err := uncertaintyForecast.Fit(uncertaintyData.T, uncertaintyData.Y); err != nil {
+		return fmt.Errorf("unable to forecast uncertainty, %w", err)
 	}
 
 	return nil
@@ -258,23 +260,23 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to predict series forecasts, %w", err)
 	}
-	residualRes, residualComp, err := f.residualForecast.Predict(t)
+	uncertaintyRes, uncertaintyComp, err := f.uncertaintyForecast.Predict(t)
 	if err != nil {
-		return nil, fmt.Errorf("unable to predict residual forecasts, %w", err)
+		return nil, fmt.Errorf("unable to predict uncertainty forecasts, %w", err)
 	}
 
-	// cap residual predictions to be greater than or equal to 0
-	for i := 0; i < len(residualRes); i++ {
-		if residualRes[i] < 0.0 {
-			residualRes[i] = 0.0
+	// cap uncertainty predictions to be greater than or equal to 0
+	for i := 0; i < len(uncertaintyRes); i++ {
+		if uncertaintyRes[i] < 0.0 {
+			uncertaintyRes[i] = 0.0
 		}
 	}
 
 	r := &Results{
-		T:                  t,
-		Forecast:           seriesRes,
-		SeriesComponents:   seriesComp,
-		ResidualComponents: residualComp,
+		T:                     t,
+		Forecast:              seriesRes,
+		SeriesComponents:      seriesComp,
+		UncertaintyComponents: uncertaintyComp,
 	}
 	upper := make([]float64, len(seriesRes))
 	lower := make([]float64, len(seriesRes))
@@ -282,8 +284,8 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	copy(upper, seriesRes)
 	copy(lower, seriesRes)
 
-	floats.Add(upper, residualRes)
-	floats.Sub(lower, residualRes)
+	floats.Add(upper, uncertaintyRes)
+	floats.Sub(lower, uncertaintyRes)
 	r.Upper = upper
 	r.Lower = lower
 	return r, nil
@@ -292,6 +294,11 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 // Residuals returns the difference between the final series fit against the training data
 func (f *Forecaster) Residuals() []float64 {
 	return f.residual
+}
+
+// Uncertainty returns the uncertainty series used to forecast the upper lower bounds
+func (f *Forecaster) Uncertainty() []float64 {
+	return f.uncertainty
 }
 
 // TrendComponent returns the trend component created by changepoints after fitting
@@ -314,14 +321,14 @@ func (f *Forecaster) SeriesCoefficients() (map[string]float64, error) {
 	return f.seriesForecast.Coefficients()
 }
 
-// ResidualIntercept returns the intercept of the uncertainty fit
-func (f *Forecaster) ResidualIntercept() float64 {
-	return f.residualForecast.Intercept()
+// UncertaintyIntercept returns the intercept of the uncertainty fit
+func (f *Forecaster) UncertaintyIntercept() float64 {
+	return f.uncertaintyForecast.Intercept()
 }
 
-// ResidualCoefficients returns all uncertainty coefficient weights associated with the component label string
-func (f *Forecaster) ResidualCoefficients() (map[string]float64, error) {
-	return f.residualForecast.Coefficients()
+// UncertaintyCoefficients returns all uncertainty coefficient weights associated with the component label string
+func (f *Forecaster) UncertaintyCoefficients() (map[string]float64, error) {
+	return f.uncertaintyForecast.Coefficients()
 }
 
 // Model generates a serializeable representaioon of the fit options, series model, and uncertainty model. This
@@ -331,14 +338,14 @@ func (f *Forecaster) Model() (Model, error) {
 	if err != nil {
 		return Model{}, fmt.Errorf("unable to fetch series model, %w", err)
 	}
-	residualModel, err := f.residualForecast.Model()
+	uncertaintyModel, err := f.uncertaintyForecast.Model()
 	if err != nil {
-		return Model{}, fmt.Errorf("unable to fetch residual moodel, %w", err)
+		return Model{}, fmt.Errorf("unable to fetch uncertainty moodel, %w", err)
 	}
 	m := Model{
-		Options:  f.opt,
-		Series:   seriesModel,
-		Residual: residualModel,
+		Options:     f.opt,
+		Series:      seriesModel,
+		Uncertainty: uncertaintyModel,
 	}
 	return m, nil
 }
@@ -351,8 +358,8 @@ func (f *Forecaster) SeriesModelEq() (string, error) {
 
 // ResidualModelEq returns a string representation of the fit uncertainty model represented as
 // y ~ b + m1x1 + m2x2 ...
-func (f *Forecaster) ResidualModelEq() (string, error) {
-	return f.residualForecast.ModelEq()
+func (f *Forecaster) UncertaintyModelEq() (string, error) {
+	return f.uncertaintyForecast.ModelEq()
 }
 
 // TrainingData returns the training data used to fit the current forecaster model
@@ -410,6 +417,9 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 	residuals := f.Residuals()
 	residuals = append(residuals, zpad...)
 
+	uncertainty := f.Uncertainty()
+	uncertainty = append(uncertainty, zpad...)
+
 	trendComp := f.TrendComponent()
 	trendComp = append(trendComp, forecastRes.SeriesComponents.Trend...)
 
@@ -430,9 +440,12 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 		),
 		LineTSeries(
 			"Forecast Residual",
-			[]string{"Residual"},
+			[]string{"Residual", "Uncertainty"},
 			t,
-			[][]float64{residuals},
+			[][]float64{
+				residuals,
+				uncertainty,
+			},
 		),
 	)
 	file, err := os.Create(path)
@@ -440,4 +453,41 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 		return err
 	}
 	return page.Render(io.MultiWriter(file))
+}
+
+// scoreSeriesWithCV runs the series fit with a set number of folds, and scores each one.
+// This needs more research in how to get reasonable scores in the presence of changepoints
+func (f *Forecaster) scoreSeriesWithCV(t []time.Time, y []float64) error {
+	folds, err := models.TimeSeriesCVSplit(t, y, 5)
+	if err != nil {
+		return err
+	}
+	for i, fold := range folds {
+		fmt.Printf("evaluating fold, %d\n", i)
+		td, err := timedataset.NewUnivariateDataset(fold.TrainX, fold.TrainY)
+		if err != nil {
+			return fmt.Errorf("unable to create dataset from fold, %d, %w", i, err)
+		}
+
+		seriesForecast, err := forecast.New(f.opt.SeriesOptions)
+		if err != nil {
+			return fmt.Errorf("unable to initialize forecast series for cross validation, %w", err)
+		}
+
+		if _, err := f.fitSeriesWithOutliers(td.T, td.Y, seriesForecast); err != nil {
+			return err
+		}
+
+		seriesRes, _, err := seriesForecast.Predict(fold.TestX)
+		if err != nil {
+			return fmt.Errorf("unable to predict series forecasts for cross validation, %w", err)
+		}
+
+		score, err := forecast.NewScores(seriesRes, fold.TestY)
+		if err != nil {
+			return fmt.Errorf("unable to compute test scores for fold, %d, %w", i, err)
+		}
+		fmt.Printf("fold: %d, scores: %+v\n", i, score)
+	}
+	return nil
 }
