@@ -12,9 +12,230 @@ import (
 	"gonum.org/v1/gonum/mat"
 
 	"github.com/aouyang1/go-forecaster/changepoint"
+	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/timedataset"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gonum.org/v1/gonum/floats"
 )
+
+func generateT(n int, interval time.Duration) []time.Time {
+	t := make([]time.Time, 0, n)
+	ct := time.Now()
+	for i := 0; i < n; i++ {
+		t = append(t, ct.Add(interval*time.Duration(i)))
+	}
+	return t
+}
+
+type series []float64
+
+func (s series) add(src series) series {
+	floats.Add(s, src)
+	return s
+}
+
+func generateConstY(n int, val float64) series {
+	y := make([]float64, 0, n)
+	for i := 0; i < n; i++ {
+		y = append(y, val)
+	}
+	return series(y)
+}
+
+func generateWaveY(t []time.Time, amp float64, periodSec float64, order float64, timeOffset float64) series {
+	n := len(t)
+	y := make([]float64, 0, n)
+	for i := 0; i < n; i++ {
+		val := amp * math.Sin(2.0*math.Pi*order/periodSec*(float64(t[i].Unix())+timeOffset))
+		y = append(y, val)
+	}
+	return series(y)
+}
+
+func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) {
+	assert.InDelta(t, expected.R2, actual.R2, 1e-2, msg+" scores:r2")
+	assert.InDelta(t, expected.MAPE, actual.MAPE, 1e-2, msg+" scores:mape")
+	assert.InDelta(t, expected.MSE, actual.MSE, 1e-5, msg+" scores:mse")
+}
+
+func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol float64, msg string) {
+	var significantFeatures []forecast.FeatureWeight
+	for _, fw := range actual {
+		if fw.Value >= tol {
+			significantFeatures = append(significantFeatures, fw)
+		}
+	}
+	require.Equal(t, len(expected), len(significantFeatures), msg+" number of significant series coefficients")
+	for i := 0; i < len(significantFeatures); i++ {
+		assert.Equal(t, expected[i].Type, significantFeatures[i].Type, msg+" feature weight type")
+		assert.Equal(t, expected[i].Labels, significantFeatures[i].Labels, msg+" feature weight labels")
+		assert.InDelta(t, expected[i].Value, significantFeatures[i].Value, tol, msg+" feature weight value")
+	}
+}
+
+func TestForecaster(t *testing.T) {
+	testData := map[string]struct {
+		expectedErr   error
+		opt           *Options
+		t             []time.Time
+		y             []float64
+		expectedModel Model
+	}{
+		"no data": {
+			t: nil, y: nil,
+			expectedErr: timedataset.ErrNoTrainingData,
+		},
+		"all nan": {
+			t:           generateT(10, time.Minute),
+			y:           generateConstY(10, math.NaN()),
+			expectedErr: forecast.ErrInsufficientTrainingData,
+		},
+		"all constant": {
+			t: generateT(10, time.Minute),
+			y: generateConstY(10, 3.0),
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: 3.0,
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: 0.0,
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
+		"daily wave with bias": {
+			t: generateT(4*24*60, time.Minute),
+			y: generateConstY(4*24*60, 3.0).
+				add(generateWaveY(generateT(4*24*60, time.Minute), 7.2, 86400.0, 1.0, 0.0)),
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: 3.0,
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "hod",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 7.2,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.03426,
+						MSE:  0.0,
+						R2:   0.99,
+					},
+					Weights: forecast.Weights{
+						Intercept: 0.0,
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
+		"daily and weekly wave with bias": {
+			t: generateT(14*24*60, time.Minute),
+			y: generateConstY(14*24*60, 3.0).
+				add(generateWaveY(generateT(14*24*60, time.Minute), 7.2, 24*60*60, 1.0, 0.0)).
+				add(generateWaveY(generateT(14*24*60, time.Minute), 4.6, 7*24*60*60, 1.0, 0.0)),
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: 3.0,
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "dow",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 4.6,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "hod",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 7.2,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.04704,
+						MSE:  0.0,
+						R2:   0.99,
+					},
+					Weights: forecast.Weights{
+						Intercept: 0.0,
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
+	}
+
+	tol := 1e-5
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			f, err := New(td.opt)
+			require.Nil(t, err)
+
+			err = f.Fit(td.t, td.y)
+			if td.expectedErr != nil {
+				require.ErrorAs(t, err, &td.expectedErr)
+				return
+			}
+			require.Nil(t, err)
+
+			m, err := f.Model()
+			require.Nil(t, err)
+
+			compareScores(t, td.expectedModel.Series.Scores, m.Series.Scores, "series")
+			assert.InDelta(t, td.expectedModel.Series.Weights.Intercept, m.Series.Weights.Intercept, tol, "series intercept")
+			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, tol, "series")
+
+			assert.InDelta(t, td.expectedModel.Uncertainty.Weights.Intercept, m.Uncertainty.Weights.Intercept, tol, "uncertainty intercept")
+			compareScores(t, td.expectedModel.Uncertainty.Scores, m.Uncertainty.Scores, "uncertainty")
+			compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, tol, "uncertainty")
+		})
+	}
+}
 
 func generateExampleSeries() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week

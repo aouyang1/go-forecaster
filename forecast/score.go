@@ -91,5 +91,9 @@ func RSquared(predicted, actual []float64) (float64, error) {
 		predict_copy = append(predict_copy, predicted[i])
 		actual_copy = append(actual_copy, actual[i])
 	}
-	return stat.RSquaredFrom(predict_copy, actual_copy, nil), nil
+	r2 := stat.RSquaredFrom(predict_copy, actual_copy, nil)
+	if math.IsNaN(r2) {
+		return 1.0, nil
+	}
+	return r2, nil
 }
