@@ -32,7 +32,7 @@ func DetectOutliers(y []float64, lowerPerc, upperPerc, tukeyFactor float64) []in
 
 	var outlierIdx []int
 	for i := 0; i < len(y); i++ {
-		if y[i] >= upper || y[i] <= lower {
+		if y[i] > upper || y[i] < lower {
 			outlierIdx = append(outlierIdx, i)
 		}
 	}
