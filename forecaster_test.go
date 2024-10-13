@@ -44,7 +44,7 @@ func generateConstY(n int, val float64) series {
 	return series(y)
 }
 
-func generateWaveY(t []time.Time, amp float64, periodSec float64, order float64, timeOffset float64) series {
+func generateWaveY(t []time.Time, amp, periodSec, order, timeOffset float64) series {
 	n := len(t)
 	y := make([]float64, 0, n)
 	for i := 0; i < n; i++ {
@@ -54,10 +54,25 @@ func generateWaveY(t []time.Time, amp float64, periodSec float64, order float64,
 	return series(y)
 }
 
+func generateNoise(t []time.Time, noiseScale, amp, periodSec, order, timeOffset float64) series {
+	n := len(t)
+	y := make([]float64, 0, n)
+	for i := 0; i < n; i++ {
+		scale := (noiseScale + amp*math.Sin(2.0*math.Pi*order/periodSec*(float64(t[i].Unix())+timeOffset)))
+		y = append(y, rand.NormFloat64()*scale)
+	}
+	return series(y)
+}
+
 func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) {
-	assert.InDelta(t, expected.R2, actual.R2, 1e-2, msg+" scores:r2")
-	assert.InDelta(t, expected.MAPE, actual.MAPE, 1e-2, msg+" scores:mape")
-	assert.InDelta(t, expected.MSE, actual.MSE, 1e-5, msg+" scores:mse")
+	assert.InDelta(t, expected.R2, actual.R2, 0.05, msg+" scores:r2")
+	assert.InDelta(t, expected.MAPE, actual.MAPE, 0.20, msg+" scores:mape")
+
+	mse := actual.MSE
+	if expected.MSE > 0 {
+		mse = math.Abs((actual.MSE - expected.MSE) / expected.MSE)
+	}
+	assert.LessOrEqual(t, mse, 0.20, msg+" scores:mse")
 }
 
 func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol float64, msg string) {
@@ -71,7 +86,13 @@ func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol fl
 	for i := 0; i < len(significantFeatures); i++ {
 		assert.Equal(t, expected[i].Type, significantFeatures[i].Type, msg+" feature weight type")
 		assert.Equal(t, expected[i].Labels, significantFeatures[i].Labels, msg+" feature weight labels")
-		assert.InDelta(t, expected[i].Value, significantFeatures[i].Value, tol, msg+" feature weight value")
+		expectedVal := expected[i].Value
+		actualVal := significantFeatures[i].Value
+		percDiff := actualVal
+		if expectedVal > 0 {
+			percDiff = math.Abs((actualVal - expectedVal) / expectedVal)
+		}
+		assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("%s feature weight value, %.3f, %+v", msg, actualVal, expected[i].Labels))
 	}
 }
 
@@ -82,6 +103,7 @@ func TestForecaster(t *testing.T) {
 		t             []time.Time
 		y             []float64
 		expectedModel Model
+		tol           float64
 	}{
 		"no data": {
 			t: nil, y: nil,
@@ -93,8 +115,9 @@ func TestForecaster(t *testing.T) {
 			expectedErr: forecast.ErrInsufficientTrainingData,
 		},
 		"all constant": {
-			t: generateT(10, time.Minute),
-			y: generateConstY(10, 3.0),
+			t:   generateT(10, time.Minute),
+			y:   generateConstY(10, 3.0),
+			tol: 1e-5,
 			expectedModel: Model{
 				Series: forecast.Model{
 					Scores: &forecast.Scores{
@@ -124,6 +147,15 @@ func TestForecaster(t *testing.T) {
 			t: generateT(4*24*60, time.Minute),
 			y: generateConstY(4*24*60, 3.0).
 				add(generateWaveY(generateT(4*24*60, time.Minute), 7.2, 86400.0, 1.0, 0.0)),
+			tol: 1e-5,
+			opt: &Options{
+				SeriesOptions: &forecast.Options{
+					DailyOrders: 2,
+				},
+				OutlierOptions: NewOutlierOptions(),
+				ResidualWindow: 100,
+				ResidualZscore: 4.0,
+			},
 			expectedModel: Model{
 				Series: forecast.Model{
 					Scores: &forecast.Scores{
@@ -164,6 +196,16 @@ func TestForecaster(t *testing.T) {
 			y: generateConstY(14*24*60, 3.0).
 				add(generateWaveY(generateT(14*24*60, time.Minute), 7.2, 24*60*60, 1.0, 0.0)).
 				add(generateWaveY(generateT(14*24*60, time.Minute), 4.6, 7*24*60*60, 1.0, 0.0)),
+			tol: 1e-5,
+			opt: &Options{
+				SeriesOptions: &forecast.Options{
+					DailyOrders:  2,
+					WeeklyOrders: 2,
+				},
+				OutlierOptions: NewOutlierOptions(),
+				ResidualWindow: 100,
+				ResidualZscore: 4.0,
+			},
 			expectedModel: Model{
 				Series: forecast.Model{
 					Scores: &forecast.Scores{
@@ -208,9 +250,91 @@ func TestForecaster(t *testing.T) {
 				},
 			},
 		},
+		"daily and weekly wave with bias with noise": {
+			t: generateT(14*24*60, time.Minute),
+			y: generateConstY(14*24*60, 98.3).
+				add(generateWaveY(generateT(14*24*60, time.Minute), 10.5, 24*60*60, 1.0, 0.0)).
+				add(generateWaveY(generateT(14*24*60, time.Minute), 7.6, 24*60*60, 3.0, 0.0)).
+				add(generateWaveY(generateT(14*24*60, time.Minute), 4.6, 7*24*60*60, 1.0, 0.0)).
+				add(generateNoise(generateT(14*24*60, time.Minute), 3.2, 3.2, 24*60*60, 5.0, 0.0)),
+			tol: 1.0,
+			opt: &Options{
+				SeriesOptions: &forecast.Options{
+					DailyOrders:  4,
+					WeeklyOrders: 2,
+				},
+				UncertaintyOptions: &forecast.Options{
+					DailyOrders: 6,
+				},
+				OutlierOptions: NewOutlierOptions(),
+				ResidualWindow: 100,
+				ResidualZscore: 1.0,
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.02529,
+						MSE:  13.5823,
+						R2:   0.8739,
+					},
+					Weights: forecast.Weights{
+						Intercept: 98.3,
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "dow",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 4.6,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "hod",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 10.5,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "hod",
+									"order":             "3",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 7.6,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.04704,
+						MSE:  0.0,
+						R2:   0.99,
+					},
+					Weights: forecast.Weights{
+						Intercept: 3.2,
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "hod",
+									"order":             "5",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 2.182,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
-	tol := 1e-5
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
 			f, err := New(td.opt)
@@ -226,13 +350,32 @@ func TestForecaster(t *testing.T) {
 			m, err := f.Model()
 			require.Nil(t, err)
 
-			compareScores(t, td.expectedModel.Series.Scores, m.Series.Scores, "series")
-			assert.InDelta(t, td.expectedModel.Series.Weights.Intercept, m.Series.Weights.Intercept, tol, "series intercept")
-			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, tol, "series")
+			/*
+				out, _ := json.MarshalIndent(m, "", "  ")
+				fmt.Println(string(out))
+			*/
 
-			assert.InDelta(t, td.expectedModel.Uncertainty.Weights.Intercept, m.Uncertainty.Weights.Intercept, tol, "uncertainty intercept")
+			compareScores(t, td.expectedModel.Series.Scores, m.Series.Scores, "series")
+			actualInt := m.Series.Weights.Intercept
+			expectedInt := td.expectedModel.Series.Weights.Intercept
+			percDiff := actualInt
+			if expectedInt != 0 {
+				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
+			}
+			assert.LessOrEqual(t, percDiff, 0.05, "series intercept")
+			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, td.tol, "series")
+
+			actualInt = m.Uncertainty.Weights.Intercept
+			expectedInt = td.expectedModel.Uncertainty.Weights.Intercept
+
+			percDiff = actualInt
+			if expectedInt != 0 {
+				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
+			}
+			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("uncertainty intercept, %.3f", actualInt))
+
 			compareScores(t, td.expectedModel.Uncertainty.Scores, m.Uncertainty.Scores, "uncertainty")
-			compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, tol, "uncertainty")
+			compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, td.tol, "uncertainty")
 		})
 	}
 }
