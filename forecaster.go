@@ -54,13 +54,13 @@ func New(opt *Options) (*Forecaster, error) {
 		opt: opt,
 	}
 
-	seriesForecast, err := forecast.New(f.opt.SeriesOptions)
+	seriesForecast, err := forecast.New(f.opt.SeriesOptions.ForecastOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize series forecast, %w", err)
 	}
 	f.seriesForecast = seriesForecast
 
-	uncertaintyForecast, err := forecast.New(f.opt.UncertaintyOptions)
+	uncertaintyForecast, err := forecast.New(f.opt.UncertaintyOptions.ForecastOptions)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize uncertainty forecast, %w", err)
 	}
@@ -75,8 +75,8 @@ func NewFromModel(model Model) (*Forecaster, error) {
 		return nil, ErrNoOptionsInModel
 	}
 	opt := model.Options
-	opt.SeriesOptions = model.Series.Options
-	opt.UncertaintyOptions = model.Uncertainty.Options
+	opt.SeriesOptions.ForecastOptions = model.Series.Options
+	opt.UncertaintyOptions.ForecastOptions = model.Uncertainty.Options
 
 	seriesForecast, err := forecast.NewFromModel(model.Series)
 	if err != nil {
@@ -127,8 +127,8 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 
 	// shifting time by half the residual window since computing the uncertainty series is similar to a
 	// finite impulse response filtering having a group delay of window/2.
-	start := f.opt.ResidualWindow / 2
-	end := len(t) - f.opt.ResidualWindow/2 - f.opt.ResidualWindow%2 + 1
+	start := f.opt.UncertaintyOptions.ResidualWindow / 2
+	end := len(t) - f.opt.UncertaintyOptions.ResidualWindow/2 - f.opt.UncertaintyOptions.ResidualWindow%2 + 1
 
 	// create uncertainty to align with original time window since td.T may have changed
 	// after outlier removal
@@ -156,10 +156,12 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 }
 
 func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64, seriesForecast *forecast.Forecast) ([]float64, error) {
+	outlierOpts := f.opt.SeriesOptions.OutlierOptions
+
 	// iterate to remove outliers
 	numPasses := 0
-	if f.opt.OutlierOptions != nil {
-		numPasses = f.opt.OutlierOptions.NumPasses
+	if outlierOpts != nil {
+		numPasses = outlierOpts.NumPasses
 	}
 
 	var residual []float64
@@ -171,15 +173,15 @@ func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64, seriesFor
 		residual = seriesForecast.Residuals()
 
 		// break out if no outlier options provided
-		if f.opt.OutlierOptions == nil {
+		if f.opt.SeriesOptions.OutlierOptions == nil {
 			break
 		}
 
 		outlierIdxs := stats.DetectOutliers(
 			residual,
-			f.opt.OutlierOptions.LowerPercentile,
-			f.opt.OutlierOptions.UpperPercentile,
-			f.opt.OutlierOptions.TukeyFactor,
+			outlierOpts.LowerPercentile,
+			outlierOpts.UpperPercentile,
+			outlierOpts.TukeyFactor,
 		)
 		outlierSet := make(map[int]struct{})
 		for _, idx := range outlierIdxs {
@@ -212,18 +214,20 @@ func (f *Forecaster) generateUncertaintySeries(residual []float64) ([]float64, e
 	// outlier points
 
 	// limit residual window to some factor of the resulting residual output
-	if len(residual)/MinResidualWindowFactor < f.opt.ResidualWindow {
-		f.opt.ResidualWindow = len(residual) / MinResidualWindowFactor
+	resWindow := f.opt.UncertaintyOptions.ResidualWindow
+	if len(residual)/MinResidualWindowFactor < resWindow {
+		resWindow = len(residual) / MinResidualWindowFactor
 	}
-	if f.opt.ResidualWindow < MinResidualWindow {
-		f.opt.ResidualWindow = MinResidualWindow
+	if resWindow < MinResidualWindow {
+		resWindow = MinResidualWindow
 	}
+	f.opt.UncertaintyOptions.ResidualWindow = resWindow
 
-	stddevSeries := make([]float64, len(residual)-f.opt.ResidualWindow+1)
-	numWindows := len(residual) - f.opt.ResidualWindow + 1
+	stddevSeries := make([]float64, len(residual)-resWindow+1)
+	numWindows := len(residual) - resWindow + 1
 
 	for i := 0; i < numWindows; i++ {
-		resWindow := residual[i : i+f.opt.ResidualWindow]
+		resWindow := residual[i : i+resWindow]
 
 		// move all nans to the front so we only compute standard deviation off of non-nan values
 		var ptr int
@@ -236,7 +240,7 @@ func (f *Forecaster) generateUncertaintySeries(residual []float64) ([]float64, e
 			}
 		}
 		_, stddev := stat.MeanStdDev(resWindow[ptr:], nil)
-		stddevSeries[i] = f.opt.ResidualZscore * stddev
+		stddevSeries[i] = f.opt.UncertaintyOptions.ResidualZscore * stddev
 	}
 	return stddevSeries, nil
 }
@@ -469,7 +473,7 @@ func (f *Forecaster) scoreSeriesWithCV(t []time.Time, y []float64) error {
 			return fmt.Errorf("unable to create dataset from fold, %d, %w", i, err)
 		}
 
-		seriesForecast, err := forecast.New(f.opt.SeriesOptions)
+		seriesForecast, err := forecast.New(f.opt.SeriesOptions.ForecastOptions)
 		if err != nil {
 			return fmt.Errorf("unable to initialize forecast series for cross validation, %w", err)
 		}

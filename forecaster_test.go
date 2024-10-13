@@ -1,7 +1,6 @@
 package forecaster
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
@@ -171,12 +170,16 @@ func TestForecaster(t *testing.T) {
 				add(generateWaveY(generateT(4*24*60, time.Minute), 7.2, 86400.0, 1.0, 0.0)),
 			tol: 1e-5,
 			opt: &Options{
-				SeriesOptions: &forecast.Options{
-					DailyOrders: 2,
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &forecast.Options{
+						DailyOrders: 2,
+					},
+					OutlierOptions: NewOutlierOptions(),
 				},
-				OutlierOptions: NewOutlierOptions(),
-				ResidualWindow: 100,
-				ResidualZscore: 4.0,
+				UncertaintyOptions: &UncertaintyOptions{
+					ResidualWindow: 100,
+					ResidualZscore: 4.0,
+				},
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
@@ -220,13 +223,17 @@ func TestForecaster(t *testing.T) {
 				add(generateWaveY(generateT(14*24*60, time.Minute), 4.6, 7*24*60*60, 1.0, 0.0)),
 			tol: 1e-5,
 			opt: &Options{
-				SeriesOptions: &forecast.Options{
-					DailyOrders:  2,
-					WeeklyOrders: 2,
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &forecast.Options{
+						DailyOrders:  2,
+						WeeklyOrders: 2,
+					},
+					OutlierOptions: NewOutlierOptions(),
 				},
-				OutlierOptions: NewOutlierOptions(),
-				ResidualWindow: 100,
-				ResidualZscore: 4.0,
+				UncertaintyOptions: &UncertaintyOptions{
+					ResidualWindow: 100,
+					ResidualZscore: 4.0,
+				},
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
@@ -281,16 +288,20 @@ func TestForecaster(t *testing.T) {
 				add(generateNoise(generateT(14*24*60, time.Minute), 3.2, 3.2, 24*60*60, 5.0, 0.0)),
 			tol: 1.0,
 			opt: &Options{
-				SeriesOptions: &forecast.Options{
-					DailyOrders:  4,
-					WeeklyOrders: 2,
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &forecast.Options{
+						DailyOrders:  4,
+						WeeklyOrders: 2,
+					},
+					OutlierOptions: NewOutlierOptions(),
 				},
-				UncertaintyOptions: &forecast.Options{
-					DailyOrders: 6,
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &forecast.Options{
+						DailyOrders: 6,
+					},
+					ResidualWindow: 100,
+					ResidualZscore: 1.0,
 				},
-				OutlierOptions: NewOutlierOptions(),
-				ResidualWindow: 100,
-				ResidualZscore: 1.0,
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
@@ -339,7 +350,7 @@ func TestForecaster(t *testing.T) {
 						R2:   0.99,
 					},
 					Weights: forecast.Weights{
-						Intercept: 3.2,
+						Intercept: 3.3,
 						Coef: []forecast.FeatureWeight{
 							{
 								Labels: map[string]string{
@@ -426,23 +437,27 @@ func ExampleForecaster() {
 	}
 
 	opt := &Options{
-		SeriesOptions: &forecast.Options{
-			DailyOrders:  12,
-			WeeklyOrders: 12,
-			ChangepointOptions: forecast.ChangepointOptions{
-				Changepoints: changepoints,
+		SeriesOptions: &SeriesOptions{
+			ForecastOptions: &forecast.Options{
+				DailyOrders:  12,
+				WeeklyOrders: 12,
+				ChangepointOptions: forecast.ChangepointOptions{
+					Changepoints: changepoints,
+				},
 			},
+			OutlierOptions: NewOutlierOptions(),
 		},
-		UncertaintyOptions: &forecast.Options{
-			DailyOrders:  12,
-			WeeklyOrders: 12,
-			ChangepointOptions: forecast.ChangepointOptions{
-				Changepoints: changepoints,
+		UncertaintyOptions: &UncertaintyOptions{
+			ForecastOptions: &forecast.Options{
+				DailyOrders:  12,
+				WeeklyOrders: 12,
+				ChangepointOptions: forecast.ChangepointOptions{
+					Changepoints: changepoints,
+				},
 			},
+			ResidualWindow: 100,
+			ResidualZscore: 4.0,
 		},
-		OutlierOptions: NewOutlierOptions(),
-		ResidualWindow: 100,
-		ResidualZscore: 4.0,
 	}
 
 	f, err := New(opt)
@@ -457,11 +472,9 @@ func ExampleForecaster() {
 	if err != nil {
 		panic(err)
 	}
-	out, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
+	if err := m.TablePrint(os.Stderr); err != nil {
 		panic(err)
 	}
-	fmt.Fprintln(os.Stderr, string(out))
 
 	if err := f.PlotFit("examples/forecaster.html", nil); err != nil {
 		panic(err)
@@ -490,26 +503,30 @@ func ExampleForecasterAutoChangepoint() {
 	t, y := generateExampleSeries()
 
 	opt := &Options{
-		SeriesOptions: &forecast.Options{
-			Regularization: 200.0,
-			DailyOrders:    12,
-			WeeklyOrders:   12,
-			ChangepointOptions: forecast.ChangepointOptions{
-				Auto:                true,
-				AutoNumChangepoints: 100,
+		SeriesOptions: &SeriesOptions{
+			ForecastOptions: &forecast.Options{
+				Regularization: 200.0,
+				DailyOrders:    12,
+				WeeklyOrders:   12,
+				ChangepointOptions: forecast.ChangepointOptions{
+					Auto:                true,
+					AutoNumChangepoints: 100,
+				},
 			},
+			OutlierOptions: NewOutlierOptions(),
 		},
-		UncertaintyOptions: &forecast.Options{
-			DailyOrders:  12,
-			WeeklyOrders: 12,
-			ChangepointOptions: forecast.ChangepointOptions{
-				Auto:         false,
-				Changepoints: []changepoint.Changepoint{},
+		UncertaintyOptions: &UncertaintyOptions{
+			ForecastOptions: &forecast.Options{
+				DailyOrders:  12,
+				WeeklyOrders: 12,
+				ChangepointOptions: forecast.ChangepointOptions{
+					Auto:         false,
+					Changepoints: []changepoint.Changepoint{},
+				},
 			},
+			ResidualWindow: 100,
+			ResidualZscore: 4.0,
 		},
-		OutlierOptions: NewOutlierOptions(),
-		ResidualWindow: 100,
-		ResidualZscore: 4.0,
 	}
 	f, err := New(opt)
 	if err != nil {
@@ -523,11 +540,9 @@ func ExampleForecasterAutoChangepoint() {
 	if err != nil {
 		panic(err)
 	}
-	out, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
+	if err := m.TablePrint(os.Stderr); err != nil {
 		panic(err)
 	}
-	fmt.Fprintln(os.Stderr, string(out))
 
 	if err := f.PlotFit("examples/forecaster_auto_changepoint.html", nil); err != nil {
 		panic(err)
@@ -544,23 +559,27 @@ func ExampleForecasterWithTrend() {
 	}
 
 	opt := &Options{
-		SeriesOptions: &forecast.Options{
-			DailyOrders:  12,
-			WeeklyOrders: 12,
-			ChangepointOptions: forecast.ChangepointOptions{
-				Changepoints: changepoints,
+		SeriesOptions: &SeriesOptions{
+			ForecastOptions: &forecast.Options{
+				DailyOrders:  12,
+				WeeklyOrders: 12,
+				ChangepointOptions: forecast.ChangepointOptions{
+					Changepoints: changepoints,
+				},
 			},
+			OutlierOptions: NewOutlierOptions(),
 		},
-		UncertaintyOptions: &forecast.Options{
-			DailyOrders:  12,
-			WeeklyOrders: 12,
-			ChangepointOptions: forecast.ChangepointOptions{
-				Changepoints: changepoints,
+		UncertaintyOptions: &UncertaintyOptions{
+			ForecastOptions: &forecast.Options{
+				DailyOrders:  12,
+				WeeklyOrders: 12,
+				ChangepointOptions: forecast.ChangepointOptions{
+					Changepoints: changepoints,
+				},
 			},
+			ResidualWindow: 100,
+			ResidualZscore: 4.0,
 		},
-		OutlierOptions: NewOutlierOptions(),
-		ResidualWindow: 100,
-		ResidualZscore: 4.0,
 	}
 	f, err := New(opt)
 	if err != nil {
@@ -574,12 +593,9 @@ func ExampleForecasterWithTrend() {
 	if err != nil {
 		panic(err)
 	}
-
-	out, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
+	if err := m.TablePrint(os.Stderr); err != nil {
 		panic(err)
 	}
-	fmt.Fprintln(os.Stderr, string(out))
 
 	if err := f.PlotFit("examples/forecaster_with_trend.html", nil); err != nil {
 		panic(err)

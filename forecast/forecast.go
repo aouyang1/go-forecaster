@@ -159,6 +159,8 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	}
 	f.trained = true
 
+	// TODO: prune irrelevant changepoints
+
 	// use input training to include NaNs
 	predicted, comp, err := f.Predict(trainingData.T)
 	if err != nil {
