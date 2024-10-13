@@ -36,6 +36,16 @@ func (s series) add(src series) series {
 	return s
 }
 
+func (s series) setConst(t []time.Time, val float64, start, end time.Time) series {
+	n := len(s)
+	for i := 0; i < n; i++ {
+		if (t[i].After(start) || t[i].Equal(start)) && t[i].Before(end) {
+			s[i] = val
+		}
+	}
+	return s
+}
+
 func generateConstY(n int, val float64) series {
 	y := make([]float64, 0, n)
 	for i := 0; i < n; i++ {
@@ -60,6 +70,18 @@ func generateNoise(t []time.Time, noiseScale, amp, periodSec, order, timeOffset 
 	for i := 0; i < n; i++ {
 		scale := (noiseScale + amp*math.Sin(2.0*math.Pi*order/periodSec*(float64(t[i].Unix())+timeOffset)))
 		y = append(y, rand.NormFloat64()*scale)
+	}
+	return series(y)
+}
+
+func generateChange(t []time.Time, chpt time.Time, bias, slope float64) series {
+	n := len(t)
+	y := make([]float64, n)
+	for i := 0; i < n; i++ {
+		if t[i].After(chpt) || t[i].Equal(chpt) {
+			jump := bias + slope*t[i].Sub(chpt).Minutes()
+			y[i] = jump
+		}
 	}
 	return series(y)
 }
@@ -350,11 +372,6 @@ func TestForecaster(t *testing.T) {
 			m, err := f.Model()
 			require.Nil(t, err)
 
-			/*
-				out, _ := json.MarshalIndent(m, "", "  ")
-				fmt.Println(string(out))
-			*/
-
 			compareScores(t, td.expectedModel.Series.Scores, m.Series.Scores, "series")
 			actualInt := m.Series.Weights.Intercept
 			expectedInt := td.expectedModel.Series.Weights.Intercept
@@ -383,35 +400,19 @@ func TestForecaster(t *testing.T) {
 func generateExampleSeries() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 4 * 24 * 60
-	t := make([]time.Time, 0, minutes)
-	ct := time.Now().Add(-time.Duration(6) * time.Hour)
-	for i := 0; i < minutes; i++ {
-		t = append(t, ct.Add(time.Duration(i)*time.Minute))
-	}
-	y := make([]float64, 0, minutes)
-	for i := 0; i < minutes; i++ {
-		noise := rand.NormFloat64() * (3.2 + 3.2*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
-		bias := 98.3
-		daily1 := 10.5 * math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))
-		daily2 := 10.5 * math.Cos(2.0*math.Pi*3.0/86400.0*float64(t[i].Unix()+2*60*60))
+	t := generateT(minutes, time.Minute)
+	y := make(series, minutes)
 
-		jump := 0.0
-		if i > minutes/2 {
-			jump = 10.0
-		}
-		if i > minutes*17/20 {
-			jump = -60.0
-		}
-		y = append(y, bias+daily1+daily2+noise+jump)
-	}
-
-	// add in anomalies
-	anomalyRegion1 := y[len(y)/3 : len(y)/3+len(y)/20]
-	floats.Scale(0, anomalyRegion1)
-	floats.AddConst(2.7, anomalyRegion1)
-
-	anomalyRegion2 := y[len(y)*2/3 : len(y)*2/3+len(y)/40]
-	floats.AddConst(61.4, anomalyRegion2)
+	period := 86400.0
+	y.add(generateConstY(minutes, 98.3)).
+		add(generateWaveY(t, 10.5, period, 1.0, 2*60*60)).
+		add(generateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		add(generateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
+		add(generateChange(t, t[minutes/2], 10.0, 0.0)).
+		add(generateChange(t, t[minutes*2/3], 61.4, 0.0)).             // anomaly start
+		add(generateChange(t, t[minutes*2/3+minutes/40], -61.4, 0.0)). // anomaly end
+		add(generateChange(t, t[minutes*17/20], -70.0, 0.0)).
+		setConst(t, 2.7, t[minutes/3], t[minutes/3+minutes/20])
 
 	return t, y
 }
@@ -471,24 +472,16 @@ func ExampleForecaster() {
 func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 4 * 24 * 60
-	t := make([]time.Time, 0, minutes)
-	ct := time.Now().Add(-time.Duration(24*4) * time.Hour)
-	for i := 0; i < minutes; i++ {
-		t = append(t, ct.Add(time.Duration(i)*time.Minute))
-	}
-	y := make([]float64, 0, minutes)
-	for i := 0; i < minutes; i++ {
-		noise := rand.NormFloat64() * (3.2 + 3.2*math.Sin(2.0*math.Pi*5.0/86400.0*float64(t[i].Unix())))
-		bias := 98.3
-		daily1 := 10.5 * math.Sin(2.0*math.Pi/86400.0*float64(t[i].Unix()+2*60*60))
-		daily2 := 10.5 * math.Cos(2.0*math.Pi*3.0/86400.0*float64(t[i].Unix()+2*60*60))
+	t := generateT(minutes, time.Minute)
+	y := make(series, minutes)
 
-		jump := 0.0
-		if i > minutes/2 && i < minutes*17/20 {
-			jump = 40.0 / float64(minutes*17/20-minutes/2) * float64(i-minutes/2)
-		}
-		y = append(y, bias+daily1+daily2+noise+jump)
-	}
+	period := 86400.0
+	y.add(generateConstY(minutes, 98.3)).
+		add(generateWaveY(t, 10.5, period, 1.0, 2*60*60)).
+		add(generateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		add(generateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
+		add(generateChange(t, t[minutes/2], 0.0, 40.0/(t[minutes*17/20].Sub(t[minutes/2]).Minutes()))).
+		add(generateChange(t, t[minutes*17/20], -40.0, -40.0/(t[minutes*17/20].Sub(t[minutes/2]).Minutes())))
 
 	return t, y
 }
