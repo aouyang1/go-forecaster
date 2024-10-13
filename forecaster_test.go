@@ -362,7 +362,7 @@ func TestForecaster(t *testing.T) {
 			if expectedInt != 0 {
 				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
 			}
-			assert.LessOrEqual(t, percDiff, 0.05, "series intercept")
+			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("series intercept, %.3f", actualInt))
 			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, td.tol, "series")
 
 			actualInt = m.Uncertainty.Weights.Intercept
