@@ -460,6 +460,12 @@ func ExampleForecaster() {
 		},
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("panic: %v\n", r)
+		}
+	}()
+
 	f, err := New(opt)
 	if err != nil {
 		panic(err)
@@ -528,6 +534,13 @@ func ExampleForecasterAutoChangepoint() {
 			ResidualZscore: 4.0,
 		},
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("panic: %v\n", r)
+		}
+	}()
+
 	f, err := New(opt)
 	if err != nil {
 		panic(err)
@@ -581,6 +594,13 @@ func ExampleForecasterWithTrend() {
 			ResidualZscore: 4.0,
 		},
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("panic: %v\n", r)
+		}
+	}()
+
 	f, err := New(opt)
 	if err != nil {
 		panic(err)

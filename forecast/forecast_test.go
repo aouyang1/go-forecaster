@@ -34,7 +34,8 @@ func TestFit(t *testing.T) {
 	err = f.Fit(tWin, y)
 	require.Nil(t, err)
 
-	labels := f.FeatureLabels()
+	labels, err := f.FeatureLabels()
+	require.Nil(t, err)
 	res := make([]float64, 0, len(labels)+1)
 	res = append(res, f.Intercept())
 
@@ -93,7 +94,8 @@ func TestFitFromModel(t *testing.T) {
 	predicted, _, err := fNew.Predict(tWin)
 	require.Nil(t, err)
 
-	labels := fNew.FeatureLabels()
+	labels, err := fNew.FeatureLabels()
+	require.Nil(t, err)
 	res := make([]float64, 0, len(labels)+1)
 	res = append(res, f.Intercept())
 

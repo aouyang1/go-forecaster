@@ -54,6 +54,14 @@ type FeatureWeight struct {
 	Value  float64             `json:"value"`
 }
 
+func NewFeatureWeight(f feature.Feature, val float64) FeatureWeight {
+	return FeatureWeight{
+		Labels: f.Decode(),
+		Type:   f.Type(),
+		Value:  val,
+	}
+}
+
 // ToFeature transforms the Type and Labels into a feature type
 func (fw *FeatureWeight) ToFeature() (feature.Feature, error) {
 	switch fw.Type {
