@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime/debug"
 	"testing"
 	"time"
 
@@ -370,6 +371,13 @@ func TestForecaster(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Logf("panic: %v\n", r)
+					debug.PrintStack()
+				}
+			}()
+
 			f, err := New(td.opt)
 			require.Nil(t, err)
 
@@ -463,6 +471,7 @@ func ExampleForecaster() {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("panic: %v\n", r)
+			debug.PrintStack()
 		}
 	}()
 
@@ -538,6 +547,7 @@ func ExampleForecasterAutoChangepoint() {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("panic: %v\n", r)
+			debug.PrintStack()
 		}
 	}()
 
@@ -598,6 +608,7 @@ func ExampleForecasterWithTrend() {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("panic: %v\n", r)
+			debug.PrintStack()
 		}
 	}()
 

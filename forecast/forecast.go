@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/timedataset"
@@ -95,6 +96,24 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	chptFeat := generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints, f.trainEndTime)
 	feat.Update(chptFeat)
 
+	// evict any features that are not in the model if already trained since this is used for prediction
+	if f.trained {
+		relevantFeatures := make(map[string]struct{})
+		for _, fw := range f.featureWeights {
+			f, err := fw.ToFeature()
+			if err != nil {
+				return nil, fmt.Errorf("unable to extract feature from feature weight, %v, %w", fw, err)
+			}
+			relevantFeatures[f.String()] = struct{}{}
+		}
+
+		for _, f := range feat.Labels() {
+			if _, exists := relevantFeatures[f.String()]; !exists {
+				feat.Del(f)
+			}
+		}
+	}
+
 	return feat, nil
 }
 
@@ -147,19 +166,13 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	f.trained = true
 
 	f.intercept = intercept
-	fws := make([]FeatureWeight, 0, len(coef))
-	labels := x.Labels()
-	for i, c := range coef {
-		fw := FeatureWeight{
-			Labels: labels[i].Decode(),
-			Type:   labels[i].Type(),
-			Value:  c,
-		}
-		fws = append(fws, fw)
-	}
-	f.featureWeights = fws
 
-	// TODO: prune irrelevant changepoints
+	relevantFws, relevantChpts, err := f.pruneDegenerateFeatures(x.Labels(), coef)
+	if err != nil {
+		return err
+	}
+	f.featureWeights = relevantFws
+	f.opt.ChangepointOptions.Changepoints = relevantChpts
 
 	// use input training to include NaNs
 	predicted, comp, err := f.Predict(trainingData.T)
@@ -181,6 +194,45 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	f.residual = residual
 
 	return nil
+}
+
+func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []float64) ([]FeatureWeight, []changepoint.Changepoint, error) {
+	fws := make([]FeatureWeight, 0, len(coef))
+	for i, c := range coef {
+		fw := FeatureWeight{
+			Labels: labels[i].Decode(),
+			Type:   labels[i].Type(),
+			Value:  c,
+		}
+		fws = append(fws, fw)
+	}
+
+	relevantFws := make([]FeatureWeight, 0, len(fws))
+	relevantChptMap := make(map[string]struct{})
+	for _, fw := range fws {
+		f, err := fw.ToFeature()
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to extract feature, %v, %w", fw, err)
+		}
+		if fw.Value != 0 {
+			if f.Type() == feature.FeatureTypeChangepoint {
+				name, exists := f.Get("name")
+				if exists {
+					relevantChptMap[name] = struct{}{}
+				}
+			}
+			relevantFws = append(relevantFws, fw)
+		}
+	}
+
+	relevantChpts := make([]changepoint.Changepoint, 0, len(f.opt.ChangepointOptions.Changepoints))
+	for _, chpt := range f.opt.ChangepointOptions.Changepoints {
+		if _, exists := relevantChptMap[chpt.Name]; exists {
+			relevantChpts = append(relevantChpts, chpt)
+		}
+	}
+
+	return relevantFws, relevantChpts, nil
 }
 
 // Predict takes a slice of times in any order and produces the predicted value for those
@@ -215,11 +267,11 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 		}
 	}
 
-	trend, err := f.runInference(changepointFeatureSet, true)
+	trend, err := f.runInference(changepointFeatureSet, true, len(t))
 	if err != nil {
 		return nil, Components{}, fmt.Errorf("unable to run inference for trend, %w", err)
 	}
-	seasonality, err := f.runInference(seasonalityFeatureSet, false)
+	seasonality, err := f.runInference(seasonalityFeatureSet, false, len(t))
 	if err != nil {
 		return nil, Components{}, fmt.Errorf("unable to run inference for seasonality, %w", err)
 	}
@@ -228,20 +280,30 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 		Seasonality: seasonality,
 	}
 
-	res, err := f.runInference(x, true)
+	res, err := f.runInference(x, true, len(t))
 	return res, comp, err
 }
 
-func (f *Forecast) runInference(x *feature.Set, withIntercept bool) ([]float64, error) {
+func (f *Forecast) runInference(x *feature.Set, withIntercept bool, numObs int) ([]float64, error) {
 	if f == nil {
 		return nil, nil
 	}
 
-	if x == nil || x.Len() == 0 {
+	if x == nil {
 		return nil, nil
 	}
 
 	n := x.Len()
+
+	// account for case where we have just a bias
+	if n == 0 {
+		res := make([]float64, numObs)
+		if withIntercept {
+			floats.AddConst(f.intercept, res)
+		}
+		return res, nil
+	}
+
 	if withIntercept {
 		n += 1
 	}
