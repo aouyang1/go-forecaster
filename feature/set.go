@@ -3,6 +3,7 @@ package feature
 import (
 	"sort"
 
+	"github.com/aouyang1/go-forecaster/array"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
@@ -10,14 +11,14 @@ import (
 // Set represents a mapping to each feature data keyed by the string representation
 // of the feature.
 type Set struct {
-	set map[string]Data
+	set map[string][]float64
 
 	labels []Feature
 }
 
 func NewSet() *Set {
 	return &Set{
-		set: make(map[string]Data),
+		set: make(map[string][]float64),
 	}
 }
 
@@ -25,13 +26,13 @@ func (s *Set) Len() int {
 	return len(s.set)
 }
 
-func (s *Set) Get(f Feature) (Data, bool) {
+func (s *Set) Get(f Feature) ([]float64, bool) {
 	label := f.String()
 	data, exists := s.set[label]
 	return data, exists
 }
 
-func (s *Set) Set(f Feature, data Data) {
+func (s *Set) Set(f Feature, data []float64) {
 	label := f.String()
 	if _, exists := s.set[label]; !exists {
 		s.labels = append(s.labels, f)
@@ -105,7 +106,7 @@ func (s *Set) Matrix(intercept bool) *mat.Dense {
 	var m int
 	// use first feature to get length
 	for _, flabel := range featureLabels {
-		m = len(s.set[flabel.String()].Data)
+		m = len(s.set[flabel.String()])
 		break
 	}
 	n := len(featureLabels)
@@ -125,33 +126,33 @@ func (s *Set) Matrix(intercept bool) *mat.Dense {
 	}
 
 	for _, label := range featureLabels {
-		feature := s.set[label.String()]
-		for i := 0; i < len(feature.Data); i++ {
+		for i, pnt := range s.set[label.String()] {
 			idx := n*i + featNum
-			obs[idx] = feature.Data[i]
+			obs[idx] = pnt
+
 		}
 		featNum += 1
 	}
 	return mat.NewDense(m, n, obs)
 }
 
-// MatrixSlice returns the FeatureSet as a matrix but in the form of a slice of slices where
+// MatrixArray returns the FeatureSet as an array but in the form of a slice of slices where
 // each row represent feature. Takes an intercept input if we want to include the intercept
 // term.
-func (s *Set) MatrixSlice(intercept bool) [][]float64 {
+func (s *Set) MatrixArray(intercept bool) (*array.Array, error) {
 	if s == nil {
-		return nil
+		return nil, nil
 	}
 
 	featureLabels := s.Labels()
 	if len(featureLabels) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	var m int
 	// use first feature to get length
 	for _, flabel := range featureLabels {
-		m = len(s.set[flabel.String()].Data)
+		m = len(s.set[flabel.String()])
 		break
 	}
 	n := len(featureLabels)
@@ -169,9 +170,14 @@ func (s *Set) MatrixSlice(intercept bool) [][]float64 {
 	}
 
 	for _, label := range featureLabels {
-		feature := s.set[label.String()]
-		obs[featNum] = feature.Data
+		obs[featNum] = s.set[label.String()]
 		featNum += 1
 	}
-	return obs
+
+	arr, err := array.New2D(obs)
+	if err != nil {
+		return nil, err
+	}
+	arrT := arr.T()
+	return arrT, nil
 }

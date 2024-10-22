@@ -6,15 +6,80 @@ import (
 	"math"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/array"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
 
-// OLS computes ordinary least squares using QR factorization
-func OLS(obs, y mat.Matrix) (float64, []float64) {
-	_, n := obs.Dims()
+var (
+	ErrNoOptions          = errors.New("no initialized model options")
+	ErrTargetLenMismatch  = errors.New("target length does not match target rows")
+	ErrNoTrainingArray    = errors.New("no training array")
+	ErrNoTargetArray      = errors.New("no target array")
+	ErrNoDesignMatrix     = errors.New("no design matrix for inference")
+	ErrFeatureLenMismatch = errors.New("number of features does not match number of model coefficients")
+)
+
+type OLSOptions struct {
+	FitIntercept bool
+}
+
+func NewDefaulOLSOptions() *OLSOptions {
+	return &OLSOptions{
+		FitIntercept: true,
+	}
+}
+
+// OLSRegression computes ordinary least squares using QR factorization
+type OLSRegression struct {
+	coef      []float64
+	intercept float64
+	opt       *OLSOptions
+}
+
+func NewOLSRegression(opt *OLSOptions) (*OLSRegression, error) {
+	if opt == nil {
+		opt = NewDefaulOLSOptions()
+	}
+	return &OLSRegression{
+		opt: opt,
+	}, nil
+}
+
+func (o *OLSRegression) Fit(x, y *array.Array) error {
+	if o.opt == nil {
+		return ErrNoOptions
+	}
+	if x == nil {
+		return ErrNoTrainingArray
+	}
+	if y == nil {
+		return ErrNoTargetArray
+	}
+	m, n := x.Shape()
+
+	ym, _ := y.Shape()
+	if ym != m {
+		return fmt.Errorf("training data has %d rows and target has %d row, %w", m, ym, ErrTargetLenMismatch)
+	}
+
+	if o.opt.FitIntercept {
+		ones, err := array.Ones(m, 1)
+		if err != nil {
+			return err
+		}
+		x, err = array.Extend(ones, x)
+		if err != nil {
+			return err
+		}
+		m, n = x.Shape()
+	}
+
+	X := mat.NewDense(m, n, x.Flatten())
+	Y := mat.NewDense(1, m, y.Flatten())
+
 	qr := new(mat.QR)
-	qr.Factorize(obs)
+	qr.Factorize(X)
 
 	q := new(mat.Dense)
 	r := new(mat.Dense)
@@ -22,7 +87,7 @@ func OLS(obs, y mat.Matrix) (float64, []float64) {
 	qr.QTo(q)
 	qr.RTo(r)
 	yq := new(mat.Dense)
-	yq.Mul(y, q)
+	yq.Mul(Y, q)
 
 	c := make([]float64, n)
 	for i := n - 1; i >= 0; i-- {
@@ -32,13 +97,56 @@ func OLS(obs, y mat.Matrix) (float64, []float64) {
 		}
 		c[i] /= r.At(i, i)
 	}
-	if len(c) == 0 {
-		return math.NaN(), nil
+
+	if o.opt.FitIntercept {
+		o.intercept = c[0]
+		o.coef = c[1:]
+	} else {
+		o.coef = c
 	}
-	if len(c) == 1 {
-		return c[0], nil
+
+	return nil
+}
+
+func (o *OLSRegression) Predict(x *array.Array) ([]float64, error) {
+	if o.opt == nil {
+		return nil, ErrNoOptions
 	}
-	return c[0], c[1:]
+	if x == nil {
+		return nil, ErrNoDesignMatrix
+	}
+
+	coef := o.coef
+	if o.opt.FitIntercept {
+		coef = append([]float64{o.intercept}, o.coef...)
+	}
+	n := len(coef)
+
+	xT := x.T()
+	xn, xm := xT.Shape()
+	if xn != n {
+		return nil, fmt.Errorf("got %d features in design matrix, but expected %d, %w", xn, n, ErrFeatureLenMismatch)
+	}
+	coefMx := mat.NewDense(1, n, coef)
+	desMx := mat.NewDense(n, xm, xT.Flatten())
+
+	var res mat.Dense
+	res.Mul(coefMx, desMx)
+	return res.RawRowView(0), nil
+}
+
+func (o *OLSRegression) Score(x [][]float64, y []float64) (float64, error) {
+	return 0, nil
+}
+
+func (o *OLSRegression) Intercept() float64 {
+	return o.intercept
+}
+
+func (o *OLSRegression) Coef() []float64 {
+	c := make([]float64, len(o.coef))
+	copy(c, o.coef)
+	return c
 }
 
 var (
@@ -52,6 +160,7 @@ type LassoOptions struct {
 	Lambda        float64
 	Iterations    int
 	Tolerance     float64
+	FitIntercept  bool
 }
 
 // NewDefaultLassoOptions returns a default set of Lasso Regression options
@@ -61,40 +170,75 @@ func NewDefaultLassoOptions() *LassoOptions {
 		Iterations:    1000,
 		Tolerance:     1e-4,
 		WarmStartBeta: nil,
+		FitIntercept:  true,
 	}
 }
 
 // LassoRegression computes the lasso regression using coordinate descent. lambda = 0 converges to OLS
 // The obs first dimension represents columns or features starting with the intercept.
-func LassoRegression(obs [][]float64, y []float64, opt *LassoOptions) (float64, []float64, error) {
+type LassoRegression struct {
+	opt *LassoOptions
+
+	intercept float64
+	coef      []float64
+}
+
+func NewLassoRegression(opt *LassoOptions) (*LassoRegression, error) {
 	if opt == nil {
 		opt = NewDefaultLassoOptions()
 	}
+	return &LassoRegression{
+		opt: opt,
+	}, nil
+}
 
-	n := len(obs)
-	if n == 0 {
-		return 0, nil, errors.New("observation matrix has no observations")
+func (l *LassoRegression) Fit(x, y *array.Array) error {
+	if l.opt == nil {
+		return ErrNoOptions
 	}
-	m := len(obs[0])
+	if x == nil {
+		return ErrNoTrainingArray
+	}
+	if y == nil {
+		return ErrNoTargetArray
+	}
 
-	ym := len(y)
-	if m != ym {
-		return 0, nil, fmt.Errorf("observation matrix has %d observations and y matrix as %d observations, %w", m, ym, ErrObsYSizeMismatch)
+	m, n := x.Shape()
+
+	ym, _ := y.Shape()
+	if ym != m {
+		return fmt.Errorf("training data has %d rows and target has %d row, %w", m, ym, ErrTargetLenMismatch)
 	}
-	if opt.WarmStartBeta != nil && len(opt.WarmStartBeta) != n {
-		return 0, nil, fmt.Errorf("warm start beta has %d features instead of %d, %w", len(opt.WarmStartBeta), n, ErrWarmStartBetaSize)
+
+	if l.opt.FitIntercept {
+		ones, err := array.Ones(m, 1)
+		if err != nil {
+			return err
+		}
+		x, err = array.Extend(ones, x)
+		if err != nil {
+			return err
+		}
+		m, n = x.Shape()
+	}
+
+	if l.opt.WarmStartBeta != nil && len(l.opt.WarmStartBeta) != n {
+		return fmt.Errorf("warm start beta has %d features instead of %d, %w", len(l.opt.WarmStartBeta), n, ErrWarmStartBetaSize)
 	}
 
 	// tracks current betas
 	beta := make([]float64, n)
-	if opt.WarmStartBeta != nil {
-		copy(beta, opt.WarmStartBeta)
+	if l.opt.WarmStartBeta != nil {
+		copy(beta, l.opt.WarmStartBeta)
 	}
 
 	// precompute the per feature dot product
 	xdot := make([]float64, n)
 	for i := 0; i < n; i++ {
-		xi := obs[i]
+		xi, err := x.GetCol(i)
+		if err != nil {
+			return fmt.Errorf("attempting to access col index %d with %d columns during preprocessing, %w", i, n, err)
+		}
 		xdot[i] = floats.Dot(xi, xi)
 	}
 
@@ -103,7 +247,11 @@ func LassoRegression(obs [][]float64, y []float64, opt *LassoOptions) (float64, 
 	betaX := make([]float64, m)
 	betaXDelta := make([]float64, m)
 
-	for i := 0; i < opt.Iterations; i++ {
+	yArr, err := y.GetCol(0)
+	if err != nil {
+		return fmt.Errorf("attempting to access column of target array, %w", err)
+	}
+	for i := 0; i < l.opt.Iterations; i++ {
 		maxCoef := 0.0
 		maxUpdate := 0.0
 		betaDiff := 0.0
@@ -118,13 +266,16 @@ func LassoRegression(obs [][]float64, y []float64, opt *LassoOptions) (float64, 
 			}
 
 			floats.Add(betaX, betaXDelta)
-			floats.SubTo(residual, y, betaX)
+			floats.SubTo(residual, yArr, betaX)
 
-			obsCol := obs[j]
+			obsCol, err := x.GetCol(j)
+			if err != nil {
+				return fmt.Errorf("attempting to access col index %d with %d columns during fit, %w", i, n, err)
+			}
 			num := floats.Dot(obsCol, residual)
 			betaNext := num/xdot[j] + betaCurr
 
-			gamma := opt.Lambda / xdot[j]
+			gamma := l.opt.Lambda / xdot[j]
 			betaNext = SoftThreshold(betaNext, gamma)
 
 			maxCoef = math.Max(maxCoef, betaNext)
@@ -135,18 +286,27 @@ func LassoRegression(obs [][]float64, y []float64, opt *LassoOptions) (float64, 
 		}
 
 		// break early if we've achieved the desired tolerance
-		if maxUpdate < opt.Tolerance*maxCoef {
+		if maxUpdate < l.opt.Tolerance*maxCoef {
 			break
 		}
 	}
 
-	if len(beta) == 0 {
-		return math.NaN(), nil, nil
+	if l.opt.FitIntercept {
+		l.intercept = beta[0]
+		l.coef = beta[1:]
+	} else {
+		l.coef = beta
 	}
-	if len(beta) == 1 {
-		return beta[0], nil, nil
-	}
-	return beta[0], beta[1:], nil
+
+	return nil
+}
+
+func (l *LassoRegression) Intercept() float64 {
+	return l.intercept
+}
+
+func (l *LassoRegression) Coef() []float64 {
+	return l.coef
 }
 
 // SoftThreshold returns 0 if the value is less than or equal to the gamma input

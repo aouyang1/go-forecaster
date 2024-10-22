@@ -31,10 +31,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 			hod[i] = math.Mod(hour, 24.0)
 		}
 		feat := feature.NewTime("hod")
-		tFeat.Set(feat, feature.Data{
-			F:    feat,
-			Data: hod,
-		})
+		tFeat.Set(feat, hod)
 	}
 	if opt.WeeklyOrders > 0 {
 		dow := make([]float64, len(t))
@@ -43,10 +40,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 			dow[i] = math.Mod(day, 7.0)
 		}
 		feat := feature.NewTime("dow")
-		tFeat.Set(feat, feature.Data{
-			F:    feat,
-			Data: dow,
-		})
+		tFeat.Set(feat, dow)
 	}
 	return tFeat
 }
@@ -97,17 +91,11 @@ func generateFourierOrders(tFeatures *feature.Set, col string, orders []int, per
 
 	x := feature.NewSet()
 	for _, order := range orders {
-		sinFeat, cosFeat := generateFourierComponent(tFeat.Data, order, period)
+		sinFeat, cosFeat := generateFourierComponent(tFeat, order, period)
 		sinFeatCol := feature.NewSeasonality(col, feature.FourierCompSin, order)
 		cosFeatCol := feature.NewSeasonality(col, feature.FourierCompCos, order)
-		x.Set(sinFeatCol, feature.Data{
-			F:    sinFeatCol,
-			Data: sinFeat,
-		})
-		x.Set(cosFeatCol, feature.Data{
-			F:    cosFeatCol,
-			Data: cosFeat,
-		})
+		x.Set(sinFeatCol, sinFeat)
+		x.Set(cosFeatCol, cosFeat)
 	}
 
 	return x, nil
@@ -199,14 +187,8 @@ func makeChangepointFeatureSet(chpts []changepoint.Changepoint, chptFeatures [][
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
 		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
 
-		feat.Set(chpntBias, feature.Data{
-			F:    chpntBias,
-			Data: chptFeatures[i*2],
-		})
-		feat.Set(chpntSlope, feature.Data{
-			F:    chpntSlope,
-			Data: chptFeatures[i*2+1],
-		})
+		feat.Set(chpntBias, chptFeatures[i*2])
+		feat.Set(chpntSlope, chptFeatures[i*2+1])
 	}
 	return feat
 }

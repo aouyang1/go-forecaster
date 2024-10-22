@@ -3,61 +3,118 @@ package models
 import (
 	"testing"
 
+	"github.com/aouyang1/go-forecaster/array"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gonum.org/v1/gonum/mat"
 )
 
-func TestOLS(t *testing.T) {
-	// y = 2 + 3*x0 + 4*x1
-	obs := []float64{
-		1, 0, 0,
-		1, 3, 5,
-		1, 9, 20,
-		1, 12, 6,
-	}
-	y := []float64{2, 31, 109, 62}
+func TestOLSRegression(t *testing.T) {
+	x, err := array.New2D(
+		[][]float64{
+			{0, 0},
+			{3, 5},
+			{9, 20},
+			{12, 6},
+		},
+	)
+	require.Nil(t, err)
 
-	mObs := mat.NewDense(4, 3, obs)
-	mY := mat.NewDense(1, 4, y)
+	y := array.New1D([]float64{2, 31, 109, 62})
 
-	intercept, coef := OLS(mObs, mY)
-	assert.InDelta(t, 2.0, intercept, 0.00001)
+	/*
+		mObs := mat.NewDense(4, 3, xArr.Flatten())
+		mY := mat.NewDense(1, 4, y.Flatten())
+
+		intercept, coef := OLS(mObs, mY)
+	*/
+	model, err := NewOLSRegression(nil)
+	require.Nil(t, err)
+
+	err = model.Fit(x, y)
+	require.Nil(t, err)
+
+	assert.InDelta(t, 2.0, model.Intercept(), 0.00001)
+
+	coef := model.Coef()
 	assert.InDelta(t, 3.0, coef[0], 0.00001)
 	assert.InDelta(t, 4.0, coef[1], 0.00001)
+
+	x, err = array.New2D(
+		[][]float64{
+			{1, 0, 0},
+			{1, 3, 5},
+			{1, 9, 20},
+			{1, 12, 6},
+		},
+	)
+	require.Nil(t, err)
+
+	y = array.New1D([]float64{2, 31, 109, 62})
+
+	model, err = NewOLSRegression(
+		&OLSOptions{
+			FitIntercept: false,
+		},
+	)
+	require.Nil(t, err)
+
+	err = model.Fit(x, y)
+	require.Nil(t, err)
+
+	assert.InDelta(t, 0.0, model.Intercept(), 0.00001)
+
+	coef = model.Coef()
+	assert.InDelta(t, 2.0, coef[0], 0.00001)
+	assert.InDelta(t, 3.0, coef[1], 0.00001)
+	assert.InDelta(t, 4.0, coef[2], 0.00001)
 }
 
 func TestLassoRegression(t *testing.T) {
 	// y = 2 + 3*x0 + 4*x1
-	obs := [][]float64{
-		{1, 1, 1, 1},
-		{0, 3, 9, 12},
-		{0, 5, 20, 6},
-	}
-	y := []float64{2, 31, 109, 62}
+	x, err := array.New2D(
+		[][]float64{
+			{0, 0},
+			{3, 5},
+			{9, 20},
+			{12, 6},
+		},
+	)
+	require.Nil(t, err)
+
+	y := array.New1D([]float64{2, 31, 109, 62})
 
 	opt := NewDefaultLassoOptions()
 	opt.Lambda = 0
 	opt.Tolerance = 1e-6
 
-	intercept, coef, err := LassoRegression(obs, y, opt)
+	model, err := NewLassoRegression(opt)
 	require.Nil(t, err)
-	assert.InDelta(t, 2.0, intercept, 0.00001)
+
+	err = model.Fit(x, y)
+	require.Nil(t, err)
+
+	assert.InDelta(t, 2.0, model.Intercept(), 0.00001)
+
+	coef := model.Coef()
 	assert.InDelta(t, 3.0, coef[0], 0.00001)
 	assert.InDelta(t, 4.0, coef[1], 0.00001)
 }
 
-func BenchmarkOLS(b *testing.B) {
+func BenchmarkOLSRegression(b *testing.B) {
 	nObs := 1000
 	nFeat := 100
 
-	data := make([]float64, 0, nObs*nFeat)
-	for i := 0; i < cap(data); i++ {
-		val := float64(i)
-		if i%nFeat == 0 {
-			val = 1.0
+	data := make([][]float64, nObs)
+	for i := 0; i < nObs; i++ {
+		data[i] = make([]float64, nFeat)
+		for j := 0; j < nFeat; j++ {
+			val := float64(i*nFeat + j)
+			if j == 0 {
+				val = 1.0
+			}
+			data[i][j] = val
 		}
-		data = append(data, val)
 	}
 
 	data2 := make([]float64, 0, nObs)
@@ -66,27 +123,42 @@ func BenchmarkOLS(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		mObs := mat.NewDense(nObs, nFeat, data)
-		mY := mat.NewDense(1, nObs, data2)
-
-		OLS(mObs, mY)
+		xArr, err := array.New2D(data)
+		if err != nil {
+			b.Error(err)
+			continue
+		}
+		yArr := array.New1D(data2)
+		model, err := NewOLSRegression(
+			&OLSOptions{
+				FitIntercept: false,
+			},
+		)
+		if err != nil {
+			b.Error(err)
+			continue
+		}
+		if err := model.Fit(xArr, yArr); err != nil {
+			b.Error(err)
+			continue
+		}
 	}
 }
 
 func BenchmarkLassoRegression(b *testing.B) {
 	nObs := 1000
 	nFeat := 100
-	data := make([][]float64, 0, nFeat)
-	for i := 0; i < nFeat; i++ {
-		feat := make([]float64, nObs)
-		for j := 0; j < nObs; j++ {
-			val := float64(j*nObs + i)
-			if i == 0 {
+
+	data := make([][]float64, nObs)
+	for i := 0; i < nObs; i++ {
+		data[i] = make([]float64, nFeat)
+		for j := 0; j < nFeat; j++ {
+			val := float64(i*nFeat + j)
+			if j == 0 {
 				val = 1.0
 			}
-			feat[j] = val
+			data[i][j] = val
 		}
-		data = append(data, feat)
 	}
 
 	data2 := make([]float64, 0, nObs)
@@ -95,10 +167,23 @@ func BenchmarkLassoRegression(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		mObs := data
-		mY := data2
-
-		LassoRegression(mObs, mY, nil)
+		xArr, err := array.New2D(data)
+		if err != nil {
+			b.Error(err)
+			continue
+		}
+		yArr := array.New1D(data2)
+		opt := NewDefaultLassoOptions()
+		opt.FitIntercept = false
+		model, err := NewLassoRegression(opt)
+		if err != nil {
+			b.Error(err)
+			continue
+		}
+		if err := model.Fit(xArr, yArr); err != nil {
+			b.Error(err)
+			continue
+		}
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/array"
 	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/models"
@@ -153,16 +154,26 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 		return err
 	}
 
-	features := x.MatrixSlice(true)
-	observations := trainingY
+	features, err := x.MatrixArray(true)
+	if err != nil {
+		return err
+	}
+	target := array.New1D(trainingY)
 
 	// run coordinate descent with lambda set to 0 which is equivalent to OLS
 	lassoOpt := models.NewDefaultLassoOptions()
 	lassoOpt.Lambda = f.opt.Regularization
-	intercept, coef, err := models.LassoRegression(features, observations, lassoOpt)
+	lassoOpt.FitIntercept = false
+	model, err := models.NewLassoRegression(lassoOpt)
 	if err != nil {
 		return err
 	}
+	if err := model.Fit(features, target); err != nil {
+		return err
+	}
+	coef := model.Coef()
+	intercept := coef[0]
+	coef = coef[1:]
 	f.trained = true
 
 	f.intercept = intercept
