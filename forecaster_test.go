@@ -460,7 +460,7 @@ func ExampleForecaster() {
 				DailyOrders:  12,
 				WeeklyOrders: 12,
 				ChangepointOptions: forecast.ChangepointOptions{
-					Changepoints: changepoints,
+					Changepoints: nil,
 				},
 			},
 			ResidualWindow: 100,
@@ -597,7 +597,7 @@ func ExampleForecasterWithTrend() {
 				DailyOrders:  12,
 				WeeklyOrders: 12,
 				ChangepointOptions: forecast.ChangepointOptions{
-					Changepoints: changepoints,
+					Changepoints: nil,
 				},
 			},
 			ResidualWindow: 100,

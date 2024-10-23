@@ -9,6 +9,7 @@ import (
 	"github.com/aouyang1/go-forecaster/array"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/stat"
 )
 
 var (
@@ -32,9 +33,9 @@ func NewDefaulOLSOptions() *OLSOptions {
 
 // OLSRegression computes ordinary least squares using QR factorization
 type OLSRegression struct {
+	opt       *OLSOptions
 	coef      []float64
 	intercept float64
-	opt       *OLSOptions
 }
 
 func NewOLSRegression(opt *OLSOptions) (*OLSRegression, error) {
@@ -119,6 +120,16 @@ func (o *OLSRegression) Predict(x *array.Array) ([]float64, error) {
 	coef := o.coef
 	if o.opt.FitIntercept {
 		coef = append([]float64{o.intercept}, o.coef...)
+
+		m, _ := x.Shape()
+		ones, err := array.Ones(m, 1)
+		if err != nil {
+			return nil, err
+		}
+		x, err = array.Extend(ones, x)
+		if err != nil {
+			return nil, err
+		}
 	}
 	n := len(coef)
 
@@ -135,8 +146,30 @@ func (o *OLSRegression) Predict(x *array.Array) ([]float64, error) {
 	return res.RawRowView(0), nil
 }
 
-func (o *OLSRegression) Score(x [][]float64, y []float64) (float64, error) {
-	return 0, nil
+func (o *OLSRegression) Score(x, y *array.Array) (float64, error) {
+	if o.opt == nil {
+		return 0.0, ErrNoOptions
+	}
+	if x == nil {
+		return 0.0, ErrNoDesignMatrix
+	}
+	if y == nil {
+		return 0.0, ErrNoTargetArray
+	}
+
+	m, _ := x.Shape()
+
+	ym, _ := y.Shape()
+	if m != ym {
+		return 0.0, fmt.Errorf("design matrix has %d rows and target has %d rows, %w", m, ym, ErrTargetLenMismatch)
+	}
+
+	res, err := o.Predict(x)
+	if err != nil {
+		return 0.0, err
+	}
+
+	return stat.RSquaredFrom(res, y.Flatten(), nil), nil
 }
 
 func (o *OLSRegression) Intercept() float64 {
@@ -179,8 +212,8 @@ func NewDefaultLassoOptions() *LassoOptions {
 type LassoRegression struct {
 	opt *LassoOptions
 
-	intercept float64
 	coef      []float64
+	intercept float64
 }
 
 func NewLassoRegression(opt *LassoOptions) (*LassoRegression, error) {
@@ -301,12 +334,75 @@ func (l *LassoRegression) Fit(x, y *array.Array) error {
 	return nil
 }
 
+func (l *LassoRegression) Predict(x *array.Array) ([]float64, error) {
+	if l.opt == nil {
+		return nil, ErrNoOptions
+	}
+	if x == nil {
+		return nil, ErrNoDesignMatrix
+	}
+
+	coef := l.coef
+	if l.opt.FitIntercept {
+		coef = append([]float64{l.intercept}, l.coef...)
+
+		m, _ := x.Shape()
+		ones, err := array.Ones(m, 1)
+		if err != nil {
+			return nil, err
+		}
+		x, err = array.Extend(ones, x)
+		if err != nil {
+			return nil, err
+		}
+	}
+	n := len(coef)
+
+	xT := x.T()
+	xn, xm := xT.Shape()
+	if xn != n {
+		return nil, fmt.Errorf("got %d features in design matrix, but expected %d, %w", xn, n, ErrFeatureLenMismatch)
+	}
+	coefMx := mat.NewDense(1, n, coef)
+	desMx := mat.NewDense(n, xm, xT.Flatten())
+
+	var res mat.Dense
+	res.Mul(coefMx, desMx)
+	return res.RawRowView(0), nil
+}
+
 func (l *LassoRegression) Intercept() float64 {
 	return l.intercept
 }
 
 func (l *LassoRegression) Coef() []float64 {
 	return l.coef
+}
+
+func (l *LassoRegression) Score(x, y *array.Array) (float64, error) {
+	if l.opt == nil {
+		return 0.0, ErrNoOptions
+	}
+	if x == nil {
+		return 0.0, ErrNoDesignMatrix
+	}
+	if y == nil {
+		return 0.0, ErrNoTargetArray
+	}
+
+	m, _ := x.Shape()
+
+	ym, _ := y.Shape()
+	if m != ym {
+		return 0.0, fmt.Errorf("design matrix has %d rows and target has %d rows, %w", m, ym, ErrTargetLenMismatch)
+	}
+
+	res, err := l.Predict(x)
+	if err != nil {
+		return 0.0, err
+	}
+
+	return stat.RSquaredFrom(res, y.Flatten(), nil), nil
 }
 
 // SoftThreshold returns 0 if the value is less than or equal to the gamma input

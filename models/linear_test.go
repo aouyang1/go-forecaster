@@ -22,12 +22,6 @@ func TestOLSRegression(t *testing.T) {
 
 	y := array.New1D([]float64{2, 31, 109, 62})
 
-	/*
-		mObs := mat.NewDense(4, 3, xArr.Flatten())
-		mY := mat.NewDense(1, 4, y.Flatten())
-
-		intercept, coef := OLS(mObs, mY)
-	*/
 	model, err := NewOLSRegression(nil)
 	require.Nil(t, err)
 
@@ -39,6 +33,10 @@ func TestOLSRegression(t *testing.T) {
 	coef := model.Coef()
 	assert.InDelta(t, 3.0, coef[0], 0.00001)
 	assert.InDelta(t, 4.0, coef[1], 0.00001)
+
+	r2, err := model.Score(x, y)
+	require.Nil(t, err)
+	assert.InDelta(t, 1.0, r2, 0.00001)
 
 	x, err = array.New2D(
 		[][]float64{
@@ -68,6 +66,10 @@ func TestOLSRegression(t *testing.T) {
 	assert.InDelta(t, 2.0, coef[0], 0.00001)
 	assert.InDelta(t, 3.0, coef[1], 0.00001)
 	assert.InDelta(t, 4.0, coef[2], 0.00001)
+
+	r2, err = model.Score(x, y)
+	require.Nil(t, err)
+	assert.InDelta(t, 1.0, r2, 0.00001)
 }
 
 func TestLassoRegression(t *testing.T) {
@@ -99,6 +101,42 @@ func TestLassoRegression(t *testing.T) {
 	coef := model.Coef()
 	assert.InDelta(t, 3.0, coef[0], 0.00001)
 	assert.InDelta(t, 4.0, coef[1], 0.00001)
+
+	r2, err := model.Score(x, y)
+	require.Nil(t, err)
+	assert.InDelta(t, 1.0, r2, 0.00001)
+
+	x, err = array.New2D(
+		[][]float64{
+			{1, 0, 0},
+			{1, 3, 5},
+			{1, 9, 20},
+			{1, 12, 6},
+		},
+	)
+	require.Nil(t, err)
+
+	y = array.New1D([]float64{2, 31, 109, 62})
+
+	opt = NewDefaultLassoOptions()
+	opt.Lambda = 0
+	opt.Tolerance = 1e-6
+	opt.FitIntercept = false
+
+	model, err = NewLassoRegression(opt)
+	require.Nil(t, err)
+
+	err = model.Fit(x, y)
+	require.Nil(t, err)
+
+	coef = model.Coef()
+	assert.InDelta(t, 2.0, coef[0], 0.00001)
+	assert.InDelta(t, 3.0, coef[1], 0.00001)
+	assert.InDelta(t, 4.0, coef[2], 0.00001)
+
+	r2, err = model.Score(x, y)
+	require.Nil(t, err)
+	assert.InDelta(t, 1.0, r2, 0.00001)
 }
 
 func BenchmarkOLSRegression(b *testing.B) {
