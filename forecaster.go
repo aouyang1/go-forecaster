@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/forecast"
-	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/stats"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/go-echarts/go-echarts/v2/components"
@@ -457,41 +456,4 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 		return err
 	}
 	return page.Render(io.MultiWriter(file))
-}
-
-// scoreSeriesWithCV runs the series fit with a set number of folds, and scores each one.
-// This needs more research in how to get reasonable scores in the presence of changepoints
-func (f *Forecaster) scoreSeriesWithCV(t []time.Time, y []float64) error {
-	folds, err := models.TimeSeriesCVSplit(t, y, 5)
-	if err != nil {
-		return err
-	}
-	for i, fold := range folds {
-		fmt.Printf("evaluating fold, %d\n", i)
-		td, err := timedataset.NewUnivariateDataset(fold.TrainX, fold.TrainY)
-		if err != nil {
-			return fmt.Errorf("unable to create dataset from fold, %d, %w", i, err)
-		}
-
-		seriesForecast, err := forecast.New(f.opt.SeriesOptions.ForecastOptions)
-		if err != nil {
-			return fmt.Errorf("unable to initialize forecast series for cross validation, %w", err)
-		}
-
-		if _, err := f.fitSeriesWithOutliers(td.T, td.Y, seriesForecast); err != nil {
-			return err
-		}
-
-		seriesRes, _, err := seriesForecast.Predict(fold.TestX)
-		if err != nil {
-			return fmt.Errorf("unable to predict series forecasts for cross validation, %w", err)
-		}
-
-		score, err := forecast.NewScores(seriesRes, fold.TestY)
-		if err != nil {
-			return fmt.Errorf("unable to compute test scores for fold, %d, %w", i, err)
-		}
-		fmt.Printf("fold: %d, scores: %+v\n", i, score)
-	}
-	return nil
 }
