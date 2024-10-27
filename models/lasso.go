@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -9,13 +10,26 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-// LassoOptions represents input options too run the Lasso Regression
+var ErrWarmStartBetaSize = errors.New("warm start beta does not have the same number of coefficients as training features")
+
+// LassoOptions represents input options to run the Lasso Regression
 type LassoOptions struct {
+	// WarmStartBeta is used to prime the coordinate descent to reduce the training time if a previous
+	// fit has been performed.
 	WarmStartBeta []float64
-	Lambda        float64
-	Iterations    int
-	Tolerance     float64
-	FitIntercept  bool
+
+	// Lambda represents the L1 multiplier, controlling the regularization. Must be a non-negative. 0.0 results in converging
+	// to Ordinary Least Squares (OLS).
+	Lambda float64
+
+	// Iterations is the maximum number of times the fit loops through training all coefficients.
+	Iterations int
+
+	// Tolerance is the smallest coefficient channge on each iteration to determine when to stop iterating.
+	Tolerance float64
+
+	// FitIntercept adds a constant 1.0 feature as the first column if set to true
+	FitIntercept bool
 }
 
 // NewDefaultLassoOptions returns a default set of Lasso Regression options
@@ -30,7 +44,6 @@ func NewDefaultLassoOptions() *LassoOptions {
 }
 
 // LassoRegression computes the lasso regression using coordinate descent. lambda = 0 converges to OLS
-// The obs first dimension represents columns or features starting with the intercept.
 type LassoRegression struct {
 	opt *LassoOptions
 
@@ -38,6 +51,7 @@ type LassoRegression struct {
 	intercept float64
 }
 
+// NewLassoRegression initializes a Lasso model ready for fitting
 func NewLassoRegression(opt *LassoOptions) (*LassoRegression, error) {
 	if opt == nil {
 		opt = NewDefaultLassoOptions()
@@ -47,15 +61,16 @@ func NewLassoRegression(opt *LassoOptions) (*LassoRegression, error) {
 	}, nil
 }
 
+// Fit the model according to the given training data
 func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 	if l.opt == nil {
 		return ErrNoOptions
 	}
 	if x == nil {
-		return ErrNoTrainingArray
+		return ErrNoTrainingMatrix
 	}
 	if y == nil {
-		return ErrNoTargetArray
+		return ErrNoTargetMatrix
 	}
 
 	m, n := x.Dims()
@@ -99,7 +114,13 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 
 	// tracks the per coordinate residual
 	residual := make([]float64, m)
+
+	// tracks the current beta * x by adding the deltas on each beta iteration
 	betaX := make([]float64, m)
+
+	// tracks the delta of the beta * x of each iteration by computing the next beta
+	// multiplied by the feature observations of that beta. will be added to betaX on
+	// the next beta iteration
 	betaXDelta := make([]float64, m)
 
 	yArr := mat.Col(nil, 0, y)
@@ -150,6 +171,7 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 	return nil
 }
 
+// Predict using the Lasso model
 func (l *LassoRegression) Predict(x mat.Matrix) ([]float64, error) {
 	if l.opt == nil {
 		return nil, ErrNoOptions
@@ -187,6 +209,7 @@ func (l *LassoRegression) Predict(x mat.Matrix) ([]float64, error) {
 	return res.RawRowView(0), nil
 }
 
+// Score computes the coefficient of determination of the prediction
 func (l *LassoRegression) Score(x, y mat.Matrix) (float64, error) {
 	if l.opt == nil {
 		return 0.0, ErrNoOptions
@@ -195,7 +218,7 @@ func (l *LassoRegression) Score(x, y mat.Matrix) (float64, error) {
 		return 0.0, ErrNoDesignMatrix
 	}
 	if y == nil {
-		return 0.0, ErrNoTargetArray
+		return 0.0, ErrNoTargetMatrix
 	}
 
 	m, _ := x.Dims()
@@ -215,15 +238,17 @@ func (l *LassoRegression) Score(x, y mat.Matrix) (float64, error) {
 	return stat.RSquaredFrom(res, ySlice, nil), nil
 }
 
+// Intercept returns the computed intercept if FitIntercept is set to true. Defaults to 0.0 if not set.
 func (l *LassoRegression) Intercept() float64 {
 	return l.intercept
 }
 
+// Coef returns a slice of the trained coefficients in the same order of the training feature Matrix by column.
 func (l *LassoRegression) Coef() []float64 {
 	return l.coef
 }
 
-// SoftThreshold returns 0 if the value is less than or equal to the gamma input
+// SoftThreshold returns 0.0 if the value is less than or equal to the gamma input
 func SoftThreshold(x, gamma float64) float64 {
 	res := math.Max(0, math.Abs(x)-gamma)
 	if math.Signbit(x) {

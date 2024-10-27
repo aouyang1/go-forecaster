@@ -12,6 +12,7 @@ import (
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/stat"
 )
 
 var (
@@ -343,6 +344,30 @@ func (f *Forecast) runInference(x *feature.Set, withIntercept bool, numObs int) 
 	yhat := mat.Row(nil, 0, &resMx)
 
 	return yhat, nil
+}
+
+// Score computes the coefficient of determination of the prediction
+func (f *Forecast) Score(x []time.Time, y []float64) (float64, error) {
+	if x == nil {
+		return 0.0, fmt.Errorf("no time slice for inference, %w", models.ErrNoDesignMatrix)
+	}
+	if y == nil {
+		return 0.0, fmt.Errorf("no expected values for inference, %w", models.ErrNoTargetMatrix)
+	}
+
+	m := len(x)
+
+	ym := len(y)
+	if m != ym {
+		return 0.0, fmt.Errorf("design matrix has %d rows and target has %d rows, %w", m, ym, models.ErrTargetLenMismatch)
+	}
+
+	res, _, err := f.Predict(x)
+	if err != nil {
+		return 0.0, err
+	}
+
+	return stat.RSquaredFrom(res, y, nil), nil
 }
 
 // FeatureLabels returns the slice of feature labels in the order of the coefficients

@@ -91,7 +91,7 @@ func (s *Set) Labels() []Feature {
 // Matrix returns a metric representation of the FeatureSet to be used with matrix methods
 // The matrix has m rows representing the number of observations and n columns representing
 // the number of features.
-func (s *Set) Matrix(intercept bool) mat.Matrix {
+func (s *Set) Matrix(intercept bool) *mat.Dense {
 	if s == nil {
 		return nil
 	}

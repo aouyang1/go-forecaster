@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/stats"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/go-echarts/go-echarts/v2/components"
@@ -292,6 +293,30 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	r.Upper = upper
 	r.Lower = lower
 	return r, nil
+}
+
+// Score computes the coefficient of determination of the prediction
+func (f *Forecaster) Score(t []time.Time, y []float64) (float64, error) {
+	if t == nil {
+		return 0.0, fmt.Errorf("no time slice for inference, %w", models.ErrNoDesignMatrix)
+	}
+	if y == nil {
+		return 0.0, fmt.Errorf("no expected values for inference, %w", models.ErrNoTargetMatrix)
+	}
+
+	m := len(t)
+
+	ym := len(y)
+	if m != ym {
+		return 0.0, fmt.Errorf("design matrix has %d rows and target has %d rows, %w", m, ym, models.ErrTargetLenMismatch)
+	}
+
+	res, err := f.Predict(t)
+	if err != nil {
+		return 0.0, err
+	}
+
+	return stat.RSquaredFrom(res.Forecast, y, nil), nil
 }
 
 // Residuals returns the difference between the final series fit against the training data

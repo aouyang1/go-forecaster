@@ -24,10 +24,9 @@ import (
   "fmt"
 
   "github.com/aouyang1/go-forecaster"
-  "github.com/aouyang1/go-forecaster/timedataset"
 )
 
-func MyForecast(t []time.Time, y []float64) (*forecaster.Results, error) {
+func MyForecast(t []time.Time, y []float64, horizonT []time.Time) ([]float64, error) {
 	f, err := forecaster.New(nil)
 	if err != nil {
 		return nil, err
@@ -35,13 +34,8 @@ func MyForecast(t []time.Time, y []float64) (*forecaster.Results, error) {
 	if err := f.Fit(t, y); err != nil {
 		return nil, err
 	}
-	eq, err := f.SeriesModelEq()
-	if err != nil {
-	  return nil, err
-	}
-	fmt.Fprintln(os.Stderr, eq)
 
-	return f.Predict(td.T)
+  return f.Predict(horizonT)
 }	
 ```
 

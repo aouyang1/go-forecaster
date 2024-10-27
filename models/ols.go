@@ -8,10 +8,13 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
+// OLSOptions represents input options to run the OLS Regression
 type OLSOptions struct {
+	// FitIntercept adds a constant 1.0 feature as the first column if set to true
 	FitIntercept bool
 }
 
+// NewDefaultOLSOptions returns a default set of OLS Regression options
 func NewDefaulOLSOptions() *OLSOptions {
 	return &OLSOptions{
 		FitIntercept: true,
@@ -25,6 +28,7 @@ type OLSRegression struct {
 	intercept float64
 }
 
+// NewOLSRegression initializes an ordinary least squares model ready for fitting
 func NewOLSRegression(opt *OLSOptions) (*OLSRegression, error) {
 	if opt == nil {
 		opt = NewDefaulOLSOptions()
@@ -34,15 +38,16 @@ func NewOLSRegression(opt *OLSOptions) (*OLSRegression, error) {
 	}, nil
 }
 
+// Fit the model according to the given training data
 func (o *OLSRegression) Fit(x, y mat.Matrix) error {
 	if o.opt == nil {
 		return ErrNoOptions
 	}
 	if x == nil {
-		return ErrNoTrainingArray
+		return ErrNoTrainingMatrix
 	}
 	if y == nil {
-		return ErrNoTargetArray
+		return ErrNoTargetMatrix
 	}
 	m, n := x.Dims()
 
@@ -95,6 +100,7 @@ func (o *OLSRegression) Fit(x, y mat.Matrix) error {
 	return nil
 }
 
+// Predict using the OLS model
 func (o *OLSRegression) Predict(x mat.Matrix) ([]float64, error) {
 	if o.opt == nil {
 		return nil, ErrNoOptions
@@ -131,6 +137,7 @@ func (o *OLSRegression) Predict(x mat.Matrix) ([]float64, error) {
 	return res.RawRowView(0), nil
 }
 
+// Score computes the coefficient of determination of the prediction
 func (o *OLSRegression) Score(x, y mat.Matrix) (float64, error) {
 	if o.opt == nil {
 		return 0.0, ErrNoOptions
@@ -139,7 +146,7 @@ func (o *OLSRegression) Score(x, y mat.Matrix) (float64, error) {
 		return 0.0, ErrNoDesignMatrix
 	}
 	if y == nil {
-		return 0.0, ErrNoTargetArray
+		return 0.0, ErrNoTargetMatrix
 	}
 
 	m, _ := x.Dims()
@@ -159,10 +166,12 @@ func (o *OLSRegression) Score(x, y mat.Matrix) (float64, error) {
 	return stat.RSquaredFrom(res, ySlice, nil), nil
 }
 
+// Intercept returns the computed intercept if FitIntercept is set to true. Defaults to 0.0 if not set.
 func (o *OLSRegression) Intercept() float64 {
 	return o.intercept
 }
 
+// Coef returns a slice of the trained coefficients in the same order of the training feature Matrix by column.
 func (o *OLSRegression) Coef() []float64 {
 	c := make([]float64, len(o.coef))
 	copy(c, o.coef)
