@@ -10,7 +10,12 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-var ErrWarmStartBetaSize = errors.New("warm start beta does not have the same number of coefficients as training features")
+var (
+	ErrNegativeLambda     = errors.New("negative lambda")
+	ErrNegativeIterations = errors.New("negative iterations")
+	ErrNegativeTolerance  = errors.New("negative tolerance")
+	ErrWarmStartBetaSize  = errors.New("warm start beta does not have the same number of coefficients as training features")
+)
 
 // LassoOptions represents input options to run the Lasso Regression
 type LassoOptions struct {
@@ -30,6 +35,24 @@ type LassoOptions struct {
 
 	// FitIntercept adds a constant 1.0 feature as the first column if set to true
 	FitIntercept bool
+}
+
+// Validate runs basic validation on Lasso options
+func (l *LassoOptions) Validate() (*LassoOptions, error) {
+	if l == nil {
+		l = NewDefaultLassoOptions()
+	}
+
+	if l.Lambda < 0 {
+		return nil, ErrNegativeLambda
+	}
+	if l.Iterations < 0 {
+		return nil, ErrNegativeIterations
+	}
+	if l.Tolerance < 0 {
+		return nil, ErrNegativeTolerance
+	}
+	return l, nil
 }
 
 // NewDefaultLassoOptions returns a default set of Lasso Regression options
@@ -53,8 +76,9 @@ type LassoRegression struct {
 
 // NewLassoRegression initializes a Lasso model ready for fitting
 func NewLassoRegression(opt *LassoOptions) (*LassoRegression, error) {
-	if opt == nil {
-		opt = NewDefaultLassoOptions()
+	opt, err := opt.Validate()
+	if err != nil {
+		return nil, err
 	}
 	return &LassoRegression{
 		opt: opt,

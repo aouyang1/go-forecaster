@@ -10,6 +10,52 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+func TestLassoOptionsValidate(t *testing.T) {
+	testData := map[string]struct {
+		opt      *LassoOptions
+		err      error
+		expected *LassoOptions
+	}{
+		"nil": {nil, nil, NewDefaultLassoOptions()},
+		"valid": {
+			&LassoOptions{
+				Lambda:     1.0,
+				Iterations: 100,
+				Tolerance:  1e-5,
+			}, nil,
+			&LassoOptions{
+				Lambda:     1.0,
+				Iterations: 100,
+				Tolerance:  1e-5,
+			},
+		},
+		"invalid lambda": {
+			&LassoOptions{Lambda: -1.0},
+			ErrNegativeLambda, nil,
+		},
+		"invalid iterations": {
+			&LassoOptions{Iterations: -1.0},
+			ErrNegativeIterations, nil,
+		},
+		"invalid tolerance": {
+			&LassoOptions{Tolerance: -1.0},
+			ErrNegativeTolerance, nil,
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			opt, err := td.opt.Validate()
+			if td.err != nil {
+				assert.ErrorAs(t, err, &td.err)
+				return
+			}
+			require.Nil(t, err)
+			assert.Equal(t, td.expected, opt)
+		})
+	}
+}
+
 func TestLassoRegression(t *testing.T) {
 	// y = 2 + 3*x0 + 4*x1
 	x, err := mat_.NewDenseFromArray(

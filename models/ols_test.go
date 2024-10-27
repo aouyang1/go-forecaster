@@ -10,6 +10,36 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+func TestOLSOptionsValidate(t *testing.T) {
+	testData := map[string]struct {
+		opt      *OLSOptions
+		err      error
+		expected *OLSOptions
+	}{
+		"nil": {nil, nil, NewDefaultOLSOptions()},
+		"valid": {
+			&OLSOptions{
+				FitIntercept: true,
+			}, nil,
+			&OLSOptions{
+				FitIntercept: true,
+			},
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			opt, err := td.opt.Validate()
+			if td.err != nil {
+				assert.ErrorAs(t, err, &td.err)
+				return
+			}
+			require.Nil(t, err)
+			assert.Equal(t, td.expected, opt)
+		})
+	}
+}
+
 func TestOLSRegression(t *testing.T) {
 	x, err := mat_.NewDenseFromArray(
 		[][]float64{

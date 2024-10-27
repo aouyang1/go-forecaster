@@ -14,8 +14,17 @@ type OLSOptions struct {
 	FitIntercept bool
 }
 
+// Validate runs basic validation on OLS options
+func (o *OLSOptions) Validate() (*OLSOptions, error) {
+	if o == nil {
+		o = NewDefaultOLSOptions()
+	}
+
+	return o, nil
+}
+
 // NewDefaultOLSOptions returns a default set of OLS Regression options
-func NewDefaulOLSOptions() *OLSOptions {
+func NewDefaultOLSOptions() *OLSOptions {
 	return &OLSOptions{
 		FitIntercept: true,
 	}
@@ -30,8 +39,9 @@ type OLSRegression struct {
 
 // NewOLSRegression initializes an ordinary least squares model ready for fitting
 func NewOLSRegression(opt *OLSOptions) (*OLSRegression, error) {
-	if opt == nil {
-		opt = NewDefaulOLSOptions()
+	opt, err := opt.Validate()
+	if err != nil {
+		return nil, err
 	}
 	return &OLSRegression{
 		opt: opt,
