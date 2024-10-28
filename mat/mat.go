@@ -7,14 +7,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-var (
-	ErrNegativeDim        = errors.New("negative dimensions not allowed")
-	ErrColMismatch        = errors.New("column size mismatch")
-	ErrRowMismatch        = errors.New("row size mismatch")
-	ErrUninitializedArray = errors.New("uninitialized array")
-	ErrRowOutOfBounds     = errors.New("row is out of bounds")
-	ErrColOutOfBounds     = errors.New("column is out of bounds")
-)
+var ErrColMismatch = errors.New("column size mismatch")
 
 func NewDenseFromArray(x [][]float64) (*mat.Dense, error) {
 	m := len(x)
