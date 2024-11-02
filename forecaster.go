@@ -410,7 +410,8 @@ func (f *Forecaster) MakeFuturePeriods(periods int, freq time.Duration) ([]time.
 		if len(td.T) < 2 {
 			return nil, ErrCannotInferInterval
 		}
-		freq = td.T[1].Sub(td.T[0])
+		// may want to take more samples to infer in the future
+		freq = td.T[len(td.T)-1].Sub(td.T[len(td.T)-2])
 
 	}
 	horizon := make([]time.Time, 0, periods)
