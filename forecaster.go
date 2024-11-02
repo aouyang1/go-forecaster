@@ -400,6 +400,27 @@ func (f *Forecaster) FitResults() *Results {
 	return f.fitResults
 }
 
+// MakeFuturePeriods generates a slice of time after the last point in the training data. By default
+// a zero freq will be inferred from the training data.
+func (f *Forecaster) MakeFuturePeriods(periods int, freq time.Duration) ([]time.Time, error) {
+	td := f.TrainingData()
+	lastTime := td.T[len(td.T)-1]
+
+	if freq == 0 {
+		if len(td.T) < 2 {
+			return nil, ErrCannotInferInterval
+		}
+		freq = td.T[1].Sub(td.T[0])
+
+	}
+	horizon := make([]time.Time, 0, periods)
+	for i := 0; i < periods; i++ {
+		nextT := lastTime.Add(time.Duration(i+1) * freq)
+		horizon = append(horizon, nextT)
+	}
+	return horizon, nil
+}
+
 // PlotOpts sets the horizon to forecast out. By default will use 10% of the training size assuming
 // even intervals between points and the first two points are used to infer the horizon interval.
 type PlotOpts struct {
@@ -411,13 +432,9 @@ type PlotOpts struct {
 // model components, and fit residual
 func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 	td := f.TrainingData()
-	lastTime := td.T[len(td.T)-1]
 
-	if len(td.T) < 2 {
-		return ErrCannotInferInterval
-	}
 	horizonCnt := len(td.T) / 10
-	horizonInterval := td.T[1].Sub(td.T[0])
+	var horizonInterval time.Duration
 	if opt != nil {
 		horizonCnt = opt.HorizonCnt
 		horizonInterval = opt.HorizonInterval
@@ -425,15 +442,17 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 	if horizonCnt < 1 {
 		horizonCnt = 1
 	}
+	horizon, err := f.MakeFuturePeriods(horizonCnt, horizonInterval)
+	if err != nil {
+		return err
+	}
 
 	t := make([]time.Time, 0, len(td.T)+horizonCnt)
 	copy(t, td.T)
-	horizon := make([]time.Time, 0, horizonCnt)
+	t = append(t, horizon...)
+
 	zpad := make([]float64, 0, horizonCnt)
 	for i := 0; i < horizonCnt; i++ {
-		nextT := lastTime.Add(time.Duration(i+1) * horizonInterval)
-		horizon = append(horizon, nextT)
-		t = append(t, nextT)
 		zpad = append(zpad, math.NaN())
 	}
 
