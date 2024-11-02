@@ -126,7 +126,7 @@ func generateAutoChangepoints(t []time.Time, n int) []changepoint.Changepoint {
 		chpntTime := minTime.Add(time.Duration(changepointWinNs * int64(i)))
 		chpts = append(
 			chpts,
-			changepoint.New("auto_"+strconv.Itoa(i), chpntTime),
+			changepoint.New("auto_"+strconv.Itoa(i), chpntTime, false),
 		)
 	}
 	return chpts
@@ -179,10 +179,12 @@ func makeChangepointFeatureSet(chpts []changepoint.Changepoint, chptFeatures [][
 			chpntName = chpts[i].Name
 		}
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
-		chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
-
 		feat.Set(chpntBias, chptFeatures[i*2])
-		feat.Set(chpntSlope, chptFeatures[i*2+1])
+
+		if !chpts[i].DisableGrowth {
+			chpntSlope := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
+			feat.Set(chpntSlope, chptFeatures[i*2+1])
+		}
 	}
 	return feat
 }
