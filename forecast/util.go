@@ -9,15 +9,9 @@ import (
 
 	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/feature"
-	"gonum.org/v1/gonum/mat"
 )
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
-
-func ObservationMatrix(y []float64) *mat.Dense {
-	n := len(y)
-	return mat.NewDense(1, n, y)
-}
 
 func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 	if opt == nil {
