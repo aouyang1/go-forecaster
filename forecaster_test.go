@@ -418,7 +418,7 @@ func TestForecaster(t *testing.T) {
 
 func generateExampleSeries() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
-	minutes := 14 * 24 * 60
+	minutes := 28 * 24 * 60
 	t := generateT(minutes, time.Minute)
 	y := make(series, minutes)
 
@@ -440,8 +440,8 @@ func ExampleForecaster() {
 	t, y := generateExampleSeries()
 
 	changepoints := []changepoint.Changepoint{
-		changepoint.New("anomaly1", t[len(t)/2], true),
-		changepoint.New("anomaly2", t[len(t)*17/20], true),
+		changepoint.New("anomaly1", t[len(t)/2]),
+		changepoint.New("anomaly2", t[len(t)*17/20]),
 	}
 
 	opt := &Options{
@@ -526,6 +526,7 @@ func ExampleForecasterAutoChangepoint() {
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:                true,
 					AutoNumChangepoints: 100,
+					EnableGrowth:        true,
 				},
 			},
 			OutlierOptions: NewOutlierOptions(),
@@ -577,8 +578,8 @@ func ExampleForecasterWithTrend() {
 	t, y := generateExampleSeriesWithTrend()
 
 	changepoints := []changepoint.Changepoint{
-		changepoint.New("trendstart", t[len(t)/2], false),
-		changepoint.New("rebaseline", t[len(t)*17/20], false),
+		changepoint.New("trendstart", t[len(t)/2]),
+		changepoint.New("rebaseline", t[len(t)*17/20]),
 	}
 
 	opt := &Options{
@@ -588,6 +589,7 @@ func ExampleForecasterWithTrend() {
 				WeeklyOrders: 12,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
+					EnableGrowth: true,
 				},
 			},
 			OutlierOptions: NewOutlierOptions(),

@@ -94,7 +94,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 		}
 		f.opt.ChangepointOptions.Changepoints = generateAutoChangepoints(t, f.opt.ChangepointOptions.AutoNumChangepoints)
 	}
-	chptFeat := generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints, f.trainEndTime)
+	chptFeat := generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints, f.trainEndTime, f.opt.ChangepointOptions.EnableGrowth)
 	feat.Update(chptFeat)
 
 	// evict any features that are not in the model if already trained since this is used for prediction

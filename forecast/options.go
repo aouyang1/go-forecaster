@@ -33,6 +33,7 @@ const (
 // results in much faster training times and model size.
 type ChangepointOptions struct {
 	Changepoints        []changepoint.Changepoint `json:"changepoints"`
+	EnableGrowth        bool                      `json:"enable_growth"`
 	Auto                bool                      `json:"auto"`
 	AutoNumChangepoints int                       `json:"auto_num_changepoints"`
 }
