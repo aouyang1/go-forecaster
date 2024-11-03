@@ -448,7 +448,7 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 		return err
 	}
 
-	t := make([]time.Time, 0, len(td.T)+horizonCnt)
+	t := make([]time.Time, len(td.T), len(td.T)+horizonCnt)
 	copy(t, td.T)
 	t = append(t, horizon...)
 
@@ -485,6 +485,7 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 				trendComp,
 				seasonComp,
 			},
+			len(td.T),
 		),
 		LineTSeries(
 			"Forecast Residual",
@@ -494,6 +495,7 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 				residuals,
 				uncertainty,
 			},
+			len(td.T),
 		),
 	)
 	file, err := os.Create(path)

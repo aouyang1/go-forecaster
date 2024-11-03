@@ -11,12 +11,23 @@ import (
 
 // LineTSeries generates an echart multi-line chart for some arbitrary time/value combination. The input
 // y is a slice of series that much have the same length as the input time slice.
-func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64) *charts.Line {
+func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64, forecastStartIdx int) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(
 			opts.Title{
 				Title: title,
+			},
+		),
+		charts.WithDataZoomOpts(
+			opts.DataZoom{
+				Type:       "slider",
+				XAxisIndex: []int{0},
+			},
+		),
+		charts.WithTooltipOpts(
+			opts.Tooltip{
+				Trigger: "axis",
 			},
 		),
 	)
@@ -28,7 +39,7 @@ func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64
 		lineData[i] = make([]opts.LineData, 0, len(y[i]))
 		for j := 0; j < len(y[i]); j++ {
 			if i == 0 {
-				filteredT = append(filteredT, t[i])
+				filteredT = append(filteredT, t[j])
 			}
 
 			if math.IsNaN(y[i][j]) {
@@ -39,8 +50,27 @@ func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64
 		}
 	}
 
+	markLineOpts := []charts.SeriesOpts{
+		charts.WithMarkLineNameXAxisItemOpts(
+			opts.MarkLineNameXAxisItem{
+				XAxis: forecastStartIdx,
+			},
+		),
+		charts.WithMarkLineStyleOpts(
+			opts.MarkLineStyle{
+				Symbol:    []string{"none", "none"},
+				Label:     &opts.Label{Show: opts.Bool(false)},
+				LineStyle: &opts.LineStyle{Color: "black"},
+			},
+		),
+	}
+
 	line.SetXAxis(filteredT)
 	for i, series := range seriesName {
+		if i == 0 {
+			line.AddSeries(series, lineData[i], markLineOpts...)
+			continue
+		}
 		line.AddSeries(series, lineData[i])
 	}
 
@@ -55,6 +85,17 @@ func LineForecaster(trainingData *timedataset.TimeDataset, fitRes, forecastRes *
 		charts.WithTitleOpts(
 			opts.Title{
 				Title: "Forecast Fit",
+			},
+		),
+		charts.WithDataZoomOpts(
+			opts.DataZoom{
+				Type:       "slider",
+				XAxisIndex: []int{0},
+			},
+		),
+		charts.WithTooltipOpts(
+			opts.Tooltip{
+				Trigger: "axis",
 			},
 		),
 	)
@@ -82,10 +123,24 @@ func LineForecaster(trainingData *timedataset.TimeDataset, fitRes, forecastRes *
 		lineDataLower = append(lineDataLower, opts.LineData{Value: forecastRes.Lower[i]})
 	}
 
+	markLineOpts := []charts.SeriesOpts{
+		charts.WithMarkLineNameXAxisItemOpts(
+			opts.MarkLineNameXAxisItem{
+				XAxis: len(fitRes.T),
+			},
+		),
+		charts.WithMarkLineStyleOpts(
+			opts.MarkLineStyle{
+				Symbol:    []string{"none", "none"},
+				Label:     &opts.Label{Show: opts.Bool(false)},
+				LineStyle: &opts.LineStyle{Color: "black"},
+			},
+		),
+	}
 	line.SetXAxis(dataTime).
-		AddSeries("Actual", lineDataActual).
-		AddSeries("Forecast", lineDataForecast).
 		AddSeries("Upper", lineDataUpper).
+		AddSeries("Actual", lineDataActual).
+		AddSeries("Forecast", lineDataForecast, markLineOpts...).
 		AddSeries("Lower", lineDataLower)
 	return line
 }
