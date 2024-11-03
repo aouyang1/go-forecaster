@@ -22,20 +22,26 @@ Auto-changepoint detection and fit
 ```
 import (
   "fmt"
+  "time"
 
   "github.com/aouyang1/go-forecaster"
 )
 
-func MyForecast(t []time.Time, y []float64, horizonT []time.Time) ([]float64, error) {
-	f, err := forecaster.New(nil)
-	if err != nil {
-		return nil, err
-	}
-	if err := f.Fit(t, y); err != nil {
-		return nil, err
-	}
+func MyForecast(t []time.Time, y []float64) ([]float64, error) {
+  // initialize forecaster
+  f, err := forecaster.New(nil)
+  if err != nil {
+    return nil, err
+  }
 
-  return f.Predict(horizonT)
+  // fit the model
+  if err := f.Fit(t, y); err != nil {
+    return nil, err
+  }
+
+  // create future time slice with 10 samples after last training time at minute level
+  // granularity
+  return f.Predict(f.MakeFuturePeriods(10, time.Minute))
 }	
 ```
 
