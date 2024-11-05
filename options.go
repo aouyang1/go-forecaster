@@ -1,6 +1,10 @@
 package forecaster
 
-import "github.com/aouyang1/go-forecaster/forecast"
+import (
+	"math"
+
+	"github.com/aouyang1/go-forecaster/forecast"
+)
 
 // OutlierOptions configures the outlier removal pre-process using the Tukey Method. The outlier
 // removal process is done by multiple iterations of fitting the training data to a model and each step
@@ -52,6 +56,8 @@ func NewUncertaintyOptions() *UncertaintyOptions {
 type Options struct {
 	SeriesOptions      *SeriesOptions      `json:"series_options"`
 	UncertaintyOptions *UncertaintyOptions `json:"uncertainty_options"`
+	MinValue           *float64            `json:"min_value"`
+	MaxValue           *float64            `json:"max_value"`
 }
 
 // NewDefaultOptions generates a default set of options for a forecaster
@@ -60,4 +66,18 @@ func NewDefaultOptions() *Options {
 		SeriesOptions:      NewSeriesOptions(),
 		UncertaintyOptions: NewUncertaintyOptions(),
 	}
+}
+
+func (o *Options) SetMinValue(val float64) {
+	if math.IsNaN(val) {
+		return
+	}
+	o.MinValue = &val
+}
+
+func (o *Options) SetMaxValue(val float64) {
+	if math.IsNaN(val) {
+		return
+	}
+	o.MaxValue = &val
 }

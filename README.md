@@ -41,7 +41,11 @@ func MyForecast(t []time.Time, y []float64) ([]float64, error) {
 
   // create future time slice with 10 samples after last training time at minute level
   // granularity
-  return f.Predict(f.MakeFuturePeriods(10, time.Minute))
+  horizon, err := f.MakeFuturePeriods(10, time.Minute)
+  if err != nil {
+    return nil, err
+  }
+  return f.Predict(horizon)
 }	
 ```
 

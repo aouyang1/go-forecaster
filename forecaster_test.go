@@ -491,7 +491,12 @@ func ExampleForecaster() {
 		panic(err)
 	}
 
-	if err := f.PlotFit("examples/forecaster.html", nil); err != nil {
+	file, err := os.Create("examples/forecaster.html")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := f.PlotFit(file, nil); err != nil {
 		panic(err)
 	}
 	// Output:
@@ -544,6 +549,8 @@ func ExampleForecasterAutoChangepoint() {
 			ResidualZscore: 4.0,
 		},
 	}
+	opt.SetMinValue(0.0)
+	opt.SetMaxValue(170.0)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -568,7 +575,12 @@ func ExampleForecasterAutoChangepoint() {
 		panic(err)
 	}
 
-	if err := f.PlotFit("examples/forecaster_auto_changepoint.html", nil); err != nil {
+	file, err := os.Create("examples/forecaster_auto_changepoint.html")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := f.PlotFit(file, nil); err != nil {
 		panic(err)
 	}
 	// Output:
@@ -630,7 +642,12 @@ func ExampleForecasterWithTrend() {
 		panic(err)
 	}
 
-	if err := f.PlotFit("examples/forecaster_with_trend.html", nil); err != nil {
+	file, err := os.Create("examples/forecaster_with_trend.html")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := f.PlotFit(file, nil); err != nil {
 		panic(err)
 	}
 	// Output:

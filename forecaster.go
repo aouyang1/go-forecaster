@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/forecast"
@@ -290,6 +289,12 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 
 	floats.Add(upper, uncertaintyRes)
 	floats.Sub(lower, uncertaintyRes)
+
+	// clip data if specified in options
+	f.clip(r.Forecast)
+	f.clip(upper)
+	f.clip(lower)
+
 	r.Upper = upper
 	r.Lower = lower
 	return r, nil
@@ -431,7 +436,7 @@ type PlotOpts struct {
 
 // PlotFit uses the Apache Echarts library to generate an html file showing the resulting fit,
 // model components, and fit residual
-func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
+func (f *Forecaster) PlotFit(w io.Writer, opt *PlotOpts) error {
 	td := f.TrainingData()
 
 	horizonCnt := len(td.T) / 10
@@ -498,9 +503,32 @@ func (f *Forecaster) PlotFit(path string, opt *PlotOpts) error {
 			len(td.T),
 		),
 	)
-	file, err := os.Create(path)
-	if err != nil {
-		return err
+	return page.Render(w)
+}
+
+func (f *Forecaster) clip(series []float64) {
+	var clipMin, clipMax bool
+	var minVal, maxVal float64
+	if f.opt.MinValue != nil {
+		clipMin = true
+		minVal = *f.opt.MinValue
 	}
-	return page.Render(io.MultiWriter(file))
+	if f.opt.MaxValue != nil {
+		clipMax = true
+		maxVal = *f.opt.MaxValue
+	}
+	if !clipMin && !clipMax {
+		return
+	}
+
+	for i := 0; i < len(series); i++ {
+		if clipMin && series[i] < minVal {
+			series[i] = minVal
+			continue
+		}
+		if clipMax && series[i] > maxVal {
+			series[i] = maxVal
+			continue
+		}
+	}
 }

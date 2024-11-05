@@ -42,11 +42,7 @@ func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64
 				filteredT = append(filteredT, t[j])
 			}
 
-			if math.IsNaN(y[i][j]) {
-				lineData[i] = append(lineData[i], opts.LineData{Value: "-"})
-			} else {
-				lineData[i] = append(lineData[i], opts.LineData{Value: y[i][j]})
-			}
+			lineData[i] = append(lineData[i], opts.LineData{Value: handleNaN(y[i][j])})
 		}
 	}
 
@@ -111,16 +107,16 @@ func LineForecaster(trainingData *timedataset.TimeDataset, fitRes, forecastRes *
 	lineDataLower := make([]opts.LineData, 0, len(fitRes.T)+len(forecastRes.T))
 
 	for i := 0; i < len(fitRes.T); i++ {
-		lineDataActual = append(lineDataActual, opts.LineData{Value: trainingData.Y[i]})
-		lineDataForecast = append(lineDataForecast, opts.LineData{Value: fitRes.Forecast[i]})
-		lineDataUpper = append(lineDataUpper, opts.LineData{Value: fitRes.Upper[i]})
-		lineDataLower = append(lineDataLower, opts.LineData{Value: fitRes.Lower[i]})
+		lineDataActual = append(lineDataActual, opts.LineData{Value: handleNaN(trainingData.Y[i])})
+		lineDataForecast = append(lineDataForecast, opts.LineData{Value: handleNaN(fitRes.Forecast[i])})
+		lineDataUpper = append(lineDataUpper, opts.LineData{Value: handleNaN(fitRes.Upper[i])})
+		lineDataLower = append(lineDataLower, opts.LineData{Value: handleNaN(fitRes.Lower[i])})
 	}
 
 	for i := 0; i < len(forecastRes.T); i++ {
-		lineDataForecast = append(lineDataForecast, opts.LineData{Value: forecastRes.Forecast[i]})
-		lineDataUpper = append(lineDataUpper, opts.LineData{Value: forecastRes.Upper[i]})
-		lineDataLower = append(lineDataLower, opts.LineData{Value: forecastRes.Lower[i]})
+		lineDataForecast = append(lineDataForecast, opts.LineData{Value: handleNaN(forecastRes.Forecast[i])})
+		lineDataUpper = append(lineDataUpper, opts.LineData{Value: handleNaN(forecastRes.Upper[i])})
+		lineDataLower = append(lineDataLower, opts.LineData{Value: handleNaN(forecastRes.Lower[i])})
 	}
 
 	markLineOpts := []charts.SeriesOpts{
@@ -143,4 +139,12 @@ func LineForecaster(trainingData *timedataset.TimeDataset, fitRes, forecastRes *
 		AddSeries("Forecast", lineDataForecast, markLineOpts...).
 		AddSeries("Lower", lineDataLower)
 	return line
+}
+
+// handleNaN converts nans to a string "-" to satisfy echarts requirement
+func handleNaN(val float64) interface{} {
+	if math.IsNaN(val) {
+		return "-"
+	}
+	return val
 }
