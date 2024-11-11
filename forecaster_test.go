@@ -22,7 +22,7 @@ import (
 
 func generateT(n int, interval time.Duration) []time.Time {
 	t := make([]time.Time, 0, n)
-	ct := time.Unix(time.Now().Unix()/60*60, 0)
+	ct := time.Unix(time.Now().Unix()/60*60, 0).Add(-time.Duration(n) * interval)
 	for i := 0; i < n; i++ {
 		t = append(t, ct.Add(interval*time.Duration(i)))
 	}
@@ -451,6 +451,10 @@ func ExampleForecaster() {
 				WeeklyOrders: 12,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
+				},
+				DSTOptions: forecast.DSTOptions{
+					Enabled:           true,
+					TimezoneLocations: []string{"America/Los_Angeles", "Europe/London"},
 				},
 			},
 			OutlierOptions: NewOutlierOptions(),

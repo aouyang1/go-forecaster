@@ -71,6 +71,10 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 		return nil, ErrUninitializedForecast
 	}
 
+	if f.opt.DSTOptions.Enabled {
+		t = adjustTimeForDST(t, f.opt.DSTOptions.TimezoneLocations)
+	}
+
 	tFeat := generateTimeFeatures(t, f.opt)
 
 	feat, err := generateFourierFeatures(tFeat, f.opt)
