@@ -29,3 +29,4 @@ mem.prof
 
 examples/*.html
 
+.DS_Store
