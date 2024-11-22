@@ -436,7 +436,7 @@ func generateExampleSeries() ([]time.Time, []float64) {
 	return t, y
 }
 
-func ExampleForecaster() {
+func ExampleForecasterWithOutliers() {
 	t, y := generateExampleSeries()
 
 	changepoints := []changepoint.Changepoint{
@@ -456,6 +456,9 @@ func ExampleForecaster() {
 					Enabled:           true,
 					TimezoneLocations: []string{"America/Los_Angeles", "Europe/London"},
 				},
+				WeekendOptions: forecast.WeekendOptions{
+					Enabled: true,
+				},
 			},
 			OutlierOptions: NewOutlierOptions(),
 		},
@@ -465,6 +468,9 @@ func ExampleForecaster() {
 				WeeklyOrders: 12,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: nil,
+				},
+				WeekendOptions: forecast.WeekendOptions{
+					Enabled: true,
 				},
 			},
 			ResidualWindow: 100,
