@@ -24,8 +24,9 @@ go.work.sum
 # env file
 .env
 
-cpu.prof
-mem.prof
+*.prof
+*.pdf
+coverage.txt
 
 examples/*.html
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/feature"
+	"gonum.org/v1/gonum/floats"
 )
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
@@ -18,7 +19,34 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
+
 	tFeat := feature.NewSet()
+
+	if opt.WeekendOptions.Enabled {
+		var locOverride *time.Location
+		if opt.WeekendOptions.TimezoneOverride != "" {
+			var err error
+			locOverride, err = time.LoadLocation(opt.WeekendOptions.TimezoneOverride)
+			if err != nil {
+				slog.Warn("invalid timezone location override for weekend options", "timezone_override", opt.WeekendOptions.TimezoneOverride)
+			}
+		}
+
+		weekend := make([]float64, len(t))
+		var wkday time.Weekday
+		for i, tPnt := range t {
+			if locOverride != nil {
+				tPnt = tPnt.In(locOverride)
+			}
+			wkday = tPnt.Weekday()
+			if wkday == time.Saturday || wkday == time.Sunday {
+				weekend[i] = 1.0
+			}
+		}
+		feat := feature.NewTime("is_weekend")
+		tFeat.Set(feat, weekend)
+	}
+
 	if opt.DailyOrders > 0 {
 		hod := make([]float64, len(t))
 		for i, tPnt := range t {
@@ -55,6 +83,37 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 			return nil, fmt.Errorf("%q not present in time features, %w", "hod", err)
 		}
 		x.Update(dailyFeatures)
+
+		// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
+		// to capture weekly seasonality.
+		if opt.WeekendOptions.Enabled {
+			is_weekend, exists := tFeat.Get(feature.NewTime("is_weekend"))
+			if exists {
+				weekendSeasonalityFeatures := feature.NewSet()
+				for _, label := range dailyFeatures.Labels() {
+					featData, exists := dailyFeatures.Get(label)
+					if !exists {
+						continue
+					}
+					maskedData := make([]float64, len(featData))
+					floats.MulTo(maskedData, is_weekend, featData)
+
+					name, _ := label.Get("name")
+					name = "weekend_" + name
+
+					fcompStr, _ := label.Get("fourier_component")
+					fcomp := feature.FourierComp(fcompStr)
+
+					orderStr, _ := label.Get("order")
+					order, _ := strconv.Atoi(orderStr)
+					weekendSeasFeatCol := feature.NewSeasonality(name, fcomp, order)
+					weekendSeasonalityFeatures.Set(weekendSeasFeatCol, maskedData)
+				}
+				x.Update(weekendSeasonalityFeatures)
+			} else {
+				slog.Warn("enabled modeling weekend seasonality separately, but no weekend time feature found")
+			}
+		}
 	}
 
 	if opt.WeeklyOrders > 0 {

@@ -11,6 +11,7 @@ type Options struct {
 	DailyOrders        int                `json:"daily_orders"`
 	WeeklyOrders       int                `json:"weekly_orders"`
 	DSTOptions         DSTOptions         `json:"dst_options"`
+	WeekendOptions     WeekendOptions     `json:"weekend_options"`
 }
 
 // NewDefaultOptions returns a set of default forecast options
@@ -48,11 +49,17 @@ func NewDefaultChangepointOptions() ChangepointOptions {
 	}
 }
 
-// DSTOptions lets use adjust the time to account for Daylight Saving Time behavior changes
+// DSTOptions lets us adjust the time to account for Daylight Saving Time behavior changes
 // by timezone. In the presence of multiple timezones this will average out the effect evenly
 // across the input timezones. e.g America/Los_Angeles + Europe/London will shift the time by 30min
 // 2024-03-10 (America) to 2024-03-31 (Europe) and then by 60min on or after 2024-03-31.
 type DSTOptions struct {
 	Enabled           bool     `json:"enabled"`
 	TimezoneLocations []string `json:"timezone_locations"`
+}
+
+// WeekendOptions lets us model weekends separately from weekdays.
+type WeekendOptions struct {
+	Enabled          bool   `json:"enabled"`
+	TimezoneOverride string `json:"timezone_override"`
 }
