@@ -46,6 +46,19 @@ func (s series) setConst(t []time.Time, val float64, start, end time.Time) serie
 	return s
 }
 
+func (s series) maskWithWeekend(t []time.Time) series {
+	n := len(s)
+	for i := 0; i < n; i++ {
+		switch t[i].Weekday() {
+		case time.Saturday, time.Sunday:
+			continue
+		default:
+			s[i] = 0.0
+		}
+	}
+	return s
+}
+
 func generateConstY(n int, val float64) series {
 	y := make([]float64, 0, n)
 	for i := 0; i < n; i++ {
@@ -426,6 +439,7 @@ func generateExampleSeries() ([]time.Time, []float64) {
 	y.add(generateConstY(minutes, 98.3)).
 		add(generateWaveY(t, 10.5, period, 1.0, 2*60*60)).
 		add(generateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		add(generateWaveY(t, -7.3, period, 3.0, 2*60*60+period/2.0/2.0/3.0).maskWithWeekend(t)).
 		add(generateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
 		add(generateChange(t, t[minutes/2], 10.0, 0.0)).
 		add(generateChange(t, t[minutes*2/3], 61.4, 0.0)).             // anomaly start
@@ -451,10 +465,6 @@ func ExampleForecasterWithOutliers() {
 				WeeklyOrders: 12,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
-				},
-				DSTOptions: forecast.DSTOptions{
-					Enabled:           true,
-					TimezoneLocations: []string{"America/Los_Angeles", "Europe/London"},
 				},
 				WeekendOptions: forecast.WeekendOptions{
 					Enabled: true,
