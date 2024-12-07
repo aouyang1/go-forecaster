@@ -31,3 +31,4 @@ coverage.txt
 examples/*.html
 
 .DS_Store
+coverage.txt

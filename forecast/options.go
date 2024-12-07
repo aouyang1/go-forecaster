@@ -1,6 +1,9 @@
 package forecast
 
-import "github.com/aouyang1/go-forecaster/changepoint"
+import (
+	"github.com/aouyang1/go-forecaster/changepoint"
+	"github.com/aouyang1/go-forecaster/event"
+)
 
 // Options configures a forecast by specifying changepoints, seasonality order
 // and an optional regularization parameter where higher values removes more features
@@ -12,6 +15,7 @@ type Options struct {
 	WeeklyOrders       int                `json:"weekly_orders"`
 	DSTOptions         DSTOptions         `json:"dst_options"`
 	WeekendOptions     WeekendOptions     `json:"weekend_options"`
+	EventOptions       EventOptions       `json:"event_options"`
 }
 
 // NewDefaultOptions returns a set of default forecast options
@@ -62,4 +66,8 @@ type DSTOptions struct {
 type WeekendOptions struct {
 	Enabled          bool   `json:"enabled"`
 	TimezoneOverride string `json:"timezone_override"`
+}
+
+type EventOptions struct {
+	Events []event.Event `json:"events"`
 }
