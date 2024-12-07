@@ -28,7 +28,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 			var err error
 			locOverride, err = time.LoadLocation(opt.WeekendOptions.TimezoneOverride)
 			if err != nil {
-				slog.Warn("invalid timezone location override for weekend options", "timezone_override", opt.WeekendOptions.TimezoneOverride)
+				slog.Warn("invalid timezone location override for weekend options using dataset timezone", "timezone_override", opt.WeekendOptions.TimezoneOverride)
 			}
 		}
 
@@ -45,6 +45,27 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 		}
 		feat := feature.NewTime("is_weekend")
 		tFeat.Set(feat, weekend)
+	}
+
+	for _, e := range opt.EventOptions.Events {
+		if err := e.Valid(); err != nil {
+			slog.Warn("not separately modelling invalid event", "name", e.Name, "error", err.Error())
+			continue
+		}
+
+		feat := feature.NewTime(fmt.Sprintf("event_%s", e.Name))
+		if _, exists := tFeat.Get(feat); exists {
+			slog.Warn("event feature already exists", "event_name", e.Name)
+			continue
+		}
+
+		eventMask := make([]float64, len(t))
+		for i, tPnt := range t {
+			if (tPnt.After(e.Start) || tPnt.Equal(e.Start)) && (tPnt.Before(e.End) || tPnt.Equal(e.End)) {
+				eventMask[i] = 1.0
+			}
+		}
+		tFeat.Set(feat, eventMask)
 	}
 
 	if opt.DailyOrders > 0 {
@@ -87,32 +108,28 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 		// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
 		// to capture weekly seasonality.
 		if opt.WeekendOptions.Enabled {
-			is_weekend, exists := tFeat.Get(feature.NewTime("is_weekend"))
-			if exists {
-				weekendSeasonalityFeatures := feature.NewSet()
-				for _, label := range dailyFeatures.Labels() {
-					featData, exists := dailyFeatures.Get(label)
-					if !exists {
-						continue
-					}
-					maskedData := make([]float64, len(featData))
-					floats.MulTo(maskedData, is_weekend, featData)
+			tFeatName := "is_weekend"
+			sFeatNamePrefix := "weekend_"
 
-					name, _ := label.Get("name")
-					name = "weekend_" + name
-
-					fcompStr, _ := label.Get("fourier_component")
-					fcomp := feature.FourierComp(fcompStr)
-
-					orderStr, _ := label.Get("order")
-					order, _ := strconv.Atoi(orderStr)
-					weekendSeasFeatCol := feature.NewSeasonality(name, fcomp, order)
-					weekendSeasonalityFeatures.Set(weekendSeasFeatCol, maskedData)
-				}
-				x.Update(weekendSeasonalityFeatures)
+			eventSeasFeat, err := generateEventSeasonality(tFeat, dailyFeatures, tFeatName, sFeatNamePrefix)
+			if err != nil {
+				slog.Warn("unable to generate weekend daily seasonality", "time_feature_name", tFeatName)
 			} else {
-				slog.Warn("enabled modeling weekend seasonality separately, but no weekend time feature found")
+				x.Update(eventSeasFeat)
 			}
+		}
+
+		for _, e := range opt.EventOptions.Events {
+			tFeatName := fmt.Sprintf("event_%s", e.Name)
+			sFeatNamePrefix := fmt.Sprintf("event_%s_" + e.Name)
+
+			eventSeasFeat, err := generateEventSeasonality(tFeat, dailyFeatures, tFeatName, sFeatNamePrefix)
+			if err != nil {
+				slog.Warn("unable to generate event daily seasonality", "time_feature_name", tFeatName)
+				continue
+			}
+
+			x.Update(eventSeasFeat)
 		}
 	}
 
@@ -130,6 +147,19 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 			return nil, fmt.Errorf("%q not present in time features, %w", "dow", err)
 		}
 		x.Update(weeklyFeatures)
+
+		for _, e := range opt.EventOptions.Events {
+			tFeatName := fmt.Sprintf("event_%s", e.Name)
+			sFeatNamePrefix := fmt.Sprintf("event_%s_" + e.Name)
+
+			eventSeasFeat, err := generateEventSeasonality(tFeat, weeklyFeatures, tFeatName, sFeatNamePrefix)
+			if err != nil {
+				slog.Warn("unable to generate event weekly seasonality", "time_feature_name", tFeatName)
+				continue
+			}
+
+			x.Update(eventSeasFeat)
+		}
 	}
 	return x, nil
 }
@@ -165,6 +195,35 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 		cosFeat[i] = math.Cos(rad)
 	}
 	return sinFeat, cosFeat
+}
+
+func generateEventSeasonality(tFeat *feature.Set, sFeat *feature.Set, tFeatName string, sFeatNamePrefix string) (*feature.Set, error) {
+	mask, exists := tFeat.Get(feature.NewTime(tFeatName))
+	if !exists {
+		return nil, fmt.Errorf("event mask not found, skipping event name, %s", tFeatName)
+	}
+
+	eventSeasonalityFeatures := feature.NewSet()
+	for _, label := range sFeat.Labels() {
+		featData, exists := sFeat.Get(label)
+		if !exists {
+			continue
+		}
+		maskedData := make([]float64, len(featData))
+		floats.MulTo(maskedData, mask, featData)
+
+		name, _ := label.Get("name")
+		name = sFeatNamePrefix + name
+
+		fcompStr, _ := label.Get("fourier_component")
+		fcomp := feature.FourierComp(fcompStr)
+
+		orderStr, _ := label.Get("order")
+		order, _ := strconv.Atoi(orderStr)
+		featCol := feature.NewSeasonality(name, fcomp, order)
+		eventSeasonalityFeatures.Set(featCol, maskedData)
+	}
+	return eventSeasonalityFeatures, nil
 }
 
 func generateAutoChangepoints(t []time.Time, n int) []changepoint.Changepoint {

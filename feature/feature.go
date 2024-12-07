@@ -14,7 +14,7 @@ type Feature interface {
 	// String returns the string representation of the feature
 	String() string
 
-	// Get returns the value of an arbitrary label annd returns the value along with whether
+	// Get returns the value of an arbitrary label and returns the value along with whether
 	// the label exists
 	Get(string) (string, bool)
 
