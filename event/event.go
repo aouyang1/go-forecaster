@@ -55,7 +55,7 @@ func Thanksgiving(start, end time.Time, durBefore, durAfter time.Duration) []Eve
 func Holiday(hol *cal.Holiday, start, end time.Time, durBefore, durAfter time.Duration) []Event {
 	startLoc := start.Location()
 
-	var events []Event
+	events := []Event{}
 	for i := start.Year(); i <= end.Year(); i++ {
 		_, observed := hol.Calc(i)
 		_, offset := observed.Zone()
