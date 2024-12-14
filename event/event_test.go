@@ -18,6 +18,14 @@ func TestHoliday(t *testing.T) {
 		durAfter  time.Duration
 		expected  []Event
 	}{
+		"no coverage": {
+			hol:       us.ChristmasDay,
+			start:     time.Date(2024, 12, 8, 1, 0, 0, 0, time.UTC),
+			end:       time.Date(2024, 12, 12, 1, 0, 0, 0, time.UTC),
+			durBefore: 0,
+			durAfter:  0,
+			expected:  []Event{},
+		},
 		"simple": {
 			hol:       us.ChristmasDay,
 			start:     time.Date(2024, 12, 8, 1, 0, 0, 0, time.UTC),
@@ -56,7 +64,6 @@ func TestHoliday(t *testing.T) {
 				},
 			},
 		},
-
 		"with buffer": {
 			hol:       us.ChristmasDay,
 			start:     time.Date(2024, 12, 8, 1, 0, 0, 0, time.UTC),
