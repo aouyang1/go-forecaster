@@ -10,6 +10,12 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
+const (
+	DefaultLambda     = 1.0
+	DefaultIterations = 1000
+	DefaultTolerance  = 1e-4
+)
+
 var (
 	ErrNegativeLambda     = errors.New("negative lambda")
 	ErrNegativeIterations = errors.New("negative iterations")
@@ -58,9 +64,9 @@ func (l *LassoOptions) Validate() (*LassoOptions, error) {
 // NewDefaultLassoOptions returns a default set of Lasso Regression options
 func NewDefaultLassoOptions() *LassoOptions {
 	return &LassoOptions{
-		Lambda:        1.0,
-		Iterations:    1000,
-		Tolerance:     1e-4,
+		Lambda:        DefaultLambda,
+		Iterations:    DefaultIterations,
+		Tolerance:     DefaultIterations,
 		WarmStartBeta: nil,
 		FitIntercept:  true,
 	}

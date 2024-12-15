@@ -165,6 +165,15 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	lassoOpt := models.NewDefaultLassoOptions()
 	lassoOpt.Lambda = f.opt.Regularization
 	lassoOpt.FitIntercept = false
+	lassoOpt.Iterations = f.opt.Iterations
+	if f.opt.Iterations == 0 {
+		lassoOpt.Iterations = models.DefaultIterations
+	}
+	lassoOpt.Tolerance = f.opt.Tolerance
+	if f.opt.Tolerance == 0 {
+		lassoOpt.Tolerance = models.DefaultTolerance
+	}
+
 	model, err := models.NewLassoRegression(lassoOpt)
 	if err != nil {
 		return err
