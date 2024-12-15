@@ -10,12 +10,17 @@ import (
 // that contribute the least to the fit.
 type Options struct {
 	ChangepointOptions ChangepointOptions `json:"changepoint_options"`
-	Regularization     float64            `json:"regularization"`
-	DailyOrders        int                `json:"daily_orders"`
-	WeeklyOrders       int                `json:"weekly_orders"`
-	DSTOptions         DSTOptions         `json:"dst_options"`
-	WeekendOptions     WeekendOptions     `json:"weekend_options"`
-	EventOptions       EventOptions       `json:"event_options"`
+
+	// Lasso related options
+	Regularization float64 `json:"regularization"`
+	Iterations     int     `json:"iterations"`
+	Tolerance      float64 `json:"tolerance"`
+
+	DailyOrders    int            `json:"daily_orders"`
+	WeeklyOrders   int            `json:"weekly_orders"`
+	DSTOptions     DSTOptions     `json:"dst_options"`
+	WeekendOptions WeekendOptions `json:"weekend_options"`
+	EventOptions   EventOptions   `json:"event_options"`
 }
 
 // NewDefaultOptions returns a set of default forecast options

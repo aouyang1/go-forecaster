@@ -478,6 +478,8 @@ func ExampleForecasterWithOutliers() {
 			ForecastOptions: &forecast.Options{
 				DailyOrders:  12,
 				WeeklyOrders: 12,
+				Iterations:   500,
+				Tolerance:    1e-3,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
 				},
@@ -494,6 +496,8 @@ func ExampleForecasterWithOutliers() {
 			ForecastOptions: &forecast.Options{
 				DailyOrders:  12,
 				WeeklyOrders: 12,
+				Iterations:   250,
+				Tolerance:    1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: nil,
 				},
@@ -569,6 +573,8 @@ func ExampleForecasterAutoChangepoint() {
 				Regularization: 200.0,
 				DailyOrders:    12,
 				WeeklyOrders:   12,
+				Iterations:     500,
+				Tolerance:      1e-3,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:                true,
 					AutoNumChangepoints: 100,
@@ -581,6 +587,8 @@ func ExampleForecasterAutoChangepoint() {
 			ForecastOptions: &forecast.Options{
 				DailyOrders:  12,
 				WeeklyOrders: 12,
+				Iterations:   250,
+				Tolerance:    1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:         false,
 					Changepoints: []changepoint.Changepoint{},
@@ -640,6 +648,8 @@ func ExampleForecasterWithTrend() {
 			ForecastOptions: &forecast.Options{
 				DailyOrders:  12,
 				WeeklyOrders: 12,
+				Iterations:   500,
+				Tolerance:    1e-3,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
 					EnableGrowth: true,
@@ -651,6 +661,8 @@ func ExampleForecasterWithTrend() {
 			ForecastOptions: &forecast.Options{
 				DailyOrders:  12,
 				WeeklyOrders: 12,
+				Iterations:   250,
+				Tolerance:    1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: nil,
 				},
