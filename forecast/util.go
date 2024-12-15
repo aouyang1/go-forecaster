@@ -121,7 +121,7 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 
 		for _, e := range opt.EventOptions.Events {
 			tFeatName := fmt.Sprintf("event_%s", e.Name)
-			sFeatNamePrefix := fmt.Sprintf("event_%s_" + e.Name)
+			sFeatNamePrefix := fmt.Sprintf("event_%s_", e.Name)
 
 			eventSeasFeat, err := generateEventSeasonality(tFeat, dailyFeatures, tFeatName, sFeatNamePrefix)
 			if err != nil {
@@ -150,7 +150,7 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 
 		for _, e := range opt.EventOptions.Events {
 			tFeatName := fmt.Sprintf("event_%s", e.Name)
-			sFeatNamePrefix := fmt.Sprintf("event_%s_" + e.Name)
+			sFeatNamePrefix := fmt.Sprintf("event_%s_", e.Name)
 
 			eventSeasFeat, err := generateEventSeasonality(tFeat, weeklyFeatures, tFeatName, sFeatNamePrefix)
 			if err != nil {

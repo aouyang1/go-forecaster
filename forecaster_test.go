@@ -12,6 +12,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 
 	"github.com/aouyang1/go-forecaster/changepoint"
+	"github.com/aouyang1/go-forecaster/event"
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast"
 	"github.com/aouyang1/go-forecaster/timedataset"
@@ -53,6 +54,16 @@ func (s series) maskWithWeekend(t []time.Time) series {
 		case time.Saturday, time.Sunday:
 			continue
 		default:
+			s[i] = 0.0
+		}
+	}
+	return s
+}
+
+func (s series) maskWithTimeRange(start, end time.Time, t []time.Time) series {
+	n := len(s)
+	for i := 0; i < n; i++ {
+		if t[i].Before(start) || t[i].After(end) {
 			s[i] = 0.0
 		}
 	}
@@ -439,6 +450,7 @@ func generateExampleSeries() ([]time.Time, []float64) {
 	y.add(generateConstY(minutes, 98.3)).
 		add(generateWaveY(t, 10.5, period, 1.0, 2*60*60)).
 		add(generateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		add(generateWaveY(t, 23.4, period, 7.0, 6.0*60*60+period/2.0/2.0/3.0).maskWithTimeRange(t[minutes*4/16], t[minutes*5/16], t)).
 		add(generateWaveY(t, -7.3, period, 3.0, 2*60*60+period/2.0/2.0/3.0).maskWithWeekend(t)).
 		add(generateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
 		add(generateChange(t, t[minutes/2], 10.0, 0.0)).
@@ -457,6 +469,9 @@ func ExampleForecasterWithOutliers() {
 		changepoint.New("anomaly1", t[len(t)/2]),
 		changepoint.New("anomaly2", t[len(t)*17/20]),
 	}
+	events := []event.Event{
+		event.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
+	}
 
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
@@ -468,6 +483,9 @@ func ExampleForecasterWithOutliers() {
 				},
 				WeekendOptions: forecast.WeekendOptions{
 					Enabled: true,
+				},
+				EventOptions: forecast.EventOptions{
+					Events: events,
 				},
 			},
 			OutlierOptions: NewOutlierOptions(),
@@ -481,6 +499,9 @@ func ExampleForecasterWithOutliers() {
 				},
 				WeekendOptions: forecast.WeekendOptions{
 					Enabled: true,
+				},
+				EventOptions: forecast.EventOptions{
+					Events: events,
 				},
 			},
 			ResidualWindow: 100,
