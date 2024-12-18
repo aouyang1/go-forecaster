@@ -20,6 +20,8 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 		opt = NewDefaultOptions()
 	}
 
+	winFunc := WindowFunc(opt.MaskWindow)
+
 	tFeat := feature.NewSet()
 
 	if opt.WeekendOptions.Enabled {
@@ -32,19 +34,16 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 			}
 		}
 
-		weekend := make([]float64, len(t))
-		var wkday time.Weekday
-		for i, tPnt := range t {
+		weekendMask := generateTimeMaskWithFunc(t, func(tPnt time.Time) bool {
 			if locOverride != nil {
 				tPnt = tPnt.In(locOverride)
 			}
-			wkday = tPnt.Weekday()
-			if wkday == time.Saturday || wkday == time.Sunday {
-				weekend[i] = 1.0
-			}
-		}
+
+			wkday := tPnt.Weekday()
+			return wkday == time.Saturday || wkday == time.Sunday
+		}, winFunc)
 		feat := feature.NewTime("is_weekend")
-		tFeat.Set(feat, weekend)
+		tFeat.Set(feat, weekendMask)
 	}
 
 	for _, e := range opt.EventOptions.Events {
@@ -59,12 +58,9 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 			continue
 		}
 
-		eventMask := make([]float64, len(t))
-		for i, tPnt := range t {
-			if (tPnt.After(e.Start) || tPnt.Equal(e.Start)) && (tPnt.Before(e.End) || tPnt.Equal(e.End)) {
-				eventMask[i] = 1.0
-			}
-		}
+		eventMask := generateTimeMaskWithFunc(t, func(tPnt time.Time) bool {
+			return (tPnt.After(e.Start) || tPnt.Equal(e.Start)) && (tPnt.Before(e.End) || tPnt.Equal(e.End))
+		}, winFunc)
 		tFeat.Set(feat, eventMask)
 	}
 
@@ -87,6 +83,37 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 		tFeat.Set(feat, dow)
 	}
 	return tFeat
+}
+
+func generateTimeMaskWithFunc(t []time.Time, maskCond func(tPnt time.Time) bool, windowFunc func(seq []float64) []float64) []float64 {
+	mask := make([]float64, len(t))
+	var maskSpans [][2]int
+	var inMask bool
+	var maskSpan [2]int
+	for i, tPnt := range t {
+		if maskCond(tPnt) {
+			if !inMask {
+				inMask = true
+				maskSpan[0] = i
+			}
+			mask[i] = 1.0
+			continue
+		}
+		if inMask {
+			inMask = false
+			maskSpan[1] = i
+			maskSpans = append(maskSpans, maskSpan)
+		}
+	}
+	if inMask {
+		maskSpan[1] = len(t)
+		maskSpans = append(maskSpans, maskSpan)
+	}
+
+	for _, maskSpan := range maskSpans {
+		windowFunc(mask[maskSpan[0]:maskSpan[1]])
+	}
+	return mask
 }
 
 func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, error) {
