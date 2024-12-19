@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/feature"
+	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -98,6 +100,31 @@ func TestAdjustTime(t *testing.T) {
 			offsets := loadLocationOffsets(td.zoneLoc)
 			res := adjustTime(td.input, offsets)
 			assert.Equal(t, td.expected, res)
+		})
+	}
+}
+
+func TestGenerateTimeFeatures(t *testing.T) {
+	nowFunc := func() time.Time {
+		return time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+
+	testData := map[string]struct {
+		t        []time.Time
+		opt      *Options
+		expected *feature.Set
+	}{
+		"empty options": {
+			t:        timedataset.GenerateT(24*7, time.Hour, nowFunc),
+			opt:      &Options{},
+			expected: feature.NewSet(),
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			features := generateTimeFeatures(td.t, td.opt)
+			assert.Equal(t, td.expected, features)
 		})
 	}
 }
