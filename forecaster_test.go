@@ -3,7 +3,6 @@ package forecaster
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"runtime/debug"
 	"testing"
@@ -18,97 +17,7 @@ import (
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gonum.org/v1/gonum/floats"
 )
-
-func generateT(n int, interval time.Duration) []time.Time {
-	t := make([]time.Time, 0, n)
-	ct := time.Unix(time.Now().Unix()/60*60, 0).Add(-time.Duration(n) * interval)
-	for i := 0; i < n; i++ {
-		t = append(t, ct.Add(interval*time.Duration(i)))
-	}
-	return t
-}
-
-type series []float64
-
-func (s series) add(src series) series {
-	floats.Add(s, src)
-	return s
-}
-
-func (s series) setConst(t []time.Time, val float64, start, end time.Time) series {
-	n := len(s)
-	for i := 0; i < n; i++ {
-		if (t[i].After(start) || t[i].Equal(start)) && t[i].Before(end) {
-			s[i] = val
-		}
-	}
-	return s
-}
-
-func (s series) maskWithWeekend(t []time.Time) series {
-	n := len(s)
-	for i := 0; i < n; i++ {
-		switch t[i].Weekday() {
-		case time.Saturday, time.Sunday:
-			continue
-		default:
-			s[i] = 0.0
-		}
-	}
-	return s
-}
-
-func (s series) maskWithTimeRange(start, end time.Time, t []time.Time) series {
-	n := len(s)
-	for i := 0; i < n; i++ {
-		if t[i].Before(start) || t[i].After(end) {
-			s[i] = 0.0
-		}
-	}
-	return s
-}
-
-func generateConstY(n int, val float64) series {
-	y := make([]float64, 0, n)
-	for i := 0; i < n; i++ {
-		y = append(y, val)
-	}
-	return series(y)
-}
-
-func generateWaveY(t []time.Time, amp, periodSec, order, timeOffset float64) series {
-	n := len(t)
-	y := make([]float64, 0, n)
-	for i := 0; i < n; i++ {
-		val := amp * math.Sin(2.0*math.Pi*order/periodSec*(float64(t[i].Unix())+timeOffset))
-		y = append(y, val)
-	}
-	return series(y)
-}
-
-func generateNoise(t []time.Time, noiseScale, amp, periodSec, order, timeOffset float64) series {
-	n := len(t)
-	y := make([]float64, 0, n)
-	for i := 0; i < n; i++ {
-		scale := (noiseScale + amp*math.Sin(2.0*math.Pi*order/periodSec*(float64(t[i].Unix())+timeOffset)))
-		y = append(y, rand.NormFloat64()*scale)
-	}
-	return series(y)
-}
-
-func generateChange(t []time.Time, chpt time.Time, bias, slope float64) series {
-	n := len(t)
-	y := make([]float64, n)
-	for i := 0; i < n; i++ {
-		if t[i].After(chpt) || t[i].Equal(chpt) {
-			jump := bias + slope*t[i].Sub(chpt).Minutes()
-			y[i] = jump
-		}
-	}
-	return series(y)
-}
 
 func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) {
 	assert.InDelta(t, expected.R2, actual.R2, 0.05, msg+" scores:r2")
@@ -156,13 +65,13 @@ func TestForecaster(t *testing.T) {
 			expectedErr: timedataset.ErrNoTrainingData,
 		},
 		"all nan": {
-			t:           generateT(10, time.Minute),
-			y:           generateConstY(10, math.NaN()),
+			t:           timedataset.GenerateT(10, time.Minute, time.Now),
+			y:           timedataset.GenerateConstY(10, math.NaN()),
 			expectedErr: forecast.ErrInsufficientTrainingData,
 		},
 		"all constant": {
-			t:   generateT(10, time.Minute),
-			y:   generateConstY(10, 3.0),
+			t:   timedataset.GenerateT(10, time.Minute, time.Now),
+			y:   timedataset.GenerateConstY(10, 3.0),
 			tol: 1e-5,
 			expectedModel: Model{
 				Series: forecast.Model{
@@ -190,9 +99,9 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily wave with bias": {
-			t: generateT(4*24*60, time.Minute),
-			y: generateConstY(4*24*60, 3.0).
-				add(generateWaveY(generateT(4*24*60, time.Minute), 7.2, 86400.0, 1.0, 0.0)),
+			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			y: timedataset.GenerateConstY(4*24*60, 3.0).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(4*24*60, time.Minute, time.Now), 7.2, 86400.0, 1.0, 0.0)),
 			tol: 1e-5,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
@@ -242,10 +151,10 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily and weekly wave with bias": {
-			t: generateT(14*24*60, time.Minute),
-			y: generateConstY(14*24*60, 3.0).
-				add(generateWaveY(generateT(14*24*60, time.Minute), 7.2, 24*60*60, 1.0, 0.0)).
-				add(generateWaveY(generateT(14*24*60, time.Minute), 4.6, 7*24*60*60, 1.0, 0.0)),
+			t: timedataset.GenerateT(14*24*60, time.Minute, time.Now),
+			y: timedataset.GenerateConstY(14*24*60, 3.0).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 7.2, 24*60*60, 1.0, 0.0)).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 4.6, 7*24*60*60, 1.0, 0.0)),
 			tol: 1e-5,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
@@ -305,12 +214,12 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily and weekly wave with bias with noise": {
-			t: generateT(14*24*60, time.Minute),
-			y: generateConstY(14*24*60, 98.3).
-				add(generateWaveY(generateT(14*24*60, time.Minute), 10.5, 24*60*60, 1.0, 0.0)).
-				add(generateWaveY(generateT(14*24*60, time.Minute), 7.6, 24*60*60, 3.0, 0.0)).
-				add(generateWaveY(generateT(14*24*60, time.Minute), 4.6, 7*24*60*60, 1.0, 0.0)).
-				add(generateNoise(generateT(14*24*60, time.Minute), 3.2, 3.2, 24*60*60, 5.0, 0.0)),
+			t: timedataset.GenerateT(14*24*60, time.Minute, time.Now),
+			y: timedataset.GenerateConstY(14*24*60, 98.3).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 10.5, 24*60*60, 1.0, 0.0)).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 7.6, 24*60*60, 3.0, 0.0)).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 4.6, 7*24*60*60, 1.0, 0.0)).
+				Add(timedataset.GenerateNoise(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 3.2, 3.2, 24*60*60, 5.0, 0.0)),
 			tol: 1.0,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
@@ -443,21 +352,21 @@ func TestForecaster(t *testing.T) {
 func generateExampleSeries() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 28 * 24 * 60
-	t := generateT(minutes, time.Minute)
-	y := make(series, minutes)
+	t := timedataset.GenerateT(minutes, time.Minute, time.Now)
+	y := make(timedataset.Series, minutes)
 
 	period := 86400.0
-	y.add(generateConstY(minutes, 98.3)).
-		add(generateWaveY(t, 10.5, period, 1.0, 2*60*60)).
-		add(generateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
-		add(generateWaveY(t, 23.4, period, 7.0, 6.0*60*60+period/2.0/2.0/3.0).maskWithTimeRange(t[minutes*4/16], t[minutes*5/16], t)).
-		add(generateWaveY(t, -7.3, period, 3.0, 2*60*60+period/2.0/2.0/3.0).maskWithWeekend(t)).
-		add(generateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
-		add(generateChange(t, t[minutes/2], 10.0, 0.0)).
-		add(generateChange(t, t[minutes*2/3], 61.4, 0.0)).             // anomaly start
-		add(generateChange(t, t[minutes*2/3+minutes/40], -61.4, 0.0)). // anomaly end
-		add(generateChange(t, t[minutes*17/20], -70.0, 0.0)).
-		setConst(t, 2.7, t[minutes/3], t[minutes/3+minutes/20])
+	y.Add(timedataset.GenerateConstY(minutes, 98.3)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 1.0, 2*60*60)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		Add(timedataset.GenerateWaveY(t, 23.4, period, 7.0, 6.0*60*60+period/2.0/2.0/3.0).MaskWithTimeRange(t[minutes*4/16], t[minutes*5/16], t)).
+		Add(timedataset.GenerateWaveY(t, -7.3, period, 3.0, 2*60*60+period/2.0/2.0/3.0).MaskWithWeekend(t)).
+		Add(timedataset.GenerateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
+		Add(timedataset.GenerateChange(t, t[minutes/2], 10.0, 0.0)).
+		Add(timedataset.GenerateChange(t, t[minutes*2/3], 61.4, 0.0)).             // anomaly start
+		Add(timedataset.GenerateChange(t, t[minutes*2/3+minutes/40], -61.4, 0.0)). // anomaly end
+		Add(timedataset.GenerateChange(t, t[minutes*17/20], -70.0, 0.0)).
+		SetConst(t, 2.7, t[minutes/3], t[minutes/3+minutes/20])
 
 	return t, y
 }
@@ -550,16 +459,16 @@ func ExampleForecasterWithOutliers() {
 func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 4 * 24 * 60
-	t := generateT(minutes, time.Minute)
-	y := make(series, minutes)
+	t := timedataset.GenerateT(minutes, time.Minute, time.Now)
+	y := make(timedataset.Series, minutes)
 
 	period := 86400.0
-	y.add(generateConstY(minutes, 98.3)).
-		add(generateWaveY(t, 10.5, period, 1.0, 2*60*60)).
-		add(generateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
-		add(generateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
-		add(generateChange(t, t[minutes/2], 0.0, 40.0/(t[minutes*17/20].Sub(t[minutes/2]).Minutes()))).
-		add(generateChange(t, t[minutes*17/20], -40.0, -40.0/(t[minutes*17/20].Sub(t[minutes/2]).Minutes())))
+	y.Add(timedataset.GenerateConstY(minutes, 98.3)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 1.0, 2*60*60)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		Add(timedataset.GenerateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
+		Add(timedataset.GenerateChange(t, t[minutes/2], 0.0, 40.0/(t[minutes*17/20].Sub(t[minutes/2]).Minutes()))).
+		Add(timedataset.GenerateChange(t, t[minutes*17/20], -40.0, -40.0/(t[minutes*17/20].Sub(t[minutes/2]).Minutes())))
 
 	return t, y
 }
