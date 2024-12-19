@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/changepoint"
@@ -52,12 +53,20 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 				tPnt = tPnt.In(locOverride)
 			}
 
-			wkday := tPnt.Weekday()
+			if opt.WeekendOptions.DurBefore == 0 && opt.WeekendOptions.DurAfter == 0 {
+				wkday := tPnt.Weekday()
+				return wkday == time.Saturday || wkday == time.Sunday
+			}
+
 			wkdayBefore := tPnt.Add(opt.WeekendOptions.DurBefore).Weekday()
 			wkdayAfter := tPnt.Add(-opt.WeekendOptions.DurAfter).Weekday()
-			return wkday == time.Saturday || wkday == time.Sunday ||
-				wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
-				wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
+			if opt.WeekendOptions.DurBefore > 0 && opt.WeekendOptions.DurAfter > 0 {
+				return wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
+					wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
+			}
+
+			return (wkdayBefore == time.Saturday || wkdayBefore == time.Sunday) &&
+				(wkdayAfter == time.Saturday || wkdayAfter == time.Sunday)
 		}, winFunc)
 		feat := feature.NewTime("is_weekend")
 		tFeat.Set(feat, weekendMask)
@@ -69,7 +78,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 			continue
 		}
 
-		feat := feature.NewTime(fmt.Sprintf("event_%s", e.Name))
+		feat := feature.NewTime(fmt.Sprintf("event_%s", strings.ReplaceAll(e.Name, " ", "_")))
 		if _, exists := tFeat.Get(feat); exists {
 			slog.Warn("event feature already exists", "event_name", e.Name)
 			continue
