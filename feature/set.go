@@ -30,12 +30,13 @@ func (s *Set) Get(f Feature) ([]float64, bool) {
 	return data, exists
 }
 
-func (s *Set) Set(f Feature, data []float64) {
+func (s *Set) Set(f Feature, data []float64) *Set {
 	label := f.String()
 	if _, exists := s.set[label]; !exists {
 		s.labels = append(s.labels, f)
 	}
 	s.set[label] = data
+	return s
 }
 
 func (s *Set) Del(f Feature) {

@@ -69,7 +69,7 @@ func (td *TimeDataset) Copy() *TimeDataset {
 
 func GenerateT(n int, interval time.Duration, nowFunc func() time.Time) []time.Time {
 	t := make([]time.Time, 0, n)
-	ct := time.Unix(nowFunc().Unix()/60*60, 0).Add(-time.Duration(n) * interval)
+	ct := time.Unix(nowFunc().Unix()/60*60, 0).Add(-time.Duration(n) * interval).UTC()
 	for i := 0; i < n; i++ {
 		t = append(t, ct.Add(interval*time.Duration(i)))
 	}
