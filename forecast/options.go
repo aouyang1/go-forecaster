@@ -1,6 +1,8 @@
 package forecast
 
 import (
+	"time"
+
 	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/event"
 	"gonum.org/v1/gonum/dsp/window"
@@ -119,8 +121,10 @@ type DSTOptions struct {
 
 // WeekendOptions lets us model weekends separately from weekdays.
 type WeekendOptions struct {
-	Enabled          bool   `json:"enabled"`
-	TimezoneOverride string `json:"timezone_override"`
+	Enabled          bool          `json:"enabled"`
+	TimezoneOverride string        `json:"timezone_override"`
+	DurBefore        time.Duration `json:"duration_before"`
+	DurAfter         time.Duration `json:"duration_after"`
 }
 
 type EventOptions struct {

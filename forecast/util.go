@@ -15,6 +15,8 @@ import (
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
 
+const MaxWeekendDurBuffer = 24 * time.Hour
+
 func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 	if opt == nil {
 		opt = NewDefaultOptions()
@@ -34,13 +36,28 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 			}
 		}
 
+		if opt.WeekendOptions.DurBefore > MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurBefore = MaxWeekendDurBuffer
+		} else if opt.WeekendOptions.DurBefore < -MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurBefore = -MaxWeekendDurBuffer
+		}
+		if opt.WeekendOptions.DurAfter > MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurAfter = MaxWeekendDurBuffer
+		} else if opt.WeekendOptions.DurAfter < -MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurAfter = -MaxWeekendDurBuffer
+		}
+
 		weekendMask := generateTimeMaskWithFunc(t, func(tPnt time.Time) bool {
 			if locOverride != nil {
 				tPnt = tPnt.In(locOverride)
 			}
 
 			wkday := tPnt.Weekday()
-			return wkday == time.Saturday || wkday == time.Sunday
+			wkdayBefore := tPnt.Add(opt.WeekendOptions.DurBefore).Weekday()
+			wkdayAfter := tPnt.Add(-opt.WeekendOptions.DurAfter).Weekday()
+			return wkday == time.Saturday || wkday == time.Sunday ||
+				wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
+				wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
 		}, winFunc)
 		feat := feature.NewTime("is_weekend")
 		tFeat.Set(feat, weekendMask)
