@@ -354,10 +354,10 @@ func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint,
 	}
 
 	feat := feature.NewSet()
-	for i := 0; i < len(chpts); i++ {
+	for i := 0; i < len(filteredChpts); i++ {
 		chpntName := strconv.Itoa(i)
-		if chpts[i].Name != "" {
-			chpntName = chpts[i].Name
+		if filteredChpts[i].Name != "" {
+			chpntName = filteredChpts[i].Name
 		}
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
 		feat.Set(chpntBias, chptBiasFeatures[i])

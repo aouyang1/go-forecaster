@@ -101,6 +101,8 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	chptFeat := generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints, f.trainEndTime, f.opt.ChangepointOptions.EnableGrowth)
 	feat.Update(chptFeat)
 
+	feat.RemoveZeroOnlyFeatures()
+
 	// evict any features that are not in the model if already trained since this is used for prediction
 	if f.trained {
 		relevantFeatures := make(map[string]struct{})
@@ -217,6 +219,8 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	return nil
 }
 
+// pruneDegenerateFeatures removes any feature weights that are exactly equal to 0. This can happen if the LASSO
+// regression regularization is strong enough to bring some of the feature weights to exactly 0.
 func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []float64) ([]FeatureWeight, []changepoint.Changepoint, error) {
 	fws := make([]FeatureWeight, 0, len(coef))
 	for i, c := range coef {
