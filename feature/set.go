@@ -3,6 +3,7 @@ package feature
 import (
 	"sort"
 
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -133,4 +134,14 @@ func (s *Set) Matrix(intercept bool) *mat.Dense {
 		featNum += 1
 	}
 	return mat.NewDense(m, n, obs)
+}
+
+func (s *Set) RemoveZeroOnlyFeatures() {
+	for _, feat := range s.Labels() {
+		vals, _ := s.Get(feat)
+		dot := floats.Dot(vals, vals)
+		if dot == 0 {
+			s.Del(feat)
+		}
+	}
 }
