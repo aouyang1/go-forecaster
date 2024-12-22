@@ -92,3 +92,51 @@ func TestHoliday(t *testing.T) {
 		})
 	}
 }
+
+func TestValid(t *testing.T) {
+	testData := map[string]struct {
+		name  string
+		start time.Time
+		end   time.Time
+		err   error
+	}{
+		"unset start time": {
+			end:  time.Now(),
+			name: "blargh",
+			err:  ErrUnsetTime,
+		},
+		"unset end time": {
+			start: time.Now(),
+			name:  "blargh",
+			err:   ErrUnsetTime,
+		},
+		"start after end": {
+			start: time.Now().Add(time.Hour),
+			end:   time.Now(),
+			name:  "blargh",
+			err:   ErrStartAfterEnd,
+		},
+		"no name": {
+			start: time.Now().Add(-time.Hour),
+			end:   time.Now(),
+			err:   ErrNoEventName,
+		},
+		"valid": {
+			start: time.Now().Add(-time.Hour),
+			end:   time.Now(),
+			name:  "blargh",
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			e := NewEvent(td.name, td.start, td.end)
+			err := e.Valid()
+			if td.err != nil {
+				assert.EqualError(t, err, td.err.Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
