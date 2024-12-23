@@ -23,72 +23,8 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 		opt = NewDefaultOptions()
 	}
 
-	winFunc := WindowFunc(opt.MaskWindow)
-
 	tFeat := feature.NewSet()
-
-	if opt.WeekendOptions.Enabled {
-		var locOverride *time.Location
-		if opt.WeekendOptions.TimezoneOverride != "" {
-			var err error
-			locOverride, err = time.LoadLocation(opt.WeekendOptions.TimezoneOverride)
-			if err != nil {
-				slog.Warn("invalid timezone location override for weekend options using dataset timezone", "timezone_override", opt.WeekendOptions.TimezoneOverride)
-			}
-		}
-
-		if opt.WeekendOptions.DurBefore > MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurBefore = MaxWeekendDurBuffer
-		} else if opt.WeekendOptions.DurBefore < -MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurBefore = -MaxWeekendDurBuffer
-		}
-		if opt.WeekendOptions.DurAfter > MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurAfter = MaxWeekendDurBuffer
-		} else if opt.WeekendOptions.DurAfter < -MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurAfter = -MaxWeekendDurBuffer
-		}
-
-		weekendMask := generateTimeMaskWithFunc(t, func(tPnt time.Time) bool {
-			if locOverride != nil {
-				tPnt = tPnt.In(locOverride)
-			}
-
-			if opt.WeekendOptions.DurBefore == 0 && opt.WeekendOptions.DurAfter == 0 {
-				wkday := tPnt.Weekday()
-				return wkday == time.Saturday || wkday == time.Sunday
-			}
-
-			wkdayBefore := tPnt.Add(opt.WeekendOptions.DurBefore).Weekday()
-			wkdayAfter := tPnt.Add(-opt.WeekendOptions.DurAfter).Weekday()
-			if opt.WeekendOptions.DurBefore > 0 && opt.WeekendOptions.DurAfter > 0 {
-				return wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
-					wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
-			}
-
-			return (wkdayBefore == time.Saturday || wkdayBefore == time.Sunday) &&
-				(wkdayAfter == time.Saturday || wkdayAfter == time.Sunday)
-		}, winFunc)
-		feat := feature.NewTime("is_weekend")
-		tFeat.Set(feat, weekendMask)
-	}
-
-	for _, e := range opt.EventOptions.Events {
-		if err := e.Valid(); err != nil {
-			slog.Warn("not separately modelling invalid event", "name", e.Name, "error", err.Error())
-			continue
-		}
-
-		feat := feature.NewTime(fmt.Sprintf("event_%s", strings.ReplaceAll(e.Name, " ", "_")))
-		if _, exists := tFeat.Get(feat); exists {
-			slog.Warn("event feature already exists", "event_name", e.Name)
-			continue
-		}
-
-		eventMask := generateTimeMaskWithFunc(t, func(tPnt time.Time) bool {
-			return (tPnt.After(e.Start) || tPnt.Equal(e.Start)) && (tPnt.Before(e.End) || tPnt.Equal(e.End))
-		}, winFunc)
-		tFeat.Set(feat, eventMask)
-	}
+	tFeat.Update(generateEventFeatures(t, opt))
 
 	if opt.DailyOrders > 0 {
 		hod := make([]float64, len(t))
@@ -111,7 +47,78 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 	return tFeat
 }
 
-func generateTimeMaskWithFunc(t []time.Time, maskCond func(tPnt time.Time) bool, windowFunc func(seq []float64) []float64) []float64 {
+func generateEventFeatures(t []time.Time, opt *Options) *feature.Set {
+	winFunc := WindowFunc(opt.MaskWindow)
+
+	eFeat := feature.NewSet()
+
+	if opt.WeekendOptions.Enabled {
+		var locOverride *time.Location
+		if opt.WeekendOptions.TimezoneOverride != "" {
+			var err error
+			locOverride, err = time.LoadLocation(opt.WeekendOptions.TimezoneOverride)
+			if err != nil {
+				slog.Warn("invalid timezone location override for weekend options using dataset timezone", "timezone_override", opt.WeekendOptions.TimezoneOverride)
+			}
+		}
+
+		if opt.WeekendOptions.DurBefore > MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurBefore = MaxWeekendDurBuffer
+		} else if opt.WeekendOptions.DurBefore < -MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurBefore = -MaxWeekendDurBuffer
+		}
+		if opt.WeekendOptions.DurAfter > MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurAfter = MaxWeekendDurBuffer
+		} else if opt.WeekendOptions.DurAfter < -MaxWeekendDurBuffer {
+			opt.WeekendOptions.DurAfter = -MaxWeekendDurBuffer
+		}
+
+		weekendMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
+			if locOverride != nil {
+				tPnt = tPnt.In(locOverride)
+			}
+
+			if opt.WeekendOptions.DurBefore == 0 && opt.WeekendOptions.DurAfter == 0 {
+				wkday := tPnt.Weekday()
+				return wkday == time.Saturday || wkday == time.Sunday
+			}
+
+			wkdayBefore := tPnt.Add(opt.WeekendOptions.DurBefore).Weekday()
+			wkdayAfter := tPnt.Add(-opt.WeekendOptions.DurAfter).Weekday()
+			if opt.WeekendOptions.DurBefore > 0 && opt.WeekendOptions.DurAfter > 0 {
+				return wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
+					wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
+			}
+
+			return (wkdayBefore == time.Saturday || wkdayBefore == time.Sunday) &&
+				(wkdayAfter == time.Saturday || wkdayAfter == time.Sunday)
+		}, winFunc)
+		feat := feature.NewEvent("weekend")
+		eFeat.Set(feat, weekendMask)
+	}
+
+	for _, e := range opt.EventOptions.Events {
+		if err := e.Valid(); err != nil {
+			slog.Warn("not separately modelling invalid event", "name", e.Name, "error", err.Error())
+			continue
+		}
+
+		feat := feature.NewEvent(strings.ReplaceAll(e.Name, " ", "_"))
+		if _, exists := eFeat.Get(feat); exists {
+			slog.Warn("event feature already exists", "event_name", e.Name)
+			continue
+		}
+
+		eventMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
+			return (tPnt.After(e.Start) || tPnt.Equal(e.Start)) && (tPnt.Before(e.End) || tPnt.Equal(e.End))
+		}, winFunc)
+		eFeat.Set(feat, eventMask)
+	}
+
+	return eFeat
+}
+
+func generateEventMaskWithFunc(t []time.Time, maskCond func(tPnt time.Time) bool, windowFunc func(seq []float64) []float64) []float64 {
 	mask := make([]float64, len(t))
 	var maskSpans [][2]int
 	var inMask bool
@@ -142,7 +149,7 @@ func generateTimeMaskWithFunc(t []time.Time, maskCond func(tPnt time.Time) bool,
 	return mask
 }
 
-func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, error) {
+func generateFourierFeatures(feat *feature.Set, opt *Options) (*feature.Set, error) {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
@@ -152,7 +159,7 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 		for i := 1; i <= opt.DailyOrders; i++ {
 			orders = append(orders, i)
 		}
-		dailyFeatures, err := generateFourierOrders(tFeat, "hod", orders, 24.0)
+		dailyFeatures, err := generateFourierOrders(feat, "hod", orders, 24.0)
 		if err != nil {
 			return nil, fmt.Errorf("%q not present in time features, %w", "hod", err)
 		}
@@ -161,24 +168,18 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 		// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
 		// to capture weekly seasonality.
 		if opt.WeekendOptions.Enabled {
-			tFeatName := "is_weekend"
-			sFeatNamePrefix := "weekend_"
-
-			eventSeasFeat, err := generateEventSeasonality(tFeat, dailyFeatures, tFeatName, sFeatNamePrefix)
+			eventSeasFeat, err := generateEventSeasonality(feat, dailyFeatures, "weekend", "hod")
 			if err != nil {
-				slog.Warn("unable to generate weekend daily seasonality", "time_feature_name", tFeatName)
+				slog.Warn("unable to generate weekend daily seasonality", "feature_name", "weekend")
 			} else {
 				x.Update(eventSeasFeat)
 			}
 		}
 
 		for _, e := range opt.EventOptions.Events {
-			tFeatName := fmt.Sprintf("event_%s", e.Name)
-			sFeatNamePrefix := fmt.Sprintf("event_%s_", e.Name)
-
-			eventSeasFeat, err := generateEventSeasonality(tFeat, dailyFeatures, tFeatName, sFeatNamePrefix)
+			eventSeasFeat, err := generateEventSeasonality(feat, dailyFeatures, e.Name, "hod")
 			if err != nil {
-				slog.Warn("unable to generate event daily seasonality", "time_feature_name", tFeatName)
+				slog.Warn("unable to generate event daily seasonality", "feature_name", e.Name, "seasonality", "hod")
 				continue
 			}
 
@@ -195,19 +196,16 @@ func generateFourierFeatures(tFeat *feature.Set, opt *Options) (*feature.Set, er
 			}
 			orders = append(orders, i)
 		}
-		weeklyFeatures, err := generateFourierOrders(tFeat, "dow", orders, 7.0)
+		weeklyFeatures, err := generateFourierOrders(feat, "dow", orders, 7.0)
 		if err != nil {
 			return nil, fmt.Errorf("%q not present in time features, %w", "dow", err)
 		}
 		x.Update(weeklyFeatures)
 
 		for _, e := range opt.EventOptions.Events {
-			tFeatName := fmt.Sprintf("event_%s", e.Name)
-			sFeatNamePrefix := fmt.Sprintf("event_%s_", e.Name)
-
-			eventSeasFeat, err := generateEventSeasonality(tFeat, weeklyFeatures, tFeatName, sFeatNamePrefix)
+			eventSeasFeat, err := generateEventSeasonality(feat, weeklyFeatures, e.Name, "dow")
 			if err != nil {
-				slog.Warn("unable to generate event weekly seasonality", "time_feature_name", tFeatName)
+				slog.Warn("unable to generate event weekly seasonality", "feature_name", e.Name, "seasonality", "dow")
 				continue
 			}
 
@@ -250,10 +248,10 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-func generateEventSeasonality(tFeat *feature.Set, sFeat *feature.Set, tFeatName string, sFeatNamePrefix string) (*feature.Set, error) {
-	mask, exists := tFeat.Get(feature.NewTime(tFeatName))
+func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sCol string) (*feature.Set, error) {
+	mask, exists := feat.Get(feature.NewEvent(eCol))
 	if !exists {
-		return nil, fmt.Errorf("event mask not found, skipping event name, %s", tFeatName)
+		return nil, fmt.Errorf("event mask not found, skipping event name, %s", eCol)
 	}
 
 	eventSeasonalityFeatures := feature.NewSet()
@@ -265,15 +263,12 @@ func generateEventSeasonality(tFeat *feature.Set, sFeat *feature.Set, tFeatName 
 		maskedData := make([]float64, len(featData))
 		floats.MulTo(maskedData, mask, featData)
 
-		name, _ := label.Get("name")
-		name = sFeatNamePrefix + name
-
 		fcompStr, _ := label.Get("fourier_component")
 		fcomp := feature.FourierComp(fcompStr)
 
 		orderStr, _ := label.Get("order")
 		order, _ := strconv.Atoi(orderStr)
-		featCol := feature.NewSeasonality(name, fcomp, order)
+		featCol := feature.NewSeasonality(eCol+"_"+sCol, fcomp, order)
 		eventSeasonalityFeatures.Set(featCol, maskedData)
 	}
 	return eventSeasonalityFeatures, nil

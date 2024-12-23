@@ -6,6 +6,7 @@ const (
 	FeatureTypeChangepoint FeatureType = "changepoint"
 	FeatureTypeSeasonality FeatureType = "seasonality"
 	FeatureTypeTime        FeatureType = "time"
+	FeatureTypeEvent       FeatureType = "event"
 )
 
 // Feature is an interface representing a type of feature e.g. changepoint,
