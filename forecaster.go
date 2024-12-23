@@ -344,6 +344,11 @@ func (f *Forecaster) SeasonalityComponent() []float64 {
 	return f.seriesForecast.SeasonalityComponent()
 }
 
+// EventComponent returns the event component after fitting the fourier series
+func (f *Forecaster) EventComponent() []float64 {
+	return f.seriesForecast.EventComponent()
+}
+
 // SeriesIntercept returns the intercept of the series fit
 func (f *Forecaster) SeriesIntercept() float64 {
 	return f.seriesForecast.Intercept()
@@ -479,16 +484,20 @@ func (f *Forecaster) PlotFit(w io.Writer, opt *PlotOpts) error {
 	seasonComp := f.SeasonalityComponent()
 	seasonComp = append(seasonComp, forecastRes.SeriesComponents.Seasonality...)
 
+	eventComp := f.EventComponent()
+	eventComp = append(eventComp, forecastRes.SeriesComponents.Event...)
+
 	page := components.NewPage()
 	page.AddCharts(
 		LineForecaster(td, f.fitResults, forecastRes),
 		LineTSeries(
 			"Forecast Components",
-			[]string{"Trend", "Seasonality"},
+			[]string{"Trend", "Seasonality", "Event"},
 			t,
 			[][]float64{
 				trendComp,
 				seasonComp,
+				eventComp,
 			},
 			len(td.T),
 		),

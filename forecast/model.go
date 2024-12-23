@@ -86,6 +86,19 @@ func (fw *FeatureWeight) ToFeature() (feature.Feature, error) {
 			return nil, err
 		}
 		return feat, nil
+
+	case feature.FeatureTypeEvent:
+		bytes, err := json.Marshal(fw.Labels)
+		if err != nil {
+			return nil, err
+		}
+		feat := new(feature.Event)
+		if err := json.Unmarshal(bytes, feat); err != nil {
+			return nil, err
+		}
+		return feat, nil
+
 	}
+
 	return nil, ErrUnknownFeatureType
 }

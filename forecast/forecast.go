@@ -75,12 +75,13 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 		t = adjustTimeForDST(t, f.opt.DSTOptions.TimezoneLocations)
 	}
 
-	tFeat := generateTimeFeatures(t, f.opt)
+	tFeat, eFeat := generateTimeFeatures(t, f.opt)
 
 	feat, err := generateFourierFeatures(tFeat, f.opt)
 	if err != nil {
 		return nil, err
 	}
+	feat.Update(eFeat)
 
 	// do not include weekly fourier features if time range is less than 1 week
 	if !f.trained && t[len(t)-1].Sub(t[0]) < time.Duration(7*24*time.Hour) {
@@ -279,6 +280,7 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 
 	changepointFeatureSet := feature.NewSet()
 	seasonalityFeatureSet := feature.NewSet()
+	eventFeatureSet := feature.NewSet()
 	for _, feat := range x.Labels() {
 		data, exists := x.Get(feat)
 		if !exists {
@@ -289,20 +291,28 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 			changepointFeatureSet.Set(feat, data)
 		case feature.FeatureTypeSeasonality:
 			seasonalityFeatureSet.Set(feat, data)
+		case feature.FeatureTypeEvent:
+			eventFeatureSet.Set(feat, data)
 		}
 	}
 
-	trend, err := f.runInference(changepointFeatureSet, true, len(t))
+	trendComp, err := f.runInference(changepointFeatureSet, true, len(t))
 	if err != nil {
 		return nil, Components{}, fmt.Errorf("unable to run inference for trend, %w", err)
 	}
-	seasonality, err := f.runInference(seasonalityFeatureSet, false, len(t))
+	seasonalityComp, err := f.runInference(seasonalityFeatureSet, false, len(t))
 	if err != nil {
 		return nil, Components{}, fmt.Errorf("unable to run inference for seasonality, %w", err)
 	}
+	eventComp, err := f.runInference(eventFeatureSet, false, len(t))
+	if err != nil {
+		return nil, Components{}, fmt.Errorf("unable to run inference for event, %w", err)
+	}
+
 	comp := Components{
-		Trend:       trend,
-		Seasonality: seasonality,
+		Trend:       trendComp,
+		Seasonality: seasonalityComp,
+		Event:       eventComp,
 	}
 
 	res, err := f.runInference(x, true, len(t))
@@ -520,5 +530,15 @@ func (f *Forecast) SeasonalityComponent() []float64 {
 	}
 	res := make([]float64, len(f.trainComponents.Seasonality))
 	copy(res, f.trainComponents.Seasonality)
+	return res
+}
+
+// EventComponent represents the overall event components in the model
+func (f *Forecast) EventComponent() []float64 {
+	if f == nil {
+		return nil
+	}
+	res := make([]float64, len(f.trainComponents.Event))
+	copy(res, f.trainComponents.Event)
 	return res
 }
