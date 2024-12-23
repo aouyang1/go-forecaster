@@ -3,8 +3,6 @@ package forecast
 import (
 	"time"
 
-	"github.com/aouyang1/go-forecaster/changepoint"
-	"github.com/aouyang1/go-forecaster/event"
 	"gonum.org/v1/gonum/dsp/window"
 )
 
@@ -95,10 +93,10 @@ const (
 // that can cause overfitting. In general it is best to specify known changepoints which
 // results in much faster training times and model size.
 type ChangepointOptions struct {
-	Changepoints        []changepoint.Changepoint `json:"changepoints"`
-	EnableGrowth        bool                      `json:"enable_growth"`
-	Auto                bool                      `json:"auto"`
-	AutoNumChangepoints int                       `json:"auto_num_changepoints"`
+	Changepoints        []Changepoint `json:"changepoints"`
+	EnableGrowth        bool          `json:"enable_growth"`
+	Auto                bool          `json:"auto"`
+	AutoNumChangepoints int           `json:"auto_num_changepoints"`
 }
 
 // NewDefaultChangepointOptions generates a set of default changepoint options
@@ -128,5 +126,5 @@ type WeekendOptions struct {
 }
 
 type EventOptions struct {
-	Events []event.Event `json:"events"`
+	Events []Event `json:"events"`
 }

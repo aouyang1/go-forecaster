@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/feature"
 	"gonum.org/v1/gonum/floats"
 )
@@ -275,7 +274,7 @@ func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sCol string) (*fea
 	return eventSeasonalityFeatures, nil
 }
 
-func generateAutoChangepoints(t []time.Time, n int) []changepoint.Changepoint {
+func generateAutoChangepoints(t []time.Time, n int) []Changepoint {
 	var minTime, maxTime time.Time
 	for _, tPnt := range t {
 		if minTime.IsZero() || tPnt.Before(minTime) {
@@ -288,20 +287,20 @@ func generateAutoChangepoints(t []time.Time, n int) []changepoint.Changepoint {
 
 	window := maxTime.Sub(minTime)
 	changepointWinNs := int64(window.Nanoseconds()) / int64(n)
-	chpts := make([]changepoint.Changepoint, 0, n)
+	chpts := make([]Changepoint, 0, n)
 
 	for i := 0; i < n; i++ {
 		chpntTime := minTime.Add(time.Duration(changepointWinNs * int64(i)))
 		chpts = append(
 			chpts,
-			changepoint.New("auto_"+strconv.Itoa(i), chpntTime),
+			NewChangepoint("auto_"+strconv.Itoa(i), chpntTime),
 		)
 	}
 	return chpts
 }
 
-func generateChangepointFeatures(t []time.Time, chpts []changepoint.Changepoint, trainingEndTime time.Time, enableGrowth bool) *feature.Set {
-	filteredChpts := make([]changepoint.Changepoint, 0, len(chpts))
+func generateChangepointFeatures(t []time.Time, chpts []Changepoint, trainingEndTime time.Time, enableGrowth bool) *feature.Set {
+	filteredChpts := make([]Changepoint, 0, len(chpts))
 	for _, chpt := range chpts {
 		// skip over changepoints that are after the training end time since they'll
 		// not have been modeled producing zeroes in the feature set

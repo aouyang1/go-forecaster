@@ -6,7 +6,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/aouyang1/go-forecaster/changepoint"
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/timedataset"
@@ -222,7 +221,7 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 
 // pruneDegenerateFeatures removes any feature weights that are exactly equal to 0. This can happen if the LASSO
 // regression regularization is strong enough to bring some of the feature weights to exactly 0.
-func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []float64) ([]FeatureWeight, []changepoint.Changepoint, error) {
+func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []float64) ([]FeatureWeight, []Changepoint, error) {
 	fws := make([]FeatureWeight, 0, len(coef))
 	for i, c := range coef {
 		fw := FeatureWeight{
@@ -251,7 +250,7 @@ func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []floa
 		}
 	}
 
-	relevantChpts := make([]changepoint.Changepoint, 0, len(f.opt.ChangepointOptions.Changepoints))
+	relevantChpts := make([]Changepoint, 0, len(f.opt.ChangepointOptions.Changepoints))
 	for _, chpt := range f.opt.ChangepointOptions.Changepoints {
 		if _, exists := relevantChptMap[chpt.Name]; exists {
 			relevantChpts = append(relevantChpts, chpt)

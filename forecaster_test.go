@@ -10,8 +10,6 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 
-	"github.com/aouyang1/go-forecaster/changepoint"
-	"github.com/aouyang1/go-forecaster/event"
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast"
 	"github.com/aouyang1/go-forecaster/timedataset"
@@ -374,12 +372,12 @@ func generateExampleSeries() ([]time.Time, []float64) {
 func ExampleForecasterWithOutliers() {
 	t, y := generateExampleSeries()
 
-	changepoints := []changepoint.Changepoint{
-		changepoint.New("anomaly1", t[len(t)/2]),
-		changepoint.New("anomaly2", t[len(t)*17/20]),
+	changepoints := []forecast.Changepoint{
+		forecast.NewChangepoint("anomaly1", t[len(t)/2]),
+		forecast.NewChangepoint("anomaly2", t[len(t)*17/20]),
 	}
-	events := []event.Event{
-		event.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
+	events := []forecast.Event{
+		forecast.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
 	}
 
 	opt := &Options{
@@ -500,7 +498,7 @@ func ExampleForecasterAutoChangepoint() {
 				Tolerance:    1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:         false,
-					Changepoints: []changepoint.Changepoint{},
+					Changepoints: []forecast.Changepoint{},
 				},
 			},
 			ResidualWindow: 100,
@@ -547,9 +545,9 @@ func ExampleForecasterAutoChangepoint() {
 func ExampleForecasterWithTrend() {
 	t, y := generateExampleSeriesWithTrend()
 
-	changepoints := []changepoint.Changepoint{
-		changepoint.New("trendstart", t[len(t)/2]),
-		changepoint.New("rebaseline", t[len(t)*17/20]),
+	changepoints := []forecast.Changepoint{
+		forecast.NewChangepoint("trendstart", t[len(t)/2]),
+		forecast.NewChangepoint("rebaseline", t[len(t)*17/20]),
 	}
 
 	opt := &Options{
