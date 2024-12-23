@@ -18,13 +18,14 @@ var ErrUnknownTimeFeature = errors.New("unknown time feature")
 
 const MaxWeekendDurBuffer = 24 * time.Hour
 
-func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
+func generateTimeFeatures(t []time.Time, opt *Options) (*feature.Set, *feature.Set) {
 	if opt == nil {
 		opt = NewDefaultOptions()
 	}
 
 	tFeat := feature.NewSet()
-	tFeat.Update(generateEventFeatures(t, opt))
+	eFeat := generateEventFeatures(t, opt)
+	tFeat.Update(eFeat)
 
 	if opt.DailyOrders > 0 {
 		hod := make([]float64, len(t))
@@ -44,7 +45,7 @@ func generateTimeFeatures(t []time.Time, opt *Options) *feature.Set {
 		feat := feature.NewTime("dow")
 		tFeat.Set(feat, dow)
 	}
-	return tFeat
+	return tFeat, eFeat
 }
 
 func generateEventFeatures(t []time.Time, opt *Options) *feature.Set {

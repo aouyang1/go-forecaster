@@ -548,7 +548,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			features := generateTimeFeatures(td.t, td.opt)
+			features, _ := generateTimeFeatures(td.t, td.opt)
 			compareFeatureSet(t, td.expected, features, 1e-4)
 		})
 	}
@@ -850,7 +850,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			tFeat := generateTimeFeatures(tSeries, td.opt)
+			tFeat, _ := generateTimeFeatures(tSeries, td.opt)
 			res, err := generateFourierFeatures(tFeat, td.opt)
 			if td.err != nil {
 				assert.EqualError(t, err, td.err.Error())
