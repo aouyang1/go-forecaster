@@ -141,7 +141,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -163,7 +163,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 1, // Friday
@@ -185,7 +185,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					1, 1, 1, 1, // Friday
@@ -207,7 +207,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -229,7 +229,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 1, // Friday
@@ -251,7 +251,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, // Thursday
 					0, 0, 0, // Friday
@@ -272,7 +272,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, // Thursday
 					0, 0, 0, // Friday
@@ -293,7 +293,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("is_weekend"),
+				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -324,7 +324,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("event_myevent"),
+				feature.NewEvent("myevent"),
 				[]float64{
 					0, 1, 1, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -335,7 +335,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 					0, 0, 0, 0, // Wednesday
 				},
 			).Set(
-				feature.NewTime("event_my_other_event"),
+				feature.NewEvent("my_other_event"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -366,7 +366,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("event_overlaps_start"),
+				feature.NewEvent("overlaps_start"),
 				[]float64{
 					1, 1, 1, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -377,7 +377,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 					0, 0, 0, 0, // Wednesday
 				},
 			).Set(
-				feature.NewTime("event_overlaps_end"),
+				feature.NewEvent("overlaps_end"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -408,7 +408,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("event_myevent"),
+				feature.NewEvent("myevent"),
 				[]float64{
 					0, 1, 1, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -462,7 +462,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
-				feature.NewTime("event_myevent"),
+				feature.NewEvent("myevent"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0.0000, 0.0000, 0.1882, 0.6112, // Friday
@@ -762,7 +762,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					1, 0, -1, 0, // Wednesday
 				},
 			).Set(
-				feature.NewSeasonality("event_weekend_hod", feature.FourierCompSin, 1),
+				feature.NewSeasonality("weekend_hod", feature.FourierCompSin, 1),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -773,7 +773,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					0, 0, 0, 0, // Wednesday
 				},
 			).Set(
-				feature.NewSeasonality("event_weekend_hod", feature.FourierCompCos, 1),
+				feature.NewSeasonality("weekend_hod", feature.FourierCompCos, 1),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -822,7 +822,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					+0.6234, +0.7818, +0.9009, +0.9749, // Wednesday
 				},
 			).Set(
-				feature.NewSeasonality("event_weekend_dow", feature.FourierCompSin, 1),
+				feature.NewSeasonality("weekend_dow", feature.FourierCompSin, 1),
 				[]float64{
 					+0.0000, +0.0000, +0.0000, +0.0000, // Thursday
 					+0.0000, +0.0000, +0.0000, +0.0000, // Friday
@@ -833,7 +833,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					+0.0000, +0.0000, +0.0000, +0.0000, // Wednesday
 				},
 			).Set(
-				feature.NewSeasonality("event_weekend_dow", feature.FourierCompCos, 1),
+				feature.NewSeasonality("weekend_dow", feature.FourierCompCos, 1),
 				[]float64{
 					+0.0000, +0.0000, +0.0000, +0.0000, // Thursday
 					+0.0000, +0.0000, +0.0000, +0.0000, // Friday
