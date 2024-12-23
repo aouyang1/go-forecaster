@@ -1,4 +1,4 @@
-package event
+package forecast
 
 import (
 	"errors"
@@ -16,7 +16,8 @@ var (
 	ErrNoEventName   = errors.New("no event name")
 )
 
-// represents a time span to model separately
+// Event represents a time span to model separately for bias and for seasonality
+// changes.
 type Event struct {
 	Name  string
 	Start time.Time

@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aouyang1/go-forecaster/changepoint"
-	"github.com/aouyang1/go-forecaster/event"
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
@@ -309,7 +307,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			t: timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: &Options{
 				EventOptions: EventOptions{
-					Events: []event.Event{
+					Events: []Event{
 						{
 							Name:  "myevent",
 							Start: time.Date(1970, 1, 1, 6, 0, 0, 0, time.UTC),
@@ -351,7 +349,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			t: timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: &Options{
 				EventOptions: EventOptions{
-					Events: []event.Event{
+					Events: []Event{
 						{
 							Name:  "overlaps_start",
 							Start: time.Date(1969, 12, 30, 0, 0, 0, 0, time.UTC),
@@ -393,7 +391,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			t: timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: &Options{
 				EventOptions: EventOptions{
-					Events: []event.Event{
+					Events: []Event{
 						{
 							Name:  "myevent",
 							Start: time.Date(1970, 1, 1, 6, 0, 0, 0, time.UTC),
@@ -424,7 +422,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			t: timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: &Options{
 				EventOptions: EventOptions{
-					Events: []event.Event{
+					Events: []Event{
 						{
 							Name: "start is zero",
 							End:  time.Date(1970, 1, 7, 12, 0, 0, 0, time.UTC),
@@ -452,7 +450,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			opt: &Options{
 				MaskWindow: "hann",
 				EventOptions: EventOptions{
-					Events: []event.Event{
+					Events: []Event{
 						{
 							Name:  "myevent",
 							Start: time.Date(1970, 1, 2, 6, 0, 0, 0, time.UTC),
@@ -730,7 +728,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			opt: &Options{
 				DailyOrders: 1,
 				EventOptions: EventOptions{
-					Events: []event.Event{
+					Events: []Event{
 						{
 							Name:  "weekend",
 							Start: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
@@ -790,7 +788,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			opt: &Options{
 				WeeklyOrders: 1,
 				EventOptions: EventOptions{
-					Events: []event.Event{
+					Events: []Event{
 						{
 							Name:  "weekend",
 							Start: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
@@ -869,25 +867,25 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 
 	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	testData := map[string]struct {
-		chpts           []changepoint.Changepoint
+		chpts           []Changepoint
 		trainingEndTime time.Time
 		enableGrowth    bool
 		expected        *feature.Set
 	}{
 		"no changepoints": {
-			chpts:           []changepoint.Changepoint{},
+			chpts:           []Changepoint{},
 			trainingEndTime: endTime,
 			expected:        feature.NewSet(),
 		},
 		"changepoint after training end": {
-			chpts: []changepoint.Changepoint{
+			chpts: []Changepoint{
 				{Name: "chpt1", T: endTime.Add(1 * time.Minute)},
 			},
 			trainingEndTime: endTime,
 			expected:        feature.NewSet(),
 		},
 		"valid single changepoint": {
-			chpts: []changepoint.Changepoint{
+			chpts: []Changepoint{
 				{Name: "chpt1", T: endTime.Add(-8 * 6 * time.Hour)},
 			},
 			trainingEndTime: endTime,
@@ -905,7 +903,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 			),
 		},
 		"valid single changepoint with growth": {
-			chpts: []changepoint.Changepoint{
+			chpts: []Changepoint{
 				{Name: "chpt1", T: endTime.Add(-8 * 6 * time.Hour)},
 			},
 			trainingEndTime: endTime,
@@ -935,7 +933,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 			),
 		},
 		"valid single changepoint with growth and future training date": {
-			chpts: []changepoint.Changepoint{
+			chpts: []Changepoint{
 				{Name: "chpt1", T: endTime.Add(-8 * 6 * time.Hour)},
 			},
 			trainingEndTime: endTime.Add(8 * 6 * time.Hour),
