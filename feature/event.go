@@ -50,8 +50,7 @@ func (e *Event) UnmarshalJSON(data []byte) error {
 	var labelStr struct {
 		Name string `json:"name"`
 	}
-	err := json.Unmarshal(data, &labelStr)
-	if err != nil {
+	if err := json.Unmarshal(data, &labelStr); err != nil {
 		return err
 	}
 	e.Name = labelStr.Name

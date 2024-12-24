@@ -46,5 +46,12 @@ func (t Time) Decode() map[string]string {
 // UnmarshalJSON is the custom unmarshalling to convert a map[string]string
 // to a time feature
 func (t *Time) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, t)
+	var labelStr struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(data, &labelStr); err != nil {
+		return err
+	}
+	t.Name = labelStr.Name
+	return nil
 }
