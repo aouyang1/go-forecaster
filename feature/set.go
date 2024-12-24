@@ -10,6 +10,7 @@ import (
 // Set represents a mapping to each feature data keyed by the string representation
 // of the feature.
 type Set struct {
+	m   int
 	set map[string][]float64
 
 	labels []Feature
@@ -18,7 +19,8 @@ type Set struct {
 // NewSet initializes a new feature set
 func NewSet() *Set {
 	return &Set{
-		set: make(map[string][]float64),
+		set:    make(map[string][]float64),
+		labels: []Feature{},
 	}
 }
 
@@ -43,14 +45,38 @@ func (s *Set) Set(f Feature, data []float64) *Set {
 	if _, exists := s.set[label]; !exists {
 		s.labels = append(s.labels, f)
 	}
+
+	// input data is longer than current feature set length
+	if s.m < len(data) {
+		s.m = len(data)
+		for label, vals := range s.set {
+			nextVals := make([]float64, s.m)
+			copy(nextVals, vals)
+			s.set[label] = nextVals
+		}
+		s.set[label] = data
+		return s
+	}
+
+	// data length is less than current length of feature set
+	if s.m > len(data) {
+		nextVals := make([]float64, s.m)
+		copy(nextVals, data)
+		s.set[label] = nextVals
+		return s
+	}
+
 	s.set[label] = data
+
 	return s
 }
 
-func (s *Set) Del(f Feature) {
+// Del will attempt to remove an existing feature from the set. If there are no more features
+// stored, the data length will be reset to 0 and will be initialized on the next Set call.
+func (s *Set) Del(f Feature) *Set {
 	label := f.String()
 	if _, exists := s.set[label]; !exists {
-		return
+		return s
 	}
 	delete(s.set, label)
 	for i, l := range s.labels {
@@ -62,14 +88,39 @@ func (s *Set) Del(f Feature) {
 		}
 	}
 	s.labels = s.labels[1:]
+
+	if s.Len() == 0 {
+		s.m = 0
+	}
+	return s
 }
 
-func (s *Set) Update(other *Set) {
+// Update will merge an input set with the existing set. If the data length of the input is less
+// than the existing, the input is zero padded out to match. If the data length of the input is greater
+// than the existing, the existing is zero padded out to match. Any overlapping keys will result in
+// a replacement.
+func (s *Set) Update(other *Set) *Set {
 	if other == nil {
-		return
+		return s
 	}
 	if other.set == nil {
-		return
+		return s
+	}
+	if s.m < other.m {
+		s.m = other.m
+		// buffer existing set
+		for label, vals := range s.set {
+			nextVals := make([]float64, s.m)
+			copy(nextVals, vals)
+			s.set[label] = nextVals
+		}
+	} else if s.m > other.m {
+		// buffer data
+		for label, vals := range other.set {
+			nextVals := make([]float64, s.m)
+			copy(nextVals, vals)
+			other.set[label] = nextVals
+		}
 	}
 	for _, f := range other.labels {
 		label := f.String()
@@ -78,6 +129,7 @@ func (s *Set) Update(other *Set) {
 		}
 		s.set[label] = other.set[label]
 	}
+	return s
 }
 
 // Labels returns the sorted slice of all tracked features in the FeatureSet
@@ -110,12 +162,7 @@ func (s *Set) Matrix(intercept bool) *mat.Dense {
 		return nil
 	}
 
-	var m int
-	// use first feature to get length
-	for _, flabel := range featureLabels {
-		m = len(s.set[flabel.String()])
-		break
-	}
+	m := s.m
 	n := len(featureLabels)
 	if intercept {
 		n += 1
