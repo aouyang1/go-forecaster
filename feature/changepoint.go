@@ -63,8 +63,7 @@ func (c *Changepoint) UnmarshalJSON(data []byte) error {
 		Name            string          `json:"name"`
 		ChangepointComp ChangepointComp `json:"changepoint_component"`
 	}
-	err := json.Unmarshal(data, &labelStr)
-	if err != nil {
+	if err := json.Unmarshal(data, &labelStr); err != nil {
 		return err
 	}
 	c.Name = labelStr.Name

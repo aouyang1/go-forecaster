@@ -69,15 +69,15 @@ func (s *Seasonality) UnmarshalJSON(data []byte) error {
 		FourierComp FourierComp `json:"fourier_component"`
 		Order       string      `json:"order"`
 	}
-	err := json.Unmarshal(data, &labelStr)
+	if err := json.Unmarshal(data, &labelStr); err != nil {
+		return err
+	}
+	order, err := strconv.Atoi(labelStr.Order)
 	if err != nil {
 		return err
 	}
 	s.Name = labelStr.Name
 	s.FourierComp = labelStr.FourierComp
-	s.Order, err = strconv.Atoi(labelStr.Order)
-	if err != nil {
-		return err
-	}
+	s.Order = order
 	return nil
 }
