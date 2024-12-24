@@ -15,22 +15,29 @@ type Set struct {
 	labels []Feature
 }
 
+// NewSet initializes a new feature set
 func NewSet() *Set {
 	return &Set{
 		set: make(map[string][]float64),
 	}
 }
 
+// Len returns the number of labels stored in the feature set
 func (s *Set) Len() int {
 	return len(s.set)
 }
 
+// Get retrieves the values of a particular feature. This returns an extra bool to indicate
+// if the feature exists in the set or not.
 func (s *Set) Get(f Feature) ([]float64, bool) {
 	label := f.String()
 	data, exists := s.set[label]
 	return data, exists
 }
 
+// Set will store the input feature with the input slice of values. This will zero pad out
+// the data if it is less than the current data length of the set. If it is larger, all other
+// features will be zero padded.
 func (s *Set) Set(f Feature, data []float64) *Set {
 	label := f.String()
 	if _, exists := s.set[label]; !exists {
@@ -136,6 +143,8 @@ func (s *Set) Matrix(intercept bool) *mat.Dense {
 	return mat.NewDense(m, n, obs)
 }
 
+// RemoveZeroOnlyFeatures scans through all features and removes any features with only zero values.
+// This is to prevent fitting issues.
 func (s *Set) RemoveZeroOnlyFeatures() {
 	for _, feat := range s.Labels() {
 		vals, _ := s.Get(feat)
