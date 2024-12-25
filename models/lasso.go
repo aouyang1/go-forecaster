@@ -3,7 +3,9 @@ package models
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
+	"sync"
 
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
@@ -285,4 +287,186 @@ func SoftThreshold(x, gamma float64) float64 {
 		return -res
 	}
 	return res
+}
+
+// LassoAutoOptions represents input options to run the Lasso Regression with optimal regularization parameter lambda
+type LassoAutoOptions struct {
+	// Lambda represents the L1 multiplier, controlling the regularization. Must be a non-negative. 0.0 results in converging
+	// to Ordinary Least Squares (OLS).
+	Lambdas []float64
+
+	// Iterations is the maximum number of times the fit loops through training all coefficients.
+	Iterations int
+
+	// Tolerance is the smallest coefficient channge on each iteration to determine when to stop iterating.
+	Tolerance float64
+
+	// FitIntercept adds a constant 1.0 feature as the first column if set to true
+	FitIntercept bool
+
+	// Parallelization sets how many fits to run in parallel. More will increase memory and compute usage.
+	Parallelization int
+}
+
+// LassoAutoRegression computes the lasso regression using coordinate descent. lambda is derived by finding the optimal
+// regularization parameter
+type LassoAutoRegression struct {
+	opt *LassoAutoOptions
+
+	bestModel *LassoRegression
+}
+
+// NewLassoAutoRegression initializes a Lasso model ready for fitting using automated lambad parameter selection
+func NewLassoAutoRegression(opt *LassoAutoOptions) (*LassoAutoRegression, error) {
+	return &LassoAutoRegression{
+		opt: opt,
+	}, nil
+}
+
+// Fit the model according to the given training data
+func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
+	if l.opt == nil {
+		return ErrNoOptions
+	}
+	if x == nil {
+		return ErrNoTrainingMatrix
+	}
+	if y == nil {
+		return ErrNoTargetMatrix
+	}
+
+	m, n := x.Dims()
+
+	ym, _ := y.Dims()
+	if ym != m {
+		return fmt.Errorf("training data has %d rows and target has %d row, %w", m, ym, ErrTargetLenMismatch)
+	}
+
+	if l.opt.FitIntercept {
+		ones := make([]float64, m)
+		floats.AddConst(1.0, ones)
+		onesMx := mat.NewDense(1, m, ones)
+		xT := x.T()
+
+		var xWithOnes mat.Dense
+		xWithOnes.Stack(onesMx, xT)
+		x = xWithOnes.T()
+		_, n = x.Dims()
+	}
+	slog.Info("feature dimensions", "m", m, "n", n)
+
+	lassoOpts := make([]*LassoOptions, 0, len(l.opt.Lambdas))
+	for _, lambda := range l.opt.Lambdas {
+		singleOpt := &LassoOptions{
+			Lambda:       lambda,
+			Iterations:   l.opt.Iterations,
+			Tolerance:    l.opt.Tolerance,
+			FitIntercept: false, // taken care of ahead of time
+		}
+
+		lassoOpts = append(lassoOpts, singleOpt)
+	}
+
+	var bestScore float64
+	var scoreMu sync.Mutex
+
+	sem := make(chan struct{}, l.opt.Parallelization)
+	var wg sync.WaitGroup
+	for _, opt := range lassoOpts {
+		sem <- struct{}{}
+		wg.Add(1)
+
+		go func(_opt *LassoOptions, _x, _y mat.Matrix) {
+			defer func() {
+				wg.Done()
+				<-sem
+			}()
+			reg, err := NewLassoRegression(_opt)
+			if err != nil {
+				slog.Error("unable to initialize lasso regression", "error", err.Error())
+				return
+			}
+
+			if err := reg.Fit(_x, _y); err != nil {
+				slog.Error("unable to fit lasso regression", "error", err.Error())
+				return
+			}
+
+			score, err := reg.Score(_x, _y)
+			if err != nil {
+				slog.Error("unable to compute fit score for lasso regression", "error", err.Error())
+				return
+			}
+
+			scoreMu.Lock()
+			defer scoreMu.Unlock()
+			if score > bestScore {
+				slog.Info("computed better score for lasso fit", "score", score, "lambda", _opt.Lambda)
+				bestScore = score
+				l.bestModel = reg
+			}
+		}(opt, x, y)
+
+	}
+	wg.Wait()
+
+	return nil
+}
+
+// Predict using the Lasso model
+func (l *LassoAutoRegression) Predict(x mat.Matrix) ([]float64, error) {
+	if l.bestModel == nil {
+		return nil, ErrNoOptions
+	}
+
+	if l.opt.FitIntercept {
+		m, _ := x.Dims()
+		ones := make([]float64, m)
+		floats.AddConst(1.0, ones)
+		onesMx := mat.NewDense(1, m, ones)
+		xT := x.T()
+
+		var xWithOnes mat.Dense
+		xWithOnes.Stack(onesMx, xT)
+		x = xWithOnes.T()
+	}
+
+	return l.bestModel.Predict(x)
+}
+
+// Score computes the coefficient of determination of the prediction
+func (l *LassoAutoRegression) Score(x, y mat.Matrix) (float64, error) {
+	if l.bestModel == nil {
+		return 0.0, ErrNoOptions
+	}
+
+	if l.opt.FitIntercept {
+		m, _ := x.Dims()
+		ones := make([]float64, m)
+		floats.AddConst(1.0, ones)
+		onesMx := mat.NewDense(1, m, ones)
+		xT := x.T()
+
+		var xWithOnes mat.Dense
+		xWithOnes.Stack(onesMx, xT)
+		x = xWithOnes.T()
+	}
+
+	return l.bestModel.Score(x, y)
+}
+
+// Intercept returns the computed intercept if FitIntercept is set to true. Defaults to 0.0 if not set.
+func (l *LassoAutoRegression) Intercept() float64 {
+	if l.opt.FitIntercept {
+		return l.bestModel.Coef()[0]
+	}
+	return 0.0
+}
+
+// Coef returns a slice of the trained coefficients in the same order of the training feature Matrix by column.
+func (l *LassoAutoRegression) Coef() []float64 {
+	if l.opt.FitIntercept {
+		return l.bestModel.Coef()[1:]
+	}
+	return l.bestModel.Coef()
 }

@@ -380,13 +380,15 @@ func ExampleForecasterWithOutliers() {
 		forecast.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
 	}
 
+	regularization := 1000.0
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
 			ForecastOptions: &forecast.Options{
-				DailyOrders:  12,
-				WeeklyOrders: 12,
-				Iterations:   500,
-				Tolerance:    1e-3,
+				Regularization: regularization,
+				DailyOrders:    12,
+				WeeklyOrders:   12,
+				Iterations:     500,
+				Tolerance:      1e-3,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
 				},
@@ -401,10 +403,11 @@ func ExampleForecasterWithOutliers() {
 		},
 		UncertaintyOptions: &UncertaintyOptions{
 			ForecastOptions: &forecast.Options{
-				DailyOrders:  12,
-				WeeklyOrders: 12,
-				Iterations:   250,
-				Tolerance:    1e-2,
+				Regularization: regularization,
+				DailyOrders:    12,
+				WeeklyOrders:   12,
+				Iterations:     250,
+				Tolerance:      1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: nil,
 				},
