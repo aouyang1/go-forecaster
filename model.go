@@ -57,6 +57,21 @@ func (m Model) TablePrint(w io.Writer) error {
 		}
 	}
 
+	if !m.Series.Options.WeekendOptions.Enabled {
+		fmt.Fprintln(w, "    Weekends: None")
+	} else {
+		fmt.Fprintln(w, "    Weekends:")
+		fmt.Fprintf(w, "      Before: %s, After: %s\n", -m.Series.Options.WeekendOptions.DurBefore, m.Series.Options.WeekendOptions.DurAfter)
+	}
+
+	if len(m.Series.Options.EventOptions.Events) == 0 {
+		fmt.Fprintln(w, "    Events: None")
+	} else {
+		fmt.Fprintln(w, "    Events:")
+		for _, ev := range m.Series.Options.EventOptions.Events {
+			fmt.Fprintf(w, "      %s: %s - %s\n", ev.Name, ev.Start, ev.End)
+		}
+	}
 	fmt.Fprintln(w, "  Scores:")
 	fmt.Fprintf(w, "       MAPE: %.3f    MSE: %.3f    R2: %.3f\n",
 		m.Series.Scores.MAPE,
@@ -94,12 +109,28 @@ func (m Model) TablePrint(w io.Writer) error {
 		m.Uncertainty.Options.WeeklyOrders,
 		m.Uncertainty.Options.Regularization,
 	)
-	if len(m.Series.Options.ChangepointOptions.Changepoints) == 0 {
+	if len(m.Uncertainty.Options.ChangepointOptions.Changepoints) == 0 {
 		fmt.Fprintln(w, "    Changepoints: None")
 	} else {
 		fmt.Fprintln(w, "    Changepoints:")
-		for _, chpt := range m.Series.Options.ChangepointOptions.Changepoints {
+		for _, chpt := range m.Uncertainty.Options.ChangepointOptions.Changepoints {
 			fmt.Fprintf(w, "      %s: %s\n", chpt.Name, chpt.T)
+		}
+	}
+
+	if !m.Uncertainty.Options.WeekendOptions.Enabled {
+		fmt.Fprintln(w, "    Weekends: None")
+	} else {
+		fmt.Fprintln(w, "    Weekends:")
+		fmt.Fprintf(w, "      Before: %s, After: %s\n", -m.Uncertainty.Options.WeekendOptions.DurBefore, m.Uncertainty.Options.WeekendOptions.DurAfter)
+	}
+
+	if len(m.Uncertainty.Options.EventOptions.Events) == 0 {
+		fmt.Fprintln(w, "    Events: None")
+	} else {
+		fmt.Fprintln(w, "    Events:")
+		for _, ev := range m.Uncertainty.Options.EventOptions.Events {
+			fmt.Fprintf(w, "      %s: %s - %s\n", ev.Name, ev.Start, ev.End)
 		}
 	}
 
