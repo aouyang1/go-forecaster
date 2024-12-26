@@ -121,6 +121,36 @@ func TestLassoRegression(t *testing.T) {
 	r2, err = model.Score(x, y)
 	require.Nil(t, err)
 	assert.InDelta(t, 1.0, r2, 0.00001)
+
+	x, err = mat_.NewDenseFromArray(
+		[][]float64{
+			{1},
+			{1},
+			{1},
+			{1},
+		},
+	)
+	require.Nil(t, err)
+
+	y = mat.NewDense(4, 1, []float64{3, 3, 3, 3})
+
+	opt = NewDefaultLassoOptions()
+	opt.Lambda = 0
+	opt.Tolerance = 1e-6
+	opt.FitIntercept = false
+
+	model, err = NewLassoRegression(opt)
+	require.Nil(t, err)
+
+	err = model.Fit(x, y)
+	require.Nil(t, err)
+
+	coef = model.Coef()
+	assert.InDelta(t, 3.0, coef[0], 0.00001)
+
+	r2, err = model.Score(x, y)
+	require.Nil(t, err)
+	assert.InDelta(t, 1.0, r2, 0.00001)
 }
 
 func TestLassoAutoRegression(t *testing.T) {
@@ -137,10 +167,9 @@ func TestLassoAutoRegression(t *testing.T) {
 
 	y := mat.NewDense(4, 1, []float64{2, 31, 109, 62})
 
-	opt := new(LassoAutoOptions)
+	opt := NewDefaultLassoAutoOptions()
 	opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
 	opt.Tolerance = 1e-6
-	opt.Iterations = 500
 	opt.FitIntercept = true
 	opt.Parallelization = 4
 
@@ -172,10 +201,9 @@ func TestLassoAutoRegression(t *testing.T) {
 
 	y = mat.NewDense(4, 1, []float64{2, 31, 109, 62})
 
-	opt = new(LassoAutoOptions)
+	opt = NewDefaultLassoAutoOptions()
 	opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
 	opt.Tolerance = 1e-6
-	opt.Iterations = 500
 	opt.FitIntercept = false
 	opt.Parallelization = 4
 
@@ -189,6 +217,37 @@ func TestLassoAutoRegression(t *testing.T) {
 	assert.InDelta(t, 2.0, coef[0], 0.00001)
 	assert.InDelta(t, 3.0, coef[1], 0.00001)
 	assert.InDelta(t, 4.0, coef[2], 0.00001)
+
+	r2, err = model.Score(x, y)
+	require.Nil(t, err)
+	assert.InDelta(t, 1.0, r2, 0.00001)
+
+	x, err = mat_.NewDenseFromArray(
+		[][]float64{
+			{1},
+			{1},
+			{1},
+			{1},
+		},
+	)
+	require.Nil(t, err)
+
+	y = mat.NewDense(4, 1, []float64{3, 3, 3, 3})
+
+	opt = NewDefaultLassoAutoOptions()
+	opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
+	opt.Tolerance = 1e-6
+	opt.FitIntercept = false
+	opt.Parallelization = 4
+
+	model, err = NewLassoAutoRegression(opt)
+	require.Nil(t, err)
+
+	err = model.Fit(x, y)
+	require.Nil(t, err)
+
+	coef = model.Coef()
+	assert.InDelta(t, 3.0, coef[0], 0.00001)
 
 	r2, err = model.Score(x, y)
 	require.Nil(t, err)

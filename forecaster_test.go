@@ -99,7 +99,9 @@ func TestForecaster(t *testing.T) {
 		"daily wave with bias": {
 			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
 			y: timedataset.GenerateConstY(4*24*60, 3.0).
-				Add(timedataset.GenerateWaveY(timedataset.GenerateT(4*24*60, time.Minute, time.Now), 7.2, 86400.0, 1.0, 0.0)),
+				Add(timedataset.GenerateWaveY(
+					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					7.2, 86400.0, 1.0, 0.0)),
 			tol: 1e-5,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
@@ -109,6 +111,10 @@ func TestForecaster(t *testing.T) {
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &forecast.Options{
+						DailyOrders:    2,
+						Regularization: []float64{1.0},
+					},
 					ResidualWindow: 100,
 					ResidualZscore: 4.0,
 				},
@@ -137,9 +143,9 @@ func TestForecaster(t *testing.T) {
 				},
 				Uncertainty: forecast.Model{
 					Scores: &forecast.Scores{
-						MAPE: 0.03426,
+						MAPE: 1.0,
 						MSE:  0.0,
-						R2:   0.99,
+						R2:   -4.54,
 					},
 					Weights: forecast.Weights{
 						Intercept: 0.0,
@@ -163,6 +169,11 @@ func TestForecaster(t *testing.T) {
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &forecast.Options{
+						DailyOrders:    2,
+						WeeklyOrders:   2,
+						Regularization: []float64{1.0},
+					},
 					ResidualWindow: 100,
 					ResidualZscore: 4.0,
 				},
@@ -200,9 +211,9 @@ func TestForecaster(t *testing.T) {
 				},
 				Uncertainty: forecast.Model{
 					Scores: &forecast.Scores{
-						MAPE: 0.04704,
+						MAPE: 1.0,
 						MSE:  0.0,
-						R2:   0.99,
+						R2:   -4.28,
 					},
 					Weights: forecast.Weights{
 						Intercept: 0.0,
@@ -380,7 +391,7 @@ func ExampleForecasterWithOutliers() {
 		forecast.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
 	}
 
-	regularization := 1000.0
+	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
 			ForecastOptions: &forecast.Options{
@@ -477,10 +488,11 @@ func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 func ExampleForecasterAutoChangepoint() {
 	t, y := generateExampleSeries()
 
+	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
 			ForecastOptions: &forecast.Options{
-				Regularization: 200.0,
+				Regularization: regularization,
 				DailyOrders:    12,
 				WeeklyOrders:   12,
 				Iterations:     500,
@@ -495,10 +507,11 @@ func ExampleForecasterAutoChangepoint() {
 		},
 		UncertaintyOptions: &UncertaintyOptions{
 			ForecastOptions: &forecast.Options{
-				DailyOrders:  12,
-				WeeklyOrders: 12,
-				Iterations:   250,
-				Tolerance:    1e-2,
+				Regularization: regularization,
+				DailyOrders:    12,
+				WeeklyOrders:   12,
+				Iterations:     250,
+				Tolerance:      1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:         false,
 					Changepoints: []forecast.Changepoint{},

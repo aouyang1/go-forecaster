@@ -61,9 +61,10 @@ type Options struct {
 	ChangepointOptions ChangepointOptions `json:"changepoint_options"`
 
 	// Lasso related options
-	Regularization float64 `json:"regularization"`
-	Iterations     int     `json:"iterations"`
-	Tolerance      float64 `json:"tolerance"`
+	Regularization  []float64 `json:"regularization"`
+	Iterations      int       `json:"iterations"`
+	Tolerance       float64   `json:"tolerance"`
+	Parallelization int       `json:"parallelization"`
 
 	DailyOrders    int            `json:"daily_orders"`
 	WeeklyOrders   int            `json:"weekly_orders"`
@@ -77,7 +78,7 @@ type Options struct {
 func NewDefaultOptions() *Options {
 	return &Options{
 		ChangepointOptions: NewDefaultChangepointOptions(),
-		Regularization:     0.0,
+		Regularization:     []float64{0.0},
 		DailyOrders:        12,
 		WeeklyOrders:       6,
 	}
