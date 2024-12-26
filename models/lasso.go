@@ -23,6 +23,7 @@ var (
 	ErrNegativeIterations = errors.New("negative iterations")
 	ErrNegativeTolerance  = errors.New("negative tolerance")
 	ErrWarmStartBetaSize  = errors.New("warm start beta does not have the same number of coefficients as training features")
+	ErrNoLambdas          = errors.New("no lambdas provided to fit with")
 )
 
 // LassoOptions represents input options to run the Lasso Regression
@@ -267,7 +268,12 @@ func (l *LassoRegression) Score(x, y mat.Matrix) (float64, error) {
 
 	ySlice := mat.Col(nil, 0, y)
 
-	return stat.RSquaredFrom(res, ySlice, nil), nil
+	score := stat.RSquaredFrom(res, ySlice, nil)
+	if math.IsNaN(score) {
+		score = 1.0
+	}
+
+	return score, nil
 }
 
 // Intercept returns the computed intercept if FitIntercept is set to true. Defaults to 0.0 if not set.
@@ -308,6 +314,45 @@ type LassoAutoOptions struct {
 	Parallelization int
 }
 
+// Validate runs basic validation on Lasso Auto options
+func (l *LassoAutoOptions) Validate() (*LassoAutoOptions, error) {
+	if l == nil {
+		l = NewDefaultLassoAutoOptions()
+	}
+
+	if len(l.Lambdas) == 0 {
+		return nil, ErrNoLambdas
+	}
+
+	for _, lambda := range l.Lambdas {
+		if lambda < 0.0 {
+			return nil, ErrNegativeLambda
+		}
+	}
+
+	if l.Iterations < 0 {
+		return nil, ErrNegativeIterations
+	}
+	if l.Tolerance < 0 {
+		return nil, ErrNegativeTolerance
+	}
+	if l.Parallelization == 0 || l.Parallelization > len(l.Lambdas) {
+		l.Parallelization = len(l.Lambdas)
+	}
+	return l, nil
+}
+
+// NewDefaultLassoAutoOptions returns a default set of Lasso Auto Regression options
+func NewDefaultLassoAutoOptions() *LassoAutoOptions {
+	return &LassoAutoOptions{
+		Lambdas:         []float64{DefaultLambda},
+		Iterations:      DefaultIterations,
+		Tolerance:       DefaultTolerance,
+		FitIntercept:    true,
+		Parallelization: 1,
+	}
+}
+
 // LassoAutoRegression computes the lasso regression using coordinate descent. lambda is derived by finding the optimal
 // regularization parameter
 type LassoAutoRegression struct {
@@ -318,6 +363,11 @@ type LassoAutoRegression struct {
 
 // NewLassoAutoRegression initializes a Lasso model ready for fitting using automated lambad parameter selection
 func NewLassoAutoRegression(opt *LassoAutoOptions) (*LassoAutoRegression, error) {
+	opt, err := opt.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	return &LassoAutoRegression{
 		opt: opt,
 	}, nil
@@ -335,7 +385,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		return ErrNoTargetMatrix
 	}
 
-	m, n := x.Dims()
+	m, _ := x.Dims()
 
 	ym, _ := y.Dims()
 	if ym != m {
@@ -351,9 +401,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		var xWithOnes mat.Dense
 		xWithOnes.Stack(onesMx, xT)
 		x = xWithOnes.T()
-		_, n = x.Dims()
 	}
-	slog.Info("feature dimensions", "m", m, "n", n)
 
 	lassoOpts := make([]*LassoOptions, 0, len(l.opt.Lambdas))
 	for _, lambda := range l.opt.Lambdas {
@@ -401,7 +449,6 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 			scoreMu.Lock()
 			defer scoreMu.Unlock()
 			if score > bestScore {
-				slog.Info("computed better score for lasso fit", "score", score, "lambda", _opt.Lambda)
 				bestScore = score
 				l.bestModel = reg
 			}
@@ -457,6 +504,9 @@ func (l *LassoAutoRegression) Score(x, y mat.Matrix) (float64, error) {
 
 // Intercept returns the computed intercept if FitIntercept is set to true. Defaults to 0.0 if not set.
 func (l *LassoAutoRegression) Intercept() float64 {
+	if l == nil || l.bestModel == nil {
+		return 0.0
+	}
 	if l.opt.FitIntercept {
 		return l.bestModel.Coef()[0]
 	}
@@ -465,6 +515,9 @@ func (l *LassoAutoRegression) Intercept() float64 {
 
 // Coef returns a slice of the trained coefficients in the same order of the training feature Matrix by column.
 func (l *LassoAutoRegression) Coef() []float64 {
+	if l == nil || l.bestModel == nil {
+		return nil
+	}
 	if l.opt.FitIntercept {
 		return l.bestModel.Coef()[1:]
 	}

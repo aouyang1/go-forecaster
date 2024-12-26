@@ -164,19 +164,28 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	target := mat.NewDense(len(trainingY), 1, trainingY)
 
 	// run coordinate descent with lambda set to 0 which is equivalent to OLS
-	lassoOpt := models.NewDefaultLassoOptions()
-	lassoOpt.Lambda = f.opt.Regularization
+	lassoOpt := models.NewDefaultLassoAutoOptions()
+	if len(f.opt.Regularization) > 0 {
+		lassoOpt.Lambdas = f.opt.Regularization
+	} else {
+		f.opt.Regularization = lassoOpt.Lambdas
+	}
+
 	lassoOpt.FitIntercept = false
+
 	lassoOpt.Iterations = f.opt.Iterations
 	if f.opt.Iterations == 0 {
 		lassoOpt.Iterations = models.DefaultIterations
 	}
+
 	lassoOpt.Tolerance = f.opt.Tolerance
 	if f.opt.Tolerance == 0 {
 		lassoOpt.Tolerance = models.DefaultTolerance
 	}
 
-	model, err := models.NewLassoRegression(lassoOpt)
+	lassoOpt.Parallelization = f.opt.Parallelization
+
+	model, err := models.NewLassoAutoRegression(lassoOpt)
 	if err != nil {
 		return err
 	}
@@ -184,8 +193,13 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 		return err
 	}
 	coef := model.Coef()
-	intercept := coef[0]
-	coef = coef[1:]
+	intercept := 0.0
+	if len(coef) > 0 {
+		intercept = coef[0]
+	}
+	if len(coef) > 1 {
+		coef = coef[1:]
+	}
 	f.trained = true
 
 	f.intercept = intercept
