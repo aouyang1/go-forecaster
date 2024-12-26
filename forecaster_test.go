@@ -500,7 +500,7 @@ func ExampleForecasterAutoChangepoint() {
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:                true,
 					AutoNumChangepoints: 100,
-					EnableGrowth:        true,
+					EnableGrowth:        false,
 				},
 			},
 			OutlierOptions: NewOutlierOptions(),
