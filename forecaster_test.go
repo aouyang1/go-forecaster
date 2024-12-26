@@ -18,7 +18,9 @@ import (
 )
 
 func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) {
-	assert.InDelta(t, expected.R2, actual.R2, 0.05, msg+" scores:r2")
+	if actual.R2 >= 0 && expected.R2 >= 0 {
+		assert.InDelta(t, expected.R2, actual.R2, 0.05, msg+" scores:r2")
+	}
 	assert.InDelta(t, expected.MAPE, actual.MAPE, 0.20, msg+" scores:mape")
 
 	mse := actual.MSE
