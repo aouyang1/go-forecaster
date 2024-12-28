@@ -31,11 +31,10 @@ func (m Model) TablePrint(w io.Writer) error {
 	fmt.Fprintln(w, "Series:")
 	fmt.Fprintln(w, "  Options:")
 	fmt.Fprintf(w, "    Training End Time: %s\n", m.Series.TrainEndTime)
-	fmt.Fprintf(w, "    Daily Orders: %d    Weekly Orders: %d    Regularization: %.3f\n",
-		m.Series.Options.DailyOrders,
-		m.Series.Options.WeeklyOrders,
+	fmt.Fprintf(w, "    Regularization: %.3f\n",
 		m.Series.Options.Regularization,
 	)
+
 	if m.Options.SeriesOptions.OutlierOptions == nil {
 		fmt.Fprintln(w, "    Outlier Options: N/A")
 	} else {
@@ -104,9 +103,7 @@ func (m Model) TablePrint(w io.Writer) error {
 		m.Options.UncertaintyOptions.ResidualWindow,
 		m.Options.UncertaintyOptions.ResidualZscore,
 	)
-	fmt.Fprintf(w, "    Daily Orders: %d    Weekly Orders: %d    Regularization: %.3f\n",
-		m.Uncertainty.Options.DailyOrders,
-		m.Uncertainty.Options.WeeklyOrders,
+	fmt.Fprintf(w, "    Regularization: %.3f\n",
 		m.Uncertainty.Options.Regularization,
 	)
 	if len(m.Uncertainty.Options.ChangepointOptions.Changepoints) == 0 {
