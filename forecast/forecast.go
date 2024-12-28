@@ -85,7 +85,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	// do not include weekly fourier features if time range is less than 1 week
 	if !f.trained && t[len(t)-1].Sub(t[0]) < time.Duration(7*24*time.Hour) {
 		for _, f := range feat.Labels() {
-			if val, _ := f.Get("name"); val == "dow" {
+			if val, _ := f.Get("name"); val == LabelSeasWeekly {
 				feat.Del(f)
 			}
 		}
