@@ -108,13 +108,21 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &forecast.Options{
-						DailyOrders: 2,
+						SeasonalityOptions: forecast.SeasonalityOptions{
+							SeasonalityConfigs: []forecast.SeasonalityConfig{
+								forecast.NewDailySeasonalityConfig(2),
+							},
+						},
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &forecast.Options{
-						DailyOrders:    2,
+						SeasonalityOptions: forecast.SeasonalityOptions{
+							SeasonalityConfigs: []forecast.SeasonalityConfig{
+								forecast.NewDailySeasonalityConfig(2),
+							},
+						},
 						Regularization: []float64{1.0},
 					},
 					ResidualWindow: 100,
@@ -165,15 +173,23 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &forecast.Options{
-						DailyOrders:  2,
-						WeeklyOrders: 2,
+						SeasonalityOptions: forecast.SeasonalityOptions{
+							SeasonalityConfigs: []forecast.SeasonalityConfig{
+								forecast.NewDailySeasonalityConfig(2),
+								forecast.NewWeeklySeasonalityConfig(2),
+							},
+						},
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &forecast.Options{
-						DailyOrders:    2,
-						WeeklyOrders:   2,
+						SeasonalityOptions: forecast.SeasonalityOptions{
+							SeasonalityConfigs: []forecast.SeasonalityConfig{
+								forecast.NewDailySeasonalityConfig(2),
+								forecast.NewWeeklySeasonalityConfig(2),
+							},
+						},
 						Regularization: []float64{1.0},
 					},
 					ResidualWindow: 100,
@@ -235,14 +251,22 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &forecast.Options{
-						DailyOrders:  4,
-						WeeklyOrders: 2,
+						SeasonalityOptions: forecast.SeasonalityOptions{
+							SeasonalityConfigs: []forecast.SeasonalityConfig{
+								forecast.NewDailySeasonalityConfig(4),
+								forecast.NewWeeklySeasonalityConfig(2),
+							},
+						},
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &forecast.Options{
-						DailyOrders: 6,
+						SeasonalityOptions: forecast.SeasonalityOptions{
+							SeasonalityConfigs: []forecast.SeasonalityConfig{
+								forecast.NewDailySeasonalityConfig(6),
+							},
+						},
 					},
 					ResidualWindow: 100,
 					ResidualZscore: 1.0,

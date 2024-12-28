@@ -66,8 +66,6 @@ type Options struct {
 	Tolerance       float64   `json:"tolerance"`
 	Parallelization int       `json:"parallelization"`
 
-	DailyOrders        int                `json:"daily_orders"`
-	WeeklyOrders       int                `json:"weekly_orders"`
 	SeasonalityOptions SeasonalityOptions `json:"seasonality_options"`
 
 	DSTOptions     DSTOptions     `json:"dst_options"`
@@ -81,8 +79,7 @@ func NewDefaultOptions() *Options {
 	return &Options{
 		ChangepointOptions: NewDefaultChangepointOptions(),
 		Regularization:     []float64{0.0},
-		DailyOrders:        12,
-		WeeklyOrders:       6,
+		SeasonalityOptions: NewDefaultSeasonalityOptions(),
 	}
 }
 
@@ -114,6 +111,15 @@ func NewDefaultChangepointOptions() ChangepointOptions {
 // Seasonality options configures the number of seasonality components to fit for.
 type SeasonalityOptions struct {
 	SeasonalityConfigs []SeasonalityConfig `json:"seasonality_configs"`
+}
+
+func NewDefaultSeasonalityOptions() SeasonalityOptions {
+	return SeasonalityOptions{
+		SeasonalityConfigs: []SeasonalityConfig{
+			NewDailySeasonalityConfig(12),
+			NewWeeklySeasonalityConfig(6),
+		},
+	}
 }
 
 // SeasonalityConfig represents a single seasonality configuration to model. This will generate
