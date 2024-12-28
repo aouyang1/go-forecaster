@@ -5,17 +5,28 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
+	"golang.org/x/exp/slices"
 	"gonum.org/v1/gonum/floats"
 )
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
 
-const MaxWeekendDurBuffer = 24 * time.Hour
+const (
+	MaxWeekendDurBuffer = 24 * time.Hour
+
+	LabelTimeEpoch = "epoch"
+
+	LabelSeasDaily  = "daily"
+	LabelSeasWeekly = "weekly"
+
+	LabelEventWeekend = "weekend"
+)
 
 func generateTimeFeatures(t []time.Time, opt *Options) (*feature.Set, *feature.Set) {
 	if opt == nil {
@@ -23,27 +34,18 @@ func generateTimeFeatures(t []time.Time, opt *Options) (*feature.Set, *feature.S
 	}
 
 	tFeat := feature.NewSet()
+
+	epoch := make([]float64, len(t))
+	for i, tPnt := range t {
+		epochNano := float64(tPnt.UnixNano()) / 1e9
+		epoch[i] = epochNano
+	}
+	feat := feature.NewTime(LabelTimeEpoch)
+	tFeat.Set(feat, epoch)
+
 	eFeat := generateEventFeatures(t, opt)
 	tFeat.Update(eFeat)
 
-	if opt.DailyOrders > 0 {
-		hod := make([]float64, len(t))
-		for i, tPnt := range t {
-			hour := float64(tPnt.Unix()) / 3600.0
-			hod[i] = math.Mod(hour, 24.0)
-		}
-		feat := feature.NewTime("hod")
-		tFeat.Set(feat, hod)
-	}
-	if opt.WeeklyOrders > 0 {
-		dow := make([]float64, len(t))
-		for i, tPnt := range t {
-			day := float64(tPnt.Unix()) / 86400.0
-			dow[i] = math.Mod(day, 7.0)
-		}
-		feat := feature.NewTime("dow")
-		tFeat.Set(feat, dow)
-	}
 	return tFeat, eFeat
 }
 
@@ -58,7 +60,7 @@ func generateEventFeatures(t []time.Time, opt *Options) *feature.Set {
 			var err error
 			locOverride, err = time.LoadLocation(opt.WeekendOptions.TimezoneOverride)
 			if err != nil {
-				slog.Warn("invalid timezone location override for weekend options using dataset timezone", "timezone_override", opt.WeekendOptions.TimezoneOverride)
+				slog.Warn("invalid timezone location override for weekend options, using dataset timezone", "timezone_override", opt.WeekendOptions.TimezoneOverride)
 			}
 		}
 
@@ -93,7 +95,7 @@ func generateEventFeatures(t []time.Time, opt *Options) *feature.Set {
 			return (wkdayBefore == time.Saturday || wkdayBefore == time.Sunday) &&
 				(wkdayAfter == time.Saturday || wkdayAfter == time.Sunday)
 		}, winFunc)
-		feat := feature.NewEvent("weekend")
+		feat := feature.NewEvent(LabelEventWeekend)
 		eFeat.Set(feat, weekendMask)
 	}
 
@@ -154,81 +156,127 @@ func generateFourierFeatures(feat *feature.Set, opt *Options) (*feature.Set, err
 		opt = NewDefaultOptions()
 	}
 	x := feature.NewSet()
-	if opt.DailyOrders > 0 {
-		var orders []int
-		for i := 1; i <= opt.DailyOrders; i++ {
-			orders = append(orders, i)
-		}
-		dailyFeatures, err := generateFourierOrders(feat, "hod", orders, 24.0)
-		if err != nil {
-			return nil, fmt.Errorf("%q not present in time features, %w", "hod", err)
-		}
-		x.Update(dailyFeatures)
 
-		// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
-		// to capture weekly seasonality.
-		if opt.WeekendOptions.Enabled {
-			eventSeasFeat, err := generateEventSeasonality(feat, dailyFeatures, "weekend", "hod")
-			if err != nil {
-				slog.Warn("unable to generate weekend daily seasonality", "feature_name", "weekend")
-			} else {
-				x.Update(eventSeasFeat)
-			}
+	// sort seasonality configs so we can find duplicate periods and remove them
+	optSeasConfigs := opt.SeasonalityOptions.SeasonalityConfigs
+	sort.Slice(optSeasConfigs, func(i, j int) bool {
+		if optSeasConfigs[i].Period < optSeasConfigs[j].Period {
+			return true
 		}
+		if optSeasConfigs[i].Period > optSeasConfigs[j].Period {
+			return false
+		}
+		if optSeasConfigs[i].Orders > optSeasConfigs[j].Orders {
+			return true
+		}
+		if optSeasConfigs[i].Orders < optSeasConfigs[j].Orders {
+			return false
+		}
+		return optSeasConfigs[i].Name < optSeasConfigs[j].Name
+	})
+	validIdx := make([]int, 0, len(optSeasConfigs))
+	var lastValidPeriod time.Duration
+	for i, seasCfg := range optSeasConfigs {
+		if seasCfg.Period > 0 && seasCfg.Period > lastValidPeriod && seasCfg.Name != "" && seasCfg.Orders > 0 {
+			validIdx = append(validIdx, i)
+			lastValidPeriod = seasCfg.Period
+		}
+	}
+	if len(validIdx) != len(optSeasConfigs) {
+		validatedSeasConfigs := make([]SeasonalityConfig, 0, len(validIdx))
+		for _, i := range validIdx {
+			validatedSeasConfigs = append(validatedSeasConfigs, optSeasConfigs[i])
+		}
+		optSeasConfigs = validatedSeasConfigs
+	}
+	opt.SeasonalityOptions.SeasonalityConfigs = optSeasConfigs
 
-		for _, e := range opt.EventOptions.Events {
-			eventSeasFeat, err := generateEventSeasonality(feat, dailyFeatures, e.Name, "hod")
-			if err != nil {
-				slog.Warn("unable to generate event daily seasonality", "feature_name", e.Name, "seasonality", "hod")
+	periods := make(map[float64]struct{})
+	colinearCfgOrders := make(map[SeasonalityConfig][]int)
+	for _, seasCfg := range optSeasConfigs {
+		for i := 1; i <= seasCfg.Orders; i++ {
+			period := float64(seasCfg.Period) / float64(i)
+			if _, exists := periods[period]; exists {
+				// store colinear period
+				colinearCfgOrders[seasCfg] = append(colinearCfgOrders[seasCfg], i)
 				continue
 			}
-
-			x.Update(eventSeasFeat)
+			periods[period] = struct{}{}
 		}
 	}
 
-	if opt.WeeklyOrders > 0 {
+	// derive colinear features
+	//  24hr 12hr  8hr  6hr
+	// 168hr 84hr 56hr 42hr 33.6hr 28hr 24hr
+	// sort by lowest period to highest
+	// build up map of periods for each order/seas to find duplicates
+	// when we find a duplicate we want to flag that the period, order, seas
+	//    is colinear with an existing seasonality
+	// store these in a separate map keyed by the config to a slice of orders
+
+	for _, seasCfg := range optSeasConfigs {
 		var orders []int
-		for i := 1; i <= opt.WeeklyOrders; i++ {
-			if i%7 == 0 && i/7 <= opt.DailyOrders {
-				// colinear feature so skip
-				continue
+		for i := 1; i <= seasCfg.Orders; i++ {
+			colinearOrders, colinearCfgExists := colinearCfgOrders[seasCfg]
+			if colinearCfgExists {
+				if slices.Contains(colinearOrders, i) {
+					continue
+				}
 			}
 			orders = append(orders, i)
 		}
-		weeklyFeatures, err := generateFourierOrders(feat, "dow", orders, 7.0)
+		seasFeatures, err := generateFourierOrders(feat, orders, seasCfg.Period, seasCfg.Name)
 		if err != nil {
-			return nil, fmt.Errorf("%q not present in time features, %w", "dow", err)
+			return nil, fmt.Errorf("unable to generate seasonality features for %q, %w", seasCfg.Name, err)
 		}
-		x.Update(weeklyFeatures)
+		x.Update(seasFeatures)
+
+		switch seasCfg.Name {
+		case LabelSeasDaily:
+			// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
+			// to capture weekly seasonality.
+			if opt.WeekendOptions.Enabled {
+				eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, LabelEventWeekend, LabelSeasDaily)
+				if err != nil {
+					slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend)
+				} else {
+					x.Update(eventSeasFeat)
+				}
+			}
+		}
 
 		for _, e := range opt.EventOptions.Events {
-			eventSeasFeat, err := generateEventSeasonality(feat, weeklyFeatures, e.Name, "dow")
+			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, e.Name, seasCfg.Name)
 			if err != nil {
-				slog.Warn("unable to generate event weekly seasonality", "feature_name", e.Name, "seasonality", "dow")
+				slog.Warn("unable to generate event seasonality", "feature_name", e.Name, "seasonality", seasCfg.Name)
 				continue
 			}
 
 			x.Update(eventSeasFeat)
 		}
+
 	}
 	return x, nil
 }
 
-func generateFourierOrders(tFeatures *feature.Set, col string, orders []int, period float64) (*feature.Set, error) {
+func generateFourierOrders(tFeatures *feature.Set, orders []int, periodDur time.Duration, label string) (*feature.Set, error) {
 	if tFeatures == nil {
 		return nil, ErrUnknownTimeFeature
 	}
+
+	col := LabelTimeEpoch
 	tFeat, exists := tFeatures.Get(feature.NewTime(col))
 	if !exists {
 		return nil, ErrUnknownTimeFeature
 	}
 
+	period := periodDur.Seconds()
+
 	x := feature.NewSet()
 	for _, order := range orders {
 		sinFeat, cosFeat := generateFourierComponent(tFeat, order, period)
-		sinFeatCol := feature.NewSeasonality(col, feature.FourierCompSin, order)
-		cosFeatCol := feature.NewSeasonality(col, feature.FourierCompCos, order)
+		sinFeatCol := feature.NewSeasonality(col+"_"+label, feature.FourierCompSin, order)
+		cosFeatCol := feature.NewSeasonality(col+"_"+label, feature.FourierCompCos, order)
 		x.Set(sinFeatCol, sinFeat)
 		x.Set(cosFeatCol, cosFeat)
 	}
@@ -248,7 +296,7 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 	return sinFeat, cosFeat
 }
 
-func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sCol string) (*feature.Set, error) {
+func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sLabel string) (*feature.Set, error) {
 	mask, exists := feat.Get(feature.NewEvent(eCol))
 	if !exists {
 		return nil, fmt.Errorf("event mask not found, skipping event name, %s", eCol)
@@ -268,7 +316,7 @@ func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sCol string) (*fea
 
 		orderStr, _ := label.Get("order")
 		order, _ := strconv.Atoi(orderStr)
-		featCol := feature.NewSeasonality(eCol+"_"+sCol, fcomp, order)
+		featCol := feature.NewSeasonality(eCol+"_"+sLabel, fcomp, order)
 		eventSeasonalityFeatures.Set(featCol, maskedData)
 	}
 	return eventSeasonalityFeatures, nil

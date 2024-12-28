@@ -26,7 +26,11 @@ func TestFit(t *testing.T) {
 		y = append(y, bias+amp*math.Sin(2.0*math.Pi/86400.0*float64(tWin[i].Unix()+phase)))
 	}
 	opt := &Options{
-		DailyOrders: 3,
+		SeasonalityOptions: SeasonalityOptions{
+			SeasonalityConfigs: []SeasonalityConfig{
+				NewDailySeasonalityConfig(3),
+			},
+		},
 	}
 	f, err := New(opt)
 	require.Nil(t, err)
@@ -76,7 +80,11 @@ func TestFitFromModel(t *testing.T) {
 		y = append(y, bias+amp*math.Sin(2.0*math.Pi/86400.0*float64(tWin[i].Unix()+phase)))
 	}
 	opt := &Options{
-		DailyOrders: 3,
+		SeasonalityOptions: SeasonalityOptions{
+			SeasonalityConfigs: []SeasonalityConfig{
+				NewDailySeasonalityConfig(3),
+			},
+		},
 	}
 	f, err := New(opt)
 	require.Nil(t, err)

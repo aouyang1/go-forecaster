@@ -133,7 +133,7 @@ func TestForecaster(t *testing.T) {
 						Coef: []forecast.FeatureWeight{
 							{
 								Labels: map[string]string{
-									"name":              "hod",
+									"name":              "epoch_daily",
 									"order":             "1",
 									"fourier_component": "sin",
 								},
@@ -192,21 +192,21 @@ func TestForecaster(t *testing.T) {
 						Coef: []forecast.FeatureWeight{
 							{
 								Labels: map[string]string{
-									"name":              "dow",
-									"order":             "1",
-									"fourier_component": "sin",
-								},
-								Type:  feature.FeatureTypeSeasonality,
-								Value: 4.6,
-							},
-							{
-								Labels: map[string]string{
-									"name":              "hod",
+									"name":              "epoch_daily",
 									"order":             "1",
 									"fourier_component": "sin",
 								},
 								Type:  feature.FeatureTypeSeasonality,
 								Value: 7.2,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_weekly",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 4.6,
 							},
 						},
 					},
@@ -260,16 +260,7 @@ func TestForecaster(t *testing.T) {
 						Coef: []forecast.FeatureWeight{
 							{
 								Labels: map[string]string{
-									"name":              "dow",
-									"order":             "1",
-									"fourier_component": "sin",
-								},
-								Type:  feature.FeatureTypeSeasonality,
-								Value: 4.6,
-							},
-							{
-								Labels: map[string]string{
-									"name":              "hod",
+									"name":              "epoch_daily",
 									"order":             "1",
 									"fourier_component": "sin",
 								},
@@ -278,12 +269,21 @@ func TestForecaster(t *testing.T) {
 							},
 							{
 								Labels: map[string]string{
-									"name":              "hod",
+									"name":              "epoch_daily",
 									"order":             "3",
 									"fourier_component": "sin",
 								},
 								Type:  feature.FeatureTypeSeasonality,
 								Value: 7.6,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_weekly",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 4.6,
 							},
 						},
 					},
@@ -299,7 +299,7 @@ func TestForecaster(t *testing.T) {
 						Coef: []forecast.FeatureWeight{
 							{
 								Labels: map[string]string{
-									"name":              "hod",
+									"name":              "epoch_daily",
 									"order":             "5",
 									"fourier_component": "sin",
 								},
@@ -398,10 +398,14 @@ func ExampleForecasterWithOutliers() {
 		SeriesOptions: &SeriesOptions{
 			ForecastOptions: &forecast.Options{
 				Regularization: regularization,
-				DailyOrders:    12,
-				WeeklyOrders:   12,
-				Iterations:     500,
-				Tolerance:      1e-3,
+				SeasonalityOptions: forecast.SeasonalityOptions{
+					SeasonalityConfigs: []forecast.SeasonalityConfig{
+						forecast.NewDailySeasonalityConfig(12),
+						forecast.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 500,
+				Tolerance:  1e-3,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
 				},
@@ -417,10 +421,14 @@ func ExampleForecasterWithOutliers() {
 		UncertaintyOptions: &UncertaintyOptions{
 			ForecastOptions: &forecast.Options{
 				Regularization: regularization,
-				DailyOrders:    12,
-				WeeklyOrders:   12,
-				Iterations:     250,
-				Tolerance:      1e-2,
+				SeasonalityOptions: forecast.SeasonalityOptions{
+					SeasonalityConfigs: []forecast.SeasonalityConfig{
+						forecast.NewDailySeasonalityConfig(12),
+						forecast.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 250,
+				Tolerance:  1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: nil,
 				},
@@ -495,10 +503,14 @@ func ExampleForecasterAutoChangepoint() {
 		SeriesOptions: &SeriesOptions{
 			ForecastOptions: &forecast.Options{
 				Regularization: regularization,
-				DailyOrders:    12,
-				WeeklyOrders:   12,
-				Iterations:     500,
-				Tolerance:      1e-3,
+				SeasonalityOptions: forecast.SeasonalityOptions{
+					SeasonalityConfigs: []forecast.SeasonalityConfig{
+						forecast.NewDailySeasonalityConfig(12),
+						forecast.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 500,
+				Tolerance:  1e-3,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:                true,
 					AutoNumChangepoints: 100,
@@ -510,10 +522,14 @@ func ExampleForecasterAutoChangepoint() {
 		UncertaintyOptions: &UncertaintyOptions{
 			ForecastOptions: &forecast.Options{
 				Regularization: regularization,
-				DailyOrders:    12,
-				WeeklyOrders:   12,
-				Iterations:     250,
-				Tolerance:      1e-2,
+				SeasonalityOptions: forecast.SeasonalityOptions{
+					SeasonalityConfigs: []forecast.SeasonalityConfig{
+						forecast.NewDailySeasonalityConfig(12),
+						forecast.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 250,
+				Tolerance:  1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Auto:         false,
 					Changepoints: []forecast.Changepoint{},
@@ -571,10 +587,14 @@ func ExampleForecasterWithTrend() {
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
 			ForecastOptions: &forecast.Options{
-				DailyOrders:  12,
-				WeeklyOrders: 12,
-				Iterations:   500,
-				Tolerance:    1e-3,
+				SeasonalityOptions: forecast.SeasonalityOptions{
+					SeasonalityConfigs: []forecast.SeasonalityConfig{
+						forecast.NewDailySeasonalityConfig(12),
+						forecast.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 500,
+				Tolerance:  1e-3,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: changepoints,
 					EnableGrowth: true,
@@ -584,10 +604,14 @@ func ExampleForecasterWithTrend() {
 		},
 		UncertaintyOptions: &UncertaintyOptions{
 			ForecastOptions: &forecast.Options{
-				DailyOrders:  12,
-				WeeklyOrders: 12,
-				Iterations:   250,
-				Tolerance:    1e-2,
+				SeasonalityOptions: forecast.SeasonalityOptions{
+					SeasonalityConfigs: []forecast.SeasonalityConfig{
+						forecast.NewDailySeasonalityConfig(12),
+						forecast.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 250,
+				Tolerance:  1e-2,
 				ChangepointOptions: forecast.ChangepointOptions{
 					Changepoints: nil,
 				},
