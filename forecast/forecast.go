@@ -52,7 +52,7 @@ func New(opt *Options) (*Forecast, error) {
 }
 
 // NewFromModel creates a new forecast instance given a forecast Model to initialize. This
-// instance can be used for inferrence immediately and does not need to be trained again.
+// instance can be used for inference immediately and does not need to be trained again.
 func NewFromModel(model Model) (*Forecast, error) {
 	f := &Forecast{
 		opt:            model.Options,
