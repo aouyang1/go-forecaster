@@ -97,7 +97,7 @@ func (w Weights) tablePrint(wr io.Writer, prefix, indent string, indentGrowth in
 	fmt.Fprintf(wr, "%s%sWeights:\n", prefix, indentExpand(indent, indentGrowth))
 	tbl := tabwriter.NewWriter(wr, 0, 0, 1, ' ', tabwriter.AlignRight)
 	fmt.Fprintf(tbl, "%s%sType\tLabels\tValue\t\n", prefix, indentExpand(indent, indentGrowth+1))
-	fmt.Fprintf(tbl, "%s%sIntercept\t\t%.5f\t\n", prefix, indentExpand(indent, indentGrowth+1), w.Intercept)
+	fmt.Fprintf(tbl, "%s%sIntercept\t\t%.3f\t\n", prefix, indentExpand(indent, indentGrowth+1), w.Intercept)
 	for _, fw := range w.Coef {
 		labelOut, err := json.Marshal(fw.Labels)
 		if err != nil {
