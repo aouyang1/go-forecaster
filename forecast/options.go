@@ -1,6 +1,9 @@
 package forecast
 
 import (
+	"fmt"
+	"io"
+	"text/tabwriter"
 	"time"
 
 	"gonum.org/v1/gonum/dsp/window"
@@ -99,6 +102,22 @@ type ChangepointOptions struct {
 	AutoNumChangepoints int           `json:"auto_num_changepoints"`
 }
 
+func (c ChangepointOptions) tablePrint(w io.Writer, prefix, indent string, indentGrowth int) error {
+	tbl := tabwriter.NewWriter(w, 0, 0, 1, ' ', tabwriter.AlignRight)
+	noCfg := " None"
+	if len(c.Changepoints) > 0 {
+		noCfg = ""
+		fmt.Fprintf(tbl, "%s%sName\tDatetime\t\n", prefix, indentExpand(indent, indentGrowth+1))
+	}
+	fmt.Fprintf(w, "%s%sChangepoints:%s\n", prefix, indentExpand(indent, indentGrowth), noCfg)
+	for _, chpt := range c.Changepoints {
+		fmt.Fprintf(tbl, "%s%s%s\t%s\t\n",
+			prefix, indentExpand(indent, indentGrowth+1),
+			chpt.Name, chpt.T)
+	}
+	return tbl.Flush()
+}
+
 // NewDefaultChangepointOptions generates a set of default changepoint options
 func NewDefaultChangepointOptions() ChangepointOptions {
 	return ChangepointOptions{
@@ -113,6 +132,24 @@ type SeasonalityOptions struct {
 	SeasonalityConfigs []SeasonalityConfig `json:"seasonality_configs"`
 }
 
+func (s SeasonalityOptions) tablePrint(w io.Writer, prefix, indent string, indentGrowth int) error {
+	tbl := tabwriter.NewWriter(w, 0, 0, 1, ' ', tabwriter.AlignRight)
+	noCfg := " None"
+	if len(s.SeasonalityConfigs) > 0 {
+		noCfg = ""
+		fmt.Fprintf(tbl, "%s%sName\tPeriod\tOrders\t\n", prefix, indentExpand(indent, indentGrowth+1))
+	}
+	fmt.Fprintf(w, "%s%sSeasonality:%s\n", prefix, indentExpand(indent, indentGrowth), noCfg)
+	for _, seasCfg := range s.SeasonalityConfigs {
+		fmt.Fprintf(tbl, "%s%s%s\t%s\t%d\t\n",
+			prefix, indentExpand(indent, indentGrowth+1),
+			seasCfg.Name, seasCfg.Period, seasCfg.Orders)
+	}
+	return tbl.Flush()
+}
+
+// NewDefaultSeasonalityOptions generates a default seasonality config with weekly and daily
+// seasonal components
 func NewDefaultSeasonalityOptions() SeasonalityOptions {
 	return SeasonalityOptions{
 		SeasonalityConfigs: []SeasonalityConfig{
@@ -177,4 +214,20 @@ type WeekendOptions struct {
 
 type EventOptions struct {
 	Events []Event `json:"events"`
+}
+
+func (e EventOptions) tablePrint(w io.Writer, prefix, indent string, indentGrowth int) error {
+	tbl := tabwriter.NewWriter(w, 0, 0, 1, ' ', tabwriter.AlignRight)
+	noCfg := " None"
+	if len(e.Events) > 0 {
+		noCfg = ""
+		fmt.Fprintf(tbl, "%s%sName\tStart\tEnd\t\n", prefix, indentExpand(indent, indentGrowth+1))
+	}
+	fmt.Fprintf(w, "%s%sEvents:%s\n", prefix, indentExpand(indent, indentGrowth), noCfg)
+	for _, ev := range e.Events {
+		fmt.Fprintf(tbl, "%s%s%s\t%s\t%s\t\n",
+			prefix, indentExpand(indent, indentGrowth+1),
+			ev.Name, ev.Start, ev.End)
+	}
+	return tbl.Flush()
 }

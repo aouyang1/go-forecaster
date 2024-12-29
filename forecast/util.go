@@ -479,3 +479,12 @@ func adjustTimeForDST(t []time.Time, locNames []string) []time.Time {
 	}
 	return newT
 }
+
+func indentExpand(indent string, growth int) string {
+	indentByte := []byte(indent)
+	out := make([]byte, 0, len(indent)*growth)
+	for i := 0; i < growth; i++ {
+		out = append(out, indentByte...)
+	}
+	return string(out)
+}
