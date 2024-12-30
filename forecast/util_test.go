@@ -118,6 +118,27 @@ func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
 	}
 }
 
+var (
+	epoch7DaysAt6Hr = []float64{
+		0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
+		24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
+		48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
+		72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
+		96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
+		120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
+		144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
+	}
+	epoch7DaysAt8Hr = []float64{
+		0 * 3600.0, 8 * 3600.0, 16 * 3600.0, // Thursday
+		24 * 3600, 32 * 3600.0, 40 * 3600.0, // Friday
+		48 * 3600, 56 * 3600.0, 64 * 3600.0, // Saturday
+		72 * 3600, 80 * 3600.0, 88 * 3600.0, // Sunday
+		96 * 3600, 104 * 3600.0, 112 * 3600.0, // Monday
+		120 * 3600, 128 * 3600.0, 136 * 3600.0, // Tuesday
+		144 * 3600, 152 * 3600.0, 160 * 3600.0, // Wednesday
+	}
+)
+
 func TestGenerateTimeFeatures(t *testing.T) {
 	nowFunc := func() time.Time {
 		return time.Date(1970, 1, 8, 0, 0, 0, 0, time.UTC)
@@ -132,15 +153,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			opt: &Options{},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			),
 		},
 		"basic weekend": {
@@ -152,15 +165,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -185,15 +190,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -218,15 +215,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -251,15 +240,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -284,15 +265,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -317,15 +290,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 8 * 3600.0, 16 * 3600.0, // Thursday
-					24 * 3600, 32 * 3600.0, 40 * 3600.0, // Friday
-					48 * 3600, 56 * 3600.0, 64 * 3600.0, // Saturday
-					72 * 3600, 80 * 3600.0, 88 * 3600.0, // Sunday
-					96 * 3600, 104 * 3600.0, 112 * 3600.0, // Monday
-					120 * 3600, 128 * 3600.0, 136 * 3600.0, // Tuesday
-					144 * 3600, 152 * 3600.0, 160 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt8Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -349,15 +314,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 8 * 3600.0, 16 * 3600.0, // Thursday
-					24 * 3600, 32 * 3600.0, 40 * 3600.0, // Friday
-					48 * 3600, 56 * 3600.0, 64 * 3600.0, // Saturday
-					72 * 3600, 80 * 3600.0, 88 * 3600.0, // Sunday
-					96 * 3600, 104 * 3600.0, 112 * 3600.0, // Monday
-					120 * 3600, 128 * 3600.0, 136 * 3600.0, // Tuesday
-					144 * 3600, 152 * 3600.0, 160 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt8Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -381,15 +338,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("weekend"),
 				[]float64{
@@ -423,15 +372,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("myevent"),
 				[]float64{
@@ -476,15 +417,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("overlaps_start"),
 				[]float64{
@@ -529,15 +462,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("myevent"),
 				[]float64{
@@ -578,15 +503,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			),
 		},
 		"basic event with hamm window": {
@@ -605,15 +522,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			).Set(
 				feature.NewEvent("myevent"),
 				[]float64{
@@ -632,15 +541,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			opt: nil,
 			expected: feature.NewSet().Set(
 				feature.NewTime("epoch"),
-				[]float64{
-					0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
-					24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
-					48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
-					72 * 3600, 78 * 3600.0, 84 * 3600.0, 90 * 3600.0, // Sunday
-					96 * 3600, 102 * 3600.0, 108 * 3600.0, 114 * 3600.0, // Monday
-					120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
-					144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
-				},
+				epoch7DaysAt6Hr,
 			),
 		},
 	}

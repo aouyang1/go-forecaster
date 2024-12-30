@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFit(t *testing.T) {
+func testFitSignal(t *testing.T) (*Forecast, []time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 7 * 24 * 60
 	bias := 7.9
@@ -25,6 +25,7 @@ func TestFit(t *testing.T) {
 	for i := 0; i < minutes; i++ {
 		y = append(y, bias+amp*math.Sin(2.0*math.Pi/86400.0*float64(tWin[i].Unix()+phase)))
 	}
+
 	opt := &Options{
 		SeasonalityOptions: SeasonalityOptions{
 			SeasonalityConfigs: []SeasonalityConfig{
@@ -37,6 +38,12 @@ func TestFit(t *testing.T) {
 
 	err = f.Fit(tWin, y)
 	require.Nil(t, err)
+
+	return f, tWin, y
+}
+
+func TestFit(t *testing.T) {
+	f, _, _ := testFitSignal(t)
 
 	labels, err := f.FeatureLabels()
 	require.Nil(t, err)
@@ -51,7 +58,7 @@ func TestFit(t *testing.T) {
 	}
 
 	expected := []float64{
-		bias,
+		7.90,
 		3.72, 2.14,
 		0.00, 0.00,
 		0.00, 0.00,
@@ -64,33 +71,7 @@ func TestFit(t *testing.T) {
 }
 
 func TestFitFromModel(t *testing.T) {
-	// create a daily sine wave at minutely with one week
-	minutes := 7 * 24 * 60
-	bias := 7.9
-	amp := 4.3
-	phase := int64(4 * 60 * 60) // 3 hours
-
-	tWin := make([]time.Time, 0, minutes)
-	ct := time.Now().Add(-time.Duration(6) * time.Hour)
-	for i := 0; i < minutes; i++ {
-		tWin = append(tWin, ct.Add(time.Duration(i)*time.Minute))
-	}
-	y := make([]float64, 0, minutes)
-	for i := 0; i < minutes; i++ {
-		y = append(y, bias+amp*math.Sin(2.0*math.Pi/86400.0*float64(tWin[i].Unix()+phase)))
-	}
-	opt := &Options{
-		SeasonalityOptions: SeasonalityOptions{
-			SeasonalityConfigs: []SeasonalityConfig{
-				NewDailySeasonalityConfig(3),
-			},
-		},
-	}
-	f, err := New(opt)
-	require.Nil(t, err)
-
-	err = f.Fit(tWin, y)
-	require.Nil(t, err)
+	f, tWin, y := testFitSignal(t)
 
 	model, err := f.Model()
 	require.Nil(t, err)
@@ -115,7 +96,7 @@ func TestFitFromModel(t *testing.T) {
 	}
 
 	expected := []float64{
-		bias,
+		7.90,
 		3.72, 2.14,
 		0.00, 0.00,
 		0.00, 0.00,

@@ -339,12 +339,7 @@ func TestForecaster(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			defer func() {
-				if r := recover(); r != nil {
-					t.Logf("panic: %v\n", r)
-					debug.PrintStack()
-				}
-			}()
+			defer recoverForecastPanic()
 
 			f, err := New(td.opt)
 			require.Nil(t, err)
@@ -404,6 +399,38 @@ func generateExampleSeries() ([]time.Time, []float64) {
 		SetConst(t, 2.7, t[minutes/3], t[minutes/3+minutes/20])
 
 	return t, y
+}
+
+func runForecastExample(opt *Options, t []time.Time, y []float64, filename string) error {
+	f, err := New(opt)
+	if err != nil {
+		return err
+	}
+	if err := f.Fit(t, y); err != nil {
+		return err
+	}
+
+	m, err := f.Model()
+	if err != nil {
+		return err
+	}
+	if err := m.TablePrint(os.Stderr); err != nil {
+		return err
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	return f.PlotFit(file, nil)
+}
+
+func recoverForecastPanic() {
+	if r := recover(); r != nil {
+		fmt.Printf("panic: %v\n", r)
+		debug.PrintStack()
+	}
 }
 
 func ExampleForecasterWithOutliers() {
@@ -468,35 +495,9 @@ func ExampleForecasterWithOutliers() {
 		},
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("panic: %v\n", r)
-			debug.PrintStack()
-		}
-	}()
+	defer recoverForecastPanic()
 
-	f, err := New(opt)
-	if err != nil {
-		panic(err)
-	}
-	if err := f.Fit(t, y); err != nil {
-		panic(err)
-	}
-
-	m, err := f.Model()
-	if err != nil {
-		panic(err)
-	}
-	if err := m.TablePrint(os.Stderr); err != nil {
-		panic(err)
-	}
-
-	file, err := os.Create("examples/forecaster.html")
-	if err != nil {
-		panic(err)
-	}
-
-	if err := f.PlotFit(file, nil); err != nil {
+	if err := runForecastExample(opt, t, y, "examples/forecast.html"); err != nil {
 		panic(err)
 	}
 	// Output:
@@ -566,35 +567,9 @@ func ExampleForecasterAutoChangepoint() {
 	opt.SetMinValue(0.0)
 	opt.SetMaxValue(170.0)
 
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("panic: %v\n", r)
-			debug.PrintStack()
-		}
-	}()
+	defer recoverForecastPanic()
 
-	f, err := New(opt)
-	if err != nil {
-		panic(err)
-	}
-	if err := f.Fit(t, y); err != nil {
-		panic(err)
-	}
-
-	m, err := f.Model()
-	if err != nil {
-		panic(err)
-	}
-	if err := m.TablePrint(os.Stderr); err != nil {
-		panic(err)
-	}
-
-	file, err := os.Create("examples/forecaster_auto_changepoint.html")
-	if err != nil {
-		panic(err)
-	}
-
-	if err := f.PlotFit(file, nil); err != nil {
+	if err := runForecastExample(opt, t, y, "examples/forecaster_auto_changepoint.html"); err != nil {
 		panic(err)
 	}
 	// Output:
@@ -645,35 +620,9 @@ func ExampleForecasterWithTrend() {
 		},
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("panic: %v\n", r)
-			debug.PrintStack()
-		}
-	}()
+	defer recoverForecastPanic()
 
-	f, err := New(opt)
-	if err != nil {
-		panic(err)
-	}
-	if err := f.Fit(t, y); err != nil {
-		panic(err)
-	}
-
-	m, err := f.Model()
-	if err != nil {
-		panic(err)
-	}
-	if err := m.TablePrint(os.Stderr); err != nil {
-		panic(err)
-	}
-
-	file, err := os.Create("examples/forecaster_with_trend.html")
-	if err != nil {
-		panic(err)
-	}
-
-	if err := f.PlotFit(file, nil); err != nil {
+	if err := runForecastExample(opt, t, y, "examples/forecaster_with_trend.html"); err != nil {
 		panic(err)
 	}
 	// Output:
