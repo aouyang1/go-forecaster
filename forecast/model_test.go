@@ -132,6 +132,37 @@ Weights:
            event                                       {"name":"e0"} 7.600
 `,
 		},
+		"with disabled options": {
+			m: Model{
+				TrainEndTime: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
+				Options: &Options{
+					Regularization: []float64{0.0, 1.0},
+				},
+				Scores: &Scores{
+					MAPE: 0.1234,
+					MSE:  1.2345,
+					R2:   0.0123,
+				},
+				Weights: Weights{
+					Intercept: 1.1,
+				},
+			},
+			prefix: "  ",
+			indent: "  ",
+			expected: `  Forecast:
+    Training End Time: 1970-01-03 00:00:00 +0000 UTC
+    Regularization: [0.000 1.000]
+    Seasonality: None
+    Changepoints: None
+    Weekends: None
+    Events: None
+  Scores:
+    MAPE: 0.123    MSE: 1.234    R2: 0.012
+  Weights:
+          Type Labels Value
+     Intercept        1.100
+`,
+		},
 	}
 
 	for name, td := range testData {
