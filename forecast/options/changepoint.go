@@ -11,9 +11,7 @@ import (
 	"github.com/aouyang1/go-forecaster/forecast/util"
 )
 
-const (
-	DefaultAutoNumChangepoints int = 100
-)
+var DefaultAutoNumChangepoints int = 100
 
 // Changepoint describes a point in time that will change the ongoing trend. This will
 // include both a bias a growth feature.
