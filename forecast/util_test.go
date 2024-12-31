@@ -259,12 +259,12 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			),
 		},
-		"weekend with shift buffers": {
+		"weekend with shrink buffers": {
 			t: timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: &Options{
 				WeekendOptions: WeekendOptions{
 					Enabled:   true,
-					DurBefore: 6 * time.Hour,
+					DurBefore: -6 * time.Hour,
 					DurAfter:  -6 * time.Hour,
 				},
 			},
@@ -275,8 +275,8 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				feature.NewEvent("weekend"),
 				[]float64{
 					0, 0, 0, 0, // Thursday
-					0, 0, 0, 1, // Friday
-					1, 1, 1, 1, // Saturday
+					0, 0, 0, 0, // Friday
+					0, 1, 1, 1, // Saturday
 					1, 1, 1, 0, // Sunday
 					0, 0, 0, 0, // Monday
 					0, 0, 0, 0, // Tuesday
@@ -459,8 +459,8 @@ func TestGenerateTimeFeatures(t *testing.T) {
 						},
 						{
 							Name:  "myevent",
-							Start: time.Date(1970, 1, 7, 6, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 7, 12, 0, 0, 0, time.UTC),
+							Start: time.Date(1970, 1, 2, 6, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 2, 12, 0, 0, 0, time.UTC),
 						},
 					},
 				},
