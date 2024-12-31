@@ -299,13 +299,15 @@ func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, win
 
 		wkdayBefore := tPnt.Add(w.DurBefore).Weekday()
 		wkdayAfter := tPnt.Add(-w.DurAfter).Weekday()
+
+		wkdayBeforeValid := wkdayBefore == time.Saturday || wkdayBefore == time.Sunday
+		wkdayAfterValid := wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
+
 		if w.DurBefore > 0 && w.DurAfter > 0 {
-			return wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
-				wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
+			return wkdayBeforeValid || wkdayAfterValid
 		}
 
-		return (wkdayBefore == time.Saturday || wkdayBefore == time.Sunday) &&
-			(wkdayAfter == time.Saturday || wkdayAfter == time.Sunday)
+		return wkdayBeforeValid && wkdayAfterValid
 	}, winFunc)
 	feat := feature.NewEvent(LabelEventWeekend)
 	eFeat.Set(feat, weekendMask)
