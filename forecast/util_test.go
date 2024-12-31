@@ -365,12 +365,12 @@ func TestGenerateTimeFeatures(t *testing.T) {
 						{
 							Name:  "myevent",
 							Start: time.Date(1970, 1, 1, 6, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 1, 12, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 1, 18, 0, 0, 0, time.UTC),
 						},
 						{
 							Name:  "my other event",
 							Start: time.Date(1970, 1, 7, 6, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 7, 12, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 7, 18, 0, 0, 0, time.UTC),
 						},
 					},
 				},
@@ -410,7 +410,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 						{
 							Name:  "overlaps_start",
 							Start: time.Date(1969, 12, 30, 0, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 1, 12, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 1, 18, 0, 0, 0, time.UTC),
 						},
 						{
 							Name:  "overlaps_end",
@@ -455,12 +455,12 @@ func TestGenerateTimeFeatures(t *testing.T) {
 						{
 							Name:  "duplicate",
 							Start: time.Date(1970, 1, 3, 6, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 3, 12, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 3, 18, 0, 0, 0, time.UTC),
 						},
 						{
 							Name:  "duplicate",
 							Start: time.Date(1970, 1, 2, 6, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 2, 12, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 2, 18, 0, 0, 0, time.UTC),
 						},
 					},
 				},
@@ -520,7 +520,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 						{
 							Name:  "myevent",
 							Start: time.Date(1970, 1, 2, 6, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 4, 6, 0, 0, 0, time.UTC),
 						},
 					},
 				},
@@ -618,6 +618,25 @@ func TestGenerateFourierFeatures(t *testing.T) {
 		-0.2225, +0.0000, +0.2225, +0.4338, // Tuesday
 		+0.6234, +0.7818, +0.9009, +0.9749, // Wednesday
 	}
+	weekendSin1 := []float64{
+		0, 0, 0, 0, // Thursday
+		0, 0, 0, 0, // Friday
+		0, 1, 0, -1, // Saturday
+		0, 1, 0, -1, // Sunday
+		0, 0, 0, 0, // Monday
+		0, 0, 0, 0, // Tuesday
+		0, 0, 0, 0, // Wednesday
+	}
+	weekendCos1 := []float64{
+		0, 0, 0, 0, // Thursday
+		0, 0, 0, 0, // Friday
+		1, 0, -1, 0, // Saturday
+		1, 0, -1, 0, // Sunday
+		0, 0, 0, 0, // Monday
+		0, 0, 0, 0, // Tuesday
+		0, 0, 0, 0, // Wednesday
+	}
+
 	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	testData := map[string]struct {
 		opt      *Options
@@ -729,26 +748,10 @@ func TestGenerateFourierFeatures(t *testing.T) {
 				dailyCos1,
 			).Set(
 				feature.NewSeasonality("weekend_daily", feature.FourierCompSin, 1),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 1, 0, -1, // Saturday
-					0, 1, 0, -1, // Sunday
-					0, 0, 0, 0, // Monday
-					0, 0, 0, 0, // Tuesday
-					0, 0, 0, 0, // Wednesday
-				},
+				weekendSin1,
 			).Set(
 				feature.NewSeasonality("weekend_daily", feature.FourierCompCos, 1),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					1, 0, -1, 0, // Saturday
-					1, 0, -1, 0, // Sunday
-					0, 0, 0, 0, // Monday
-					0, 0, 0, 0, // Tuesday
-					0, 0, 0, 0, // Wednesday
-				},
+				weekendCos1,
 			),
 			err: nil,
 		},
@@ -763,8 +766,8 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					Events: []Event{
 						{
 							Name:  "myevent",
-							Start: time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 6, 0, 0, 0, 0, time.UTC),
+							Start: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC),
 						},
 					},
 				},
@@ -777,26 +780,10 @@ func TestGenerateFourierFeatures(t *testing.T) {
 				dailyCos1,
 			).Set(
 				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 1, 0, -1, // Sunday
-					0, 1, 0, -1, // Monday
-					0, 0, 0, 0, // Tuesday
-					0, 0, 0, 0, // Wednesday
-				},
+				weekendSin1,
 			).Set(
 				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 1),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					1, 0, -1, 0, // Sunday
-					1, 0, -1, 0, // Monday
-					1, 0, 0, 0, // Tuesday
-					0, 0, 0, 0, // Wednesday
-				},
+				weekendCos1,
 			),
 			err: nil,
 		},
@@ -830,7 +817,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					+0.0000, +0.0000, +0.0000, +0.0000, // Friday
 					+0.9749, +0.9009, +0.7818, +0.6234, // Saturday
 					+0.4338, +0.2225, +0.0000, -0.2225, // Sunday
-					-0.4338, +0.0000, +0.0000, +0.0000, // Monday
+					+0.0000, +0.0000, +0.0000, +0.0000, // Monday
 					+0.0000, +0.0000, +0.0000, +0.0000, // Tuesday
 					+0.0000, +0.0000, +0.0000, +0.0000, // Wednesday
 				},
@@ -841,7 +828,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					+0.0000, +0.0000, +0.0000, +0.0000, // Friday
 					-0.2225, -0.4338, -0.6234, -0.7818, // Saturday
 					-0.9009, -0.9749, -1.0000, -0.9749, // Sunday
-					-0.9009, +0.0000, +0.0000, +0.0000, // Monday
+					+0.0000, +0.0000, +0.0000, +0.0000, // Monday
 					+0.0000, +0.0000, +0.0000, +0.0000, // Tuesday
 					+0.0000, +0.0000, +0.0000, +0.0000, // Wednesday
 				},

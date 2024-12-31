@@ -429,7 +429,7 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFu
 		}
 
 		eventMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
-			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && (tPnt.Before(ev.End) || tPnt.Equal(ev.End))
+			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && tPnt.Before(ev.End)
 		}, winFunc)
 		eFeat.Set(feat, eventMask)
 	}
