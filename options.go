@@ -3,7 +3,7 @@ package forecaster
 import (
 	"math"
 
-	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/forecast/options"
 )
 
 // OutlierOptions configures the outlier removal pre-process using the Tukey Method. The outlier
@@ -27,26 +27,26 @@ func NewOutlierOptions() *OutlierOptions {
 }
 
 type SeriesOptions struct {
-	ForecastOptions *forecast.Options `json:"-"`
-	OutlierOptions  *OutlierOptions   `json:"outlier_options"`
+	ForecastOptions *options.Options `json:"-"`
+	OutlierOptions  *OutlierOptions  `json:"outlier_options"`
 }
 
 func NewSeriesOptions() *SeriesOptions {
 	return &SeriesOptions{
-		ForecastOptions: forecast.NewDefaultOptions(),
+		ForecastOptions: options.NewDefaultOptions(),
 		OutlierOptions:  NewOutlierOptions(),
 	}
 }
 
 type UncertaintyOptions struct {
-	ForecastOptions *forecast.Options `json:"-"`
-	ResidualWindow  int               `json:"residual_window"`
-	ResidualZscore  float64           `json:"residual_zscore"`
+	ForecastOptions *options.Options `json:"-"`
+	ResidualWindow  int              `json:"residual_window"`
+	ResidualZscore  float64          `json:"residual_zscore"`
 }
 
 func NewUncertaintyOptions() *UncertaintyOptions {
 	return &UncertaintyOptions{
-		ForecastOptions: forecast.NewDefaultOptions(),
+		ForecastOptions: options.NewDefaultOptions(),
 		ResidualWindow:  100,
 		ResidualZscore:  4.0,
 	}

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
+	"github.com/aouyang1/go-forecaster/forecast/options"
+	"github.com/aouyang1/go-forecaster/forecast/util"
 )
 
 var ErrUnknownFeatureType = errors.New("unknown feature type")
@@ -16,46 +18,46 @@ var ErrUnknownFeatureType = errors.New("unknown feature type")
 // Model represents a serializeable format of a forecast storing the forecast options, fit scores,
 // and coefficients
 type Model struct {
-	TrainEndTime time.Time `json:"train_end_time"`
-	Options      *Options  `json:"options"`
-	Scores       *Scores   `json:"scores"`
-	Weights      Weights   `json:"weights"`
+	TrainEndTime time.Time        `json:"train_end_time"`
+	Options      *options.Options `json:"options"`
+	Scores       *Scores          `json:"scores"`
+	Weights      Weights          `json:"weights"`
 }
 
 func (m Model) TablePrint(w io.Writer, prefix, indent string) error {
-	fmt.Fprintf(w, "%s%sForecast:\n", prefix, indentExpand(indent, 0))
+	fmt.Fprintf(w, "%s%sForecast:\n", prefix, util.IndentExpand(indent, 0))
 
-	fmt.Fprintf(w, "%s%sTraining End Time: %s\n", prefix, indentExpand(indent, 1), m.TrainEndTime)
+	fmt.Fprintf(w, "%s%sTraining End Time: %s\n", prefix, util.IndentExpand(indent, 1), m.TrainEndTime)
 
 	if m.Options != nil {
-		fmt.Fprintf(w, "%s%sRegularization: %.3f\n", prefix, indentExpand(indent, 1), m.Options.Regularization)
+		fmt.Fprintf(w, "%s%sRegularization: %.3f\n", prefix, util.IndentExpand(indent, 1), m.Options.Regularization)
 
-		if err := m.Options.SeasonalityOptions.tablePrint(w, prefix, indent, 1); err != nil {
+		if err := m.Options.SeasonalityOptions.TablePrint(w, prefix, indent, 1); err != nil {
 			return err
 		}
 
-		if err := m.Options.ChangepointOptions.tablePrint(w, prefix, indent, 1); err != nil {
+		if err := m.Options.ChangepointOptions.TablePrint(w, prefix, indent, 1); err != nil {
 			return err
 		}
 
 		if !m.Options.WeekendOptions.Enabled {
-			fmt.Fprintf(w, "%s%sWeekends: None\n", prefix, indentExpand(indent, 1))
+			fmt.Fprintf(w, "%s%sWeekends: None\n", prefix, util.IndentExpand(indent, 1))
 		} else {
-			fmt.Fprintf(w, "%s%sWeekends:\n", prefix, indentExpand(indent, 1))
+			fmt.Fprintf(w, "%s%sWeekends:\n", prefix, util.IndentExpand(indent, 1))
 			fmt.Fprintf(w, "%s%sBefore: %s, After: %s\n",
-				prefix, indentExpand(indent, 2),
+				prefix, util.IndentExpand(indent, 2),
 				-m.Options.WeekendOptions.DurBefore, m.Options.WeekendOptions.DurAfter)
 		}
 
-		if err := m.Options.EventOptions.tablePrint(w, prefix, indent, 1); err != nil {
+		if err := m.Options.EventOptions.TablePrint(w, prefix, indent, 1); err != nil {
 			return err
 		}
 	}
 
 	if m.Scores != nil {
-		fmt.Fprintf(w, "%s%sScores:\n", prefix, indentExpand(indent, 0))
+		fmt.Fprintf(w, "%s%sScores:\n", prefix, util.IndentExpand(indent, 0))
 		fmt.Fprintf(w, "%s%sMAPE: %.3f    MSE: %.3f    R2: %.3f\n",
-			prefix, indentExpand(indent, 1),
+			prefix, util.IndentExpand(indent, 1),
 			m.Scores.MAPE,
 			m.Scores.MSE,
 			m.Scores.R2,
@@ -94,10 +96,10 @@ func (w *Weights) Coefficients() []float64 {
 }
 
 func (w Weights) tablePrint(wr io.Writer, prefix, indent string, indentGrowth int) error {
-	fmt.Fprintf(wr, "%s%sWeights:\n", prefix, indentExpand(indent, indentGrowth))
+	fmt.Fprintf(wr, "%s%sWeights:\n", prefix, util.IndentExpand(indent, indentGrowth))
 	tbl := tabwriter.NewWriter(wr, 0, 0, 1, ' ', tabwriter.AlignRight)
-	fmt.Fprintf(tbl, "%s%sType\tLabels\tValue\t\n", prefix, indentExpand(indent, indentGrowth+1))
-	fmt.Fprintf(tbl, "%s%sIntercept\t\t%.3f\t\n", prefix, indentExpand(indent, indentGrowth+1), w.Intercept)
+	fmt.Fprintf(tbl, "%s%sType\tLabels\tValue\t\n", prefix, util.IndentExpand(indent, indentGrowth+1))
+	fmt.Fprintf(tbl, "%s%sIntercept\t\t%.3f\t\n", prefix, util.IndentExpand(indent, indentGrowth+1), w.Intercept)
 	for _, fw := range w.Coef {
 		labelOut, err := json.Marshal(fw.Labels)
 		if err != nil {
@@ -108,7 +110,7 @@ func (w Weights) tablePrint(wr io.Writer, prefix, indent string, indentGrowth in
 			val = "..."
 		}
 		fmt.Fprintf(tbl, "%s%s%s\t%s\t%s\t\n",
-			prefix, indentExpand(indent, 1),
+			prefix, util.IndentExpand(indent, 1),
 			fw.Type, string(labelOut), val)
 	}
 	return tbl.Flush()

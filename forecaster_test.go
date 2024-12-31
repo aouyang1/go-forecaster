@@ -12,6 +12,7 @@ import (
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/forecast/options"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,20 +108,20 @@ func TestForecaster(t *testing.T) {
 			tol: 1e-5,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
-					ForecastOptions: &forecast.Options{
-						SeasonalityOptions: forecast.SeasonalityOptions{
-							SeasonalityConfigs: []forecast.SeasonalityConfig{
-								forecast.NewDailySeasonalityConfig(2),
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
 							},
 						},
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
-					ForecastOptions: &forecast.Options{
-						SeasonalityOptions: forecast.SeasonalityOptions{
-							SeasonalityConfigs: []forecast.SeasonalityConfig{
-								forecast.NewDailySeasonalityConfig(2),
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
 							},
 						},
 						Regularization: []float64{1.0},
@@ -172,22 +173,22 @@ func TestForecaster(t *testing.T) {
 			tol: 1e-5,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
-					ForecastOptions: &forecast.Options{
-						SeasonalityOptions: forecast.SeasonalityOptions{
-							SeasonalityConfigs: []forecast.SeasonalityConfig{
-								forecast.NewDailySeasonalityConfig(2),
-								forecast.NewWeeklySeasonalityConfig(2),
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+								options.NewWeeklySeasonalityConfig(2),
 							},
 						},
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
-					ForecastOptions: &forecast.Options{
-						SeasonalityOptions: forecast.SeasonalityOptions{
-							SeasonalityConfigs: []forecast.SeasonalityConfig{
-								forecast.NewDailySeasonalityConfig(2),
-								forecast.NewWeeklySeasonalityConfig(2),
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+								options.NewWeeklySeasonalityConfig(2),
 							},
 						},
 						Regularization: []float64{1.0},
@@ -250,21 +251,21 @@ func TestForecaster(t *testing.T) {
 			tol: 1.0,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
-					ForecastOptions: &forecast.Options{
-						SeasonalityOptions: forecast.SeasonalityOptions{
-							SeasonalityConfigs: []forecast.SeasonalityConfig{
-								forecast.NewDailySeasonalityConfig(4),
-								forecast.NewWeeklySeasonalityConfig(2),
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(4),
+								options.NewWeeklySeasonalityConfig(2),
 							},
 						},
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
-					ForecastOptions: &forecast.Options{
-						SeasonalityOptions: forecast.SeasonalityOptions{
-							SeasonalityConfigs: []forecast.SeasonalityConfig{
-								forecast.NewDailySeasonalityConfig(6),
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(6),
 							},
 						},
 					},
@@ -436,57 +437,57 @@ func recoverForecastPanic() {
 func ExampleForecasterWithOutliers() {
 	t, y := generateExampleSeries()
 
-	changepoints := []forecast.Changepoint{
-		forecast.NewChangepoint("anomaly1", t[len(t)/2]),
-		forecast.NewChangepoint("anomaly2", t[len(t)*17/20]),
+	changepoints := []options.Changepoint{
+		options.NewChangepoint("anomaly1", t[len(t)/2]),
+		options.NewChangepoint("anomaly2", t[len(t)*17/20]),
 	}
-	events := []forecast.Event{
-		forecast.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
+	events := []options.Event{
+		options.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
 	}
 
 	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
-			ForecastOptions: &forecast.Options{
+			ForecastOptions: &options.Options{
 				Regularization: regularization,
-				SeasonalityOptions: forecast.SeasonalityOptions{
-					SeasonalityConfigs: []forecast.SeasonalityConfig{
-						forecast.NewDailySeasonalityConfig(12),
-						forecast.NewWeeklySeasonalityConfig(12),
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
 					},
 				},
 				Iterations: 500,
 				Tolerance:  1e-3,
-				ChangepointOptions: forecast.ChangepointOptions{
+				ChangepointOptions: options.ChangepointOptions{
 					Changepoints: changepoints,
 				},
-				WeekendOptions: forecast.WeekendOptions{
+				WeekendOptions: options.WeekendOptions{
 					Enabled: true,
 				},
-				EventOptions: forecast.EventOptions{
+				EventOptions: options.EventOptions{
 					Events: events,
 				},
 			},
 			OutlierOptions: NewOutlierOptions(),
 		},
 		UncertaintyOptions: &UncertaintyOptions{
-			ForecastOptions: &forecast.Options{
+			ForecastOptions: &options.Options{
 				Regularization: regularization,
-				SeasonalityOptions: forecast.SeasonalityOptions{
-					SeasonalityConfigs: []forecast.SeasonalityConfig{
-						forecast.NewDailySeasonalityConfig(12),
-						forecast.NewWeeklySeasonalityConfig(12),
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
 					},
 				},
 				Iterations: 250,
 				Tolerance:  1e-2,
-				ChangepointOptions: forecast.ChangepointOptions{
+				ChangepointOptions: options.ChangepointOptions{
 					Changepoints: nil,
 				},
-				WeekendOptions: forecast.WeekendOptions{
+				WeekendOptions: options.WeekendOptions{
 					Enabled: true,
 				},
-				EventOptions: forecast.EventOptions{
+				EventOptions: options.EventOptions{
 					Events: events,
 				},
 			},
@@ -526,17 +527,17 @@ func ExampleForecasterAutoChangepoint() {
 	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
-			ForecastOptions: &forecast.Options{
+			ForecastOptions: &options.Options{
 				Regularization: regularization,
-				SeasonalityOptions: forecast.SeasonalityOptions{
-					SeasonalityConfigs: []forecast.SeasonalityConfig{
-						forecast.NewDailySeasonalityConfig(12),
-						forecast.NewWeeklySeasonalityConfig(12),
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
 					},
 				},
 				Iterations: 500,
 				Tolerance:  1e-3,
-				ChangepointOptions: forecast.ChangepointOptions{
+				ChangepointOptions: options.ChangepointOptions{
 					Auto:                true,
 					AutoNumChangepoints: 100,
 					EnableGrowth:        false,
@@ -545,19 +546,19 @@ func ExampleForecasterAutoChangepoint() {
 			OutlierOptions: NewOutlierOptions(),
 		},
 		UncertaintyOptions: &UncertaintyOptions{
-			ForecastOptions: &forecast.Options{
+			ForecastOptions: &options.Options{
 				Regularization: regularization,
-				SeasonalityOptions: forecast.SeasonalityOptions{
-					SeasonalityConfigs: []forecast.SeasonalityConfig{
-						forecast.NewDailySeasonalityConfig(12),
-						forecast.NewWeeklySeasonalityConfig(12),
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
 					},
 				},
 				Iterations: 250,
 				Tolerance:  1e-2,
-				ChangepointOptions: forecast.ChangepointOptions{
+				ChangepointOptions: options.ChangepointOptions{
 					Auto:         false,
-					Changepoints: []forecast.Changepoint{},
+					Changepoints: []options.Changepoint{},
 				},
 			},
 			ResidualWindow: 100,
@@ -578,23 +579,23 @@ func ExampleForecasterAutoChangepoint() {
 func ExampleForecasterWithTrend() {
 	t, y := generateExampleSeriesWithTrend()
 
-	changepoints := []forecast.Changepoint{
-		forecast.NewChangepoint("trendstart", t[len(t)/2]),
-		forecast.NewChangepoint("rebaseline", t[len(t)*17/20]),
+	changepoints := []options.Changepoint{
+		options.NewChangepoint("trendstart", t[len(t)/2]),
+		options.NewChangepoint("rebaseline", t[len(t)*17/20]),
 	}
 
 	opt := &Options{
 		SeriesOptions: &SeriesOptions{
-			ForecastOptions: &forecast.Options{
-				SeasonalityOptions: forecast.SeasonalityOptions{
-					SeasonalityConfigs: []forecast.SeasonalityConfig{
-						forecast.NewDailySeasonalityConfig(12),
-						forecast.NewWeeklySeasonalityConfig(12),
+			ForecastOptions: &options.Options{
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
 					},
 				},
 				Iterations: 500,
 				Tolerance:  1e-3,
-				ChangepointOptions: forecast.ChangepointOptions{
+				ChangepointOptions: options.ChangepointOptions{
 					Changepoints: changepoints,
 					EnableGrowth: true,
 				},
@@ -602,16 +603,16 @@ func ExampleForecasterWithTrend() {
 			OutlierOptions: NewOutlierOptions(),
 		},
 		UncertaintyOptions: &UncertaintyOptions{
-			ForecastOptions: &forecast.Options{
-				SeasonalityOptions: forecast.SeasonalityOptions{
-					SeasonalityConfigs: []forecast.SeasonalityConfig{
-						forecast.NewDailySeasonalityConfig(12),
-						forecast.NewWeeklySeasonalityConfig(12),
+			ForecastOptions: &options.Options{
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
 					},
 				},
 				Iterations: 250,
 				Tolerance:  1e-2,
-				ChangepointOptions: forecast.ChangepointOptions{
+				ChangepointOptions: options.ChangepointOptions{
 					Changepoints: nil,
 				},
 			},

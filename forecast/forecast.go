@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
+	"github.com/aouyang1/go-forecaster/forecast/options"
 	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
@@ -28,7 +29,7 @@ var (
 // coordinate descent to calculate the weights. This will decompose the series into an intercept,
 // trend components (based on changepoint times), and seasonal components.
 type Forecast struct {
-	opt    *Options
+	opt    *options.Options
 	scores *Scores // score calculations after training
 
 	// model coefficients
@@ -43,9 +44,9 @@ type Forecast struct {
 
 // New creates a new forecast instance withh thhe given options. If none are provided, a default
 // is used
-func New(opt *Options) (*Forecast, error) {
+func New(opt *options.Options) (*Forecast, error) {
 	if opt == nil {
-		opt = NewDefaultOptions()
+		opt = options.NewDefaultOptions()
 	}
 
 	return &Forecast{opt: opt}, nil
@@ -72,9 +73,9 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 
 	t = f.opt.DSTOptions.AdjustTime(t)
 
-	tFeat, eFeat := generateTimeFeatures(t, f.opt)
+	tFeat, eFeat := f.opt.GenerateTimeFeatures(t)
 
-	feat, err := generateFourierFeatures(tFeat, f.opt)
+	feat, err := f.opt.GenerateFourierFeatures(tFeat)
 	if err != nil {
 		return nil, err
 	}
@@ -83,20 +84,17 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	// do not include weekly fourier features if time range is less than 1 week
 	if !f.trained && t[len(t)-1].Sub(t[0]) < time.Duration(7*24*time.Hour) {
 		for _, f := range feat.Labels() {
-			if val, _ := f.Get("name"); val == LabelSeasWeekly {
+			if val, _ := f.Get("name"); val == options.LabelSeasWeekly {
 				feat.Del(f)
 			}
 		}
 	}
 
 	// generate changepoint features
-	if f.opt.ChangepointOptions.Auto && !f.trained {
-		if f.opt.ChangepointOptions.AutoNumChangepoints == 0 {
-			f.opt.ChangepointOptions.AutoNumChangepoints = DefaultAutoNumChangepoints
-		}
-		f.opt.ChangepointOptions.Changepoints = generateAutoChangepoints(t, f.opt.ChangepointOptions.AutoNumChangepoints)
+	if !f.trained {
+		f.opt.ChangepointOptions.GenerateAutoChangepoints(t)
 	}
-	chptFeat := generateChangepointFeatures(t, f.opt.ChangepointOptions.Changepoints, f.trainEndTime, f.opt.ChangepointOptions.EnableGrowth)
+	chptFeat := f.opt.ChangepointOptions.GenerateFeatures(t, f.trainEndTime)
 	feat.Update(chptFeat)
 
 	feat.RemoveZeroOnlyFeatures()
@@ -215,7 +213,7 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 
 // pruneDegenerateFeatures removes any feature weights that are exactly equal to 0. This can happen if the LASSO
 // regression regularization is strong enough to bring some of the feature weights to exactly 0.
-func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []float64) ([]FeatureWeight, []Changepoint, error) {
+func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []float64) ([]FeatureWeight, []options.Changepoint, error) {
 	fws := make([]FeatureWeight, 0, len(coef))
 	for i, c := range coef {
 		fw := FeatureWeight{
@@ -249,7 +247,7 @@ func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []floa
 		relevantFws = append(relevantFws, fw)
 	}
 
-	relevantChpts := make([]Changepoint, 0, len(f.opt.ChangepointOptions.Changepoints))
+	relevantChpts := make([]options.Changepoint, 0, len(f.opt.ChangepointOptions.Changepoints))
 	for _, chpt := range f.opt.ChangepointOptions.Changepoints {
 		_, exists := relevantChptMap[chpt.Name]
 		if !exists {

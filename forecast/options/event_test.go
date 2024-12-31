@@ -1,4 +1,4 @@
-package forecast
+package options
 
 import (
 	"testing"
