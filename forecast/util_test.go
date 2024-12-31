@@ -957,6 +957,15 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 		return endTime
 	}
 
+	chpntBias8hr := []float64{
+		0, 0, 0, 0, // Thursday
+		0, 0, 0, 0, // Friday
+		0, 0, 0, 0, // Saturday
+		0, 0, 0, 0, // Sunday
+		0, 0, 0, 0, // Monday
+		1, 1, 1, 1, // Tuesday
+		1, 1, 1, 1, // Wednesday
+	}
 	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	testData := map[string]struct {
 		chpts           []Changepoint
@@ -983,15 +992,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 			trainingEndTime: endTime,
 			expected: feature.NewSet().Set(
 				feature.NewChangepoint("chpt1", feature.ChangepointCompBias),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 0, 0, 0, // Sunday
-					0, 0, 0, 0, // Monday
-					1, 1, 1, 1, // Tuesday
-					1, 1, 1, 1, // Wednesday
-				},
+				chpntBias8hr,
 			),
 		},
 		"valid single changepoint with growth": {
@@ -1002,15 +1003,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 			enableGrowth:    true,
 			expected: feature.NewSet().Set(
 				feature.NewChangepoint("chpt_with_growth", feature.ChangepointCompBias),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 0, 0, 0, // Sunday
-					0, 0, 0, 0, // Monday
-					1, 1, 1, 1, // Tuesday
-					1, 1, 1, 1, // Wednesday
-				},
+				chpntBias8hr,
 			).Set(
 				feature.NewChangepoint("chpt_with_growth", feature.ChangepointCompSlope),
 				[]float64{
