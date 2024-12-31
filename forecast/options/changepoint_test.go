@@ -1,14 +1,119 @@
 package options
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/timedataset"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateChangepointFeatures(t *testing.T) {
+func TestChangepointTablePrint(t *testing.T) {
+	testData := map[string]struct {
+		opt          *ChangepointOptions
+		prefix       string
+		indent       string
+		indentGrowth int
+		expected     string
+	}{
+		"no configs": {
+			opt: &ChangepointOptions{},
+			expected: `Changepoints: None
+`,
+		},
+		"no configs with prefix and indent": {
+			opt:          &ChangepointOptions{},
+			prefix:       "  ",
+			indent:       "--",
+			indentGrowth: 1,
+			expected: `  --Changepoints: None
+`,
+		},
+		"config with prefix and indent": {
+			opt: &ChangepointOptions{
+				Changepoints: []Changepoint{
+					{Name: "c0", T: time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC)},
+				},
+			},
+			prefix:       "  ",
+			indent:       "  ",
+			indentGrowth: 1,
+			expected: `    Changepoints:
+       Name                      Datetime
+         c0 1970-01-02 00:00:00 +0000 UTC
+`,
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			td.opt.TablePrint(&buf, td.prefix, td.indent, td.indentGrowth)
+			assert.Equal(t, td.expected, buf.String())
+		})
+	}
+}
+
+func TestGenerateAutoChangepoints(t *testing.T) {
+	DefaultAutoNumChangepoints = 3
+	defer func() {
+		DefaultAutoNumChangepoints = 100
+	}()
+
+	testData := map[string]struct {
+		opt      *ChangepointOptions
+		t        []time.Time
+		expected *ChangepointOptions
+	}{
+		"disabled": {
+			opt: &ChangepointOptions{},
+			t: []time.Time{
+				time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 6, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 7, 0, 0, 0, 0, time.UTC),
+			},
+			expected: &ChangepointOptions{},
+		},
+		"default auto": {
+			opt: &ChangepointOptions{
+				Auto: true,
+			},
+			t: []time.Time{
+				time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 6, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 7, 0, 0, 0, 0, time.UTC),
+			},
+			expected: &ChangepointOptions{
+				Auto: true,
+				Changepoints: []Changepoint{
+					{Name: "auto_0", T: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)},
+					{Name: "auto_1", T: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC)},
+					{Name: "auto_2", T: time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC)},
+				},
+				AutoNumChangepoints: DefaultAutoNumChangepoints,
+			},
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			td.opt.GenerateAutoChangepoints(td.t)
+			assert.Equal(t, td.expected, td.opt)
+		})
+	}
+}
+
+func TestGenerateFeatures(t *testing.T) {
 	endTime := time.Date(1970, 1, 8, 0, 0, 0, 0, time.UTC)
 	nowFunc := func() time.Time {
 		return endTime
