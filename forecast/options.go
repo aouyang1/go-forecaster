@@ -272,43 +272,45 @@ func (w *WeekendOptions) Validate() {
 	}
 }
 
+func (w WeekendOptions) isWeekend(tPnt time.Time) bool {
+	if w.DurBefore == 0 && w.DurAfter == 0 {
+		wkday := tPnt.Weekday()
+		return wkday == time.Saturday || wkday == time.Sunday
+	}
+
+	wkdayBefore := tPnt.Add(w.DurBefore).Weekday()
+	wkdayAfter := tPnt.Add(-w.DurAfter).Weekday()
+
+	wkdayBeforeValid := wkdayBefore == time.Saturday || wkdayBefore == time.Sunday
+	wkdayAfterValid := wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
+
+	if w.DurBefore > 0 && w.DurAfter > 0 {
+		return wkdayBeforeValid || wkdayAfterValid
+	}
+
+	return wkdayBeforeValid && wkdayAfterValid
+}
+
 func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
 	if !w.Enabled {
 		return
 	}
-	var locOverride *time.Location
 	if w.TimezoneOverride != "" {
-		var err error
-		locOverride, err = time.LoadLocation(w.TimezoneOverride)
+		locOverride, err := time.LoadLocation(w.TimezoneOverride)
 		if err != nil {
 			slog.Warn("invalid timezone location override for weekend options, using dataset timezone", "timezone_override", w.TimezoneOverride)
+		} else {
+			tShift := make([]time.Time, len(t))
+			for i, val := range t {
+				tShift[i] = val.In(locOverride)
+			}
+			t = tShift
 		}
 	}
 
 	w.Validate()
 
-	weekendMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
-		if locOverride != nil {
-			tPnt = tPnt.In(locOverride)
-		}
-
-		if w.DurBefore == 0 && w.DurAfter == 0 {
-			wkday := tPnt.Weekday()
-			return wkday == time.Saturday || wkday == time.Sunday
-		}
-
-		wkdayBefore := tPnt.Add(w.DurBefore).Weekday()
-		wkdayAfter := tPnt.Add(-w.DurAfter).Weekday()
-
-		wkdayBeforeValid := wkdayBefore == time.Saturday || wkdayBefore == time.Sunday
-		wkdayAfterValid := wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
-
-		if w.DurBefore > 0 && w.DurAfter > 0 {
-			return wkdayBeforeValid || wkdayAfterValid
-		}
-
-		return wkdayBeforeValid && wkdayAfterValid
-	}, winFunc)
+	weekendMask := generateEventMaskWithFunc(t, w.isWeekend, winFunc)
 	feat := feature.NewEvent(LabelEventWeekend)
 	eFeat.Set(feat, weekendMask)
 }
