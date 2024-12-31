@@ -70,9 +70,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 		return nil, ErrUninitializedForecast
 	}
 
-	if f.opt.DSTOptions.Enabled {
-		t = adjustTimeForDST(t, f.opt.DSTOptions.TimezoneLocations)
-	}
+	t = f.opt.DSTOptions.AdjustTime(t)
 
 	tFeat, eFeat := generateTimeFeatures(t, f.opt)
 
@@ -165,28 +163,8 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	features := x.Matrix(true)
 	target := mat.NewDense(len(trainingY), 1, trainingY)
 
-	// run coordinate descent with lambda set to 0 which is equivalent to OLS
-	lassoOpt := models.NewDefaultLassoAutoOptions()
-	if len(f.opt.Regularization) > 0 {
-		lassoOpt.Lambdas = f.opt.Regularization
-	} else {
-		f.opt.Regularization = lassoOpt.Lambdas
-	}
-
-	lassoOpt.FitIntercept = false
-
-	lassoOpt.Iterations = f.opt.Iterations
-	if f.opt.Iterations == 0 {
-		lassoOpt.Iterations = models.DefaultIterations
-	}
-
-	lassoOpt.Tolerance = f.opt.Tolerance
-	if f.opt.Tolerance == 0 {
-		lassoOpt.Tolerance = models.DefaultTolerance
-	}
-
-	lassoOpt.Parallelization = f.opt.Parallelization
-
+	// run coordinate descent
+	lassoOpt := f.opt.NewLassoAutoOptions()
 	model, err := models.NewLassoAutoRegression(lassoOpt)
 	if err != nil {
 		return err
@@ -377,7 +355,7 @@ func (f *Forecast) runInference(x *feature.Set, withIntercept bool, numObs int) 
 	for _, fw := range f.featureWeights {
 		f, err := fw.ToFeature()
 		if err != nil {
-			return nil, fmt.Errorf("unable to convert to feature, %v, %w", fw, err)
+			return nil, fmt.Errorf("unable to convert to feature for inference, %v, %w", fw, err)
 		}
 		if _, exists := labels[f.String()]; exists {
 			xWeights = append(xWeights, fw.Value)
@@ -429,7 +407,7 @@ func (f *Forecast) FeatureLabels() ([]feature.Feature, error) {
 	for _, fw := range f.featureWeights {
 		fl, err := fw.ToFeature()
 		if err != nil {
-			return nil, fmt.Errorf("unable to convert to feature, %v, %w", fw, err)
+			return nil, fmt.Errorf("unable to convert to feature in retrieving feature labels, %v, %w", fw, err)
 		}
 		fLabels = append(fLabels, fl)
 	}
@@ -450,7 +428,7 @@ func (f *Forecast) Coefficients() (map[string]float64, error) {
 	for _, fw := range f.featureWeights {
 		f, err := fw.ToFeature()
 		if err != nil {
-			return nil, fmt.Errorf("unable to convert to feature, %v, %w", fw, err)
+			return nil, fmt.Errorf("unable to convert to feature in retrieving coefficients, %v, %w", fw, err)
 		}
 		coef[f.String()] = fw.Value
 	}
@@ -504,7 +482,7 @@ func (f *Forecast) ModelEq() (string, error) {
 		}
 		f, err := fw.ToFeature()
 		if err != nil {
-			return "", fmt.Errorf("unable to convert to feature, %v, %w", fw, err)
+			return "", fmt.Errorf("unable to convert to feature generating model equation, %v, %w", fw, err)
 		}
 		eq += fmt.Sprintf("+%.2f*%s", fw.Value, f.String())
 	}

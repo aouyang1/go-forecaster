@@ -82,16 +82,16 @@ func RSquared(predicted, actual []float64) (float64, error) {
 		return 0, ErrResLenMismatch
 	}
 
-	predict_copy := make([]float64, 0, len(predicted))
-	actual_copy := make([]float64, 0, len(actual))
+	predictCopy := make([]float64, 0, len(predicted))
+	actualCopy := make([]float64, 0, len(actual))
 	for i := 0; i < len(predicted); i++ {
 		if math.IsNaN(actual[i]) || math.IsNaN(predicted[i]) {
 			continue
 		}
-		predict_copy = append(predict_copy, predicted[i])
-		actual_copy = append(actual_copy, actual[i])
+		predictCopy = append(predictCopy, predicted[i])
+		actualCopy = append(actualCopy, actual[i])
 	}
-	r2 := stat.RSquaredFrom(predict_copy, actual_copy, nil)
+	r2 := stat.RSquaredFrom(predictCopy, actualCopy, nil)
 	if math.IsNaN(r2) {
 		return 1.0, nil
 	}
