@@ -103,21 +103,23 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 
 	feat.RemoveZeroOnlyFeatures()
 
-	// evict any features that are not in the model if already trained since this is used for prediction
-	if f.trained {
-		relevantFeatures := make(map[string]struct{})
-		for _, fw := range f.featureWeights {
-			f, err := fw.ToFeature()
-			if err != nil {
-				return nil, fmt.Errorf("unable to extract feature from feature weight, %v, %w", fw, err)
-			}
-			relevantFeatures[f.String()] = struct{}{}
-		}
+	if !f.trained {
+		return feat, nil
+	}
 
-		for _, f := range feat.Labels() {
-			if _, exists := relevantFeatures[f.String()]; !exists {
-				feat.Del(f)
-			}
+	// evict any features that are not in the model if already trained since this is used for prediction
+	relevantFeatures := make(map[string]struct{})
+	for _, fw := range f.featureWeights {
+		f, err := fw.ToFeature()
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract feature from feature weight for extracting relevant features, %v, %w", fw, err)
+		}
+		relevantFeatures[f.String()] = struct{}{}
+	}
+
+	for _, f := range feat.Labels() {
+		if _, exists := relevantFeatures[f.String()]; !exists {
+			feat.Del(f)
 		}
 	}
 
@@ -251,24 +253,31 @@ func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []floa
 	for _, fw := range fws {
 		f, err := fw.ToFeature()
 		if err != nil {
-			return nil, nil, fmt.Errorf("unable to extract feature, %v, %w", fw, err)
+			return nil, nil, fmt.Errorf("unable to extract feature to prune degenerate features, %v, %w", fw, err)
 		}
-		if fw.Value != 0 {
-			if f.Type() == feature.FeatureTypeChangepoint {
-				name, exists := f.Get("name")
-				if exists {
-					relevantChptMap[name] = struct{}{}
-				}
+
+		if fw.Value == 0 {
+			continue
+		}
+
+		switch f.Type() {
+		case feature.FeatureTypeChangepoint:
+			name, exists := f.Get("name")
+			if exists {
+				relevantChptMap[name] = struct{}{}
 			}
-			relevantFws = append(relevantFws, fw)
 		}
+
+		relevantFws = append(relevantFws, fw)
 	}
 
 	relevantChpts := make([]Changepoint, 0, len(f.opt.ChangepointOptions.Changepoints))
 	for _, chpt := range f.opt.ChangepointOptions.Changepoints {
-		if _, exists := relevantChptMap[chpt.Name]; exists {
-			relevantChpts = append(relevantChpts, chpt)
+		_, exists := relevantChptMap[chpt.Name]
+		if !exists {
+			continue
 		}
+		relevantChpts = append(relevantChpts, chpt)
 	}
 
 	return relevantFws, relevantChpts, nil
