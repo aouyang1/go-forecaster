@@ -453,12 +453,12 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				EventOptions: EventOptions{
 					Events: []Event{
 						{
-							Name:  "myevent",
-							Start: time.Date(1970, 1, 1, 6, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 1, 12, 0, 0, 0, time.UTC),
+							Name:  "duplicate",
+							Start: time.Date(1970, 1, 3, 6, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 3, 12, 0, 0, 0, time.UTC),
 						},
 						{
-							Name:  "myevent",
+							Name:  "duplicate",
 							Start: time.Date(1970, 1, 2, 6, 0, 0, 0, time.UTC),
 							End:   time.Date(1970, 1, 2, 12, 0, 0, 0, time.UTC),
 						},
@@ -469,11 +469,11 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
-				feature.NewEvent("myevent"),
+				feature.NewEvent("duplicate"),
 				[]float64{
-					0, 1, 1, 0, // Thursday
+					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
+					0, 1, 1, 0, // Saturday
 					0, 0, 0, 0, // Sunday
 					0, 0, 0, 0, // Monday
 					0, 0, 0, 0, // Tuesday
