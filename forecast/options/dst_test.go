@@ -13,6 +13,87 @@ const (
 	TZEuropeLondon      = "Europe/London"
 )
 
+func TestAdjustTime(t *testing.T) {
+	londonTransitionTimes := []time.Time{
+		time.Date(2024, 10, 26, 23, 0, 0, 0, time.UTC),
+		time.Date(2024, 10, 27, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 10, 27, 1, 0, 0, 0, time.UTC),
+		time.Date(2024, 10, 27, 2, 0, 0, 0, time.UTC),
+	}
+	losAngelesTransitionTimes := []time.Time{
+		time.Date(2024, 11, 3, 7, 0, 0, 0, time.UTC),
+		time.Date(2024, 11, 3, 8, 0, 0, 0, time.UTC),
+		time.Date(2024, 11, 3, 9, 0, 0, 0, time.UTC),
+		time.Date(2024, 11, 3, 10, 0, 0, 0, time.UTC),
+	}
+	testData := map[string]struct {
+		opt      DSTOptions
+		t        []time.Time
+		expected []time.Time
+	}{
+		"disabled": {
+			opt: DSTOptions{},
+			t: []time.Time{
+				time.Date(1970, 1, 1, 12, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 1, 13, 0, 0, 0, time.UTC),
+			},
+			expected: []time.Time{
+				time.Date(1970, 1, 1, 12, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 1, 13, 0, 0, 0, time.UTC),
+			},
+		},
+		"enabled no locations": {
+			opt: DSTOptions{
+				Enabled: true,
+			},
+			t: losAngelesTransitionTimes,
+			expected: []time.Time{
+				time.Date(2024, 11, 3, 7, 0, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 8, 0, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 9, 0, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 10, 0, 0, 0, time.UTC),
+			},
+		},
+		"enabled with one zone": {
+			opt: DSTOptions{
+				Enabled:           true,
+				TimezoneLocations: []string{"America/Los_Angeles"},
+			},
+			t: losAngelesTransitionTimes,
+			expected: []time.Time{
+				time.Date(2024, 11, 3, 8, 0, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 9, 0, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 9, 0, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 10, 0, 0, 0, time.UTC),
+			},
+		},
+		"enabled multiple": {
+			opt: DSTOptions{
+				Enabled:           true,
+				TimezoneLocations: []string{"America/Los_Angeles", "Europe/London"},
+			},
+			t: append(londonTransitionTimes, losAngelesTransitionTimes...),
+			expected: []time.Time{
+				time.Date(2024, 10, 27, 0, 0, 0, 0, time.UTC),
+				time.Date(2024, 10, 27, 1, 0, 0, 0, time.UTC),
+				time.Date(2024, 10, 27, 1, 30, 0, 0, time.UTC), // London moves back 1hr
+				time.Date(2024, 10, 27, 2, 30, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 7, 30, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 8, 30, 0, 0, time.UTC),
+				time.Date(2024, 11, 3, 9, 0, 0, 0, time.UTC), // Los Angeles moves back 1hr
+				time.Date(2024, 11, 3, 10, 0, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			res := td.opt.AdjustTime(td.t)
+			assert.Equal(t, td.expected, res)
+		})
+	}
+}
+
 func TestGetLocationDSTOffset(t *testing.T) {
 	testData := map[string]struct {
 		name     string
@@ -40,7 +121,7 @@ func TestGetLocationDSTOffset(t *testing.T) {
 	}
 }
 
-func TestAdjustTime(t *testing.T) {
+func TestAdjustTimeSingle(t *testing.T) {
 	testData := map[string]struct {
 		input    time.Time
 		zoneLoc  []string

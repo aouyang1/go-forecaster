@@ -1,6 +1,7 @@
 package options
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -137,6 +138,52 @@ func TestValid(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestEventTablePrint(t *testing.T) {
+	testData := map[string]struct {
+		opt          *EventOptions
+		prefix       string
+		indent       string
+		indentGrowth int
+		expected     string
+	}{
+		"no configs": {
+			opt: &EventOptions{},
+			expected: `Events: None
+`,
+		},
+		"no configs with prefix and indent": {
+			opt:          &EventOptions{},
+			prefix:       "  ",
+			indent:       "--",
+			indentGrowth: 1,
+			expected: `  --Events: None
+`,
+		},
+		"config with prefix and indent": {
+			opt: &EventOptions{
+				Events: []Event{
+					{Name: "e0", Start: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), End: time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC)},
+				},
+			},
+			prefix:       "  ",
+			indent:       "  ",
+			indentGrowth: 1,
+			expected: `    Events:
+       Name                         Start                           End
+         e0 1970-01-01 00:00:00 +0000 UTC 1970-01-02 00:00:00 +0000 UTC
+`,
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			td.opt.TablePrint(&buf, td.prefix, td.indent, td.indentGrowth)
+			assert.Equal(t, td.expected, buf.String())
 		})
 	}
 }
