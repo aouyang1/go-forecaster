@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
+	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gonum.org/v1/gonum/dsp/window"
+	"gonum.org/v1/gonum/floats"
 )
 
 func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
@@ -24,8 +27,84 @@ func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
 	}
 }
 
-var (
-	epoch7DaysAt6Hr = []float64{
+func TestWindowFunc(t *testing.T) {
+	testData := map[string]struct {
+		name     string
+		expected func([]float64) []float64
+	}{
+		"bartlett hann":    {WindowBartlettHann, window.BartlettHann},
+		"blackman":         {WindowBlackman, window.Blackman},
+		"blackman harris":  {WindowBlackmanHarris, window.BlackmanHarris},
+		"blackman nuttall": {WindowBlackmanNuttall, window.BlackmanNuttall},
+		"flat top":         {WindowFlatTop, window.FlatTop},
+		"hamming":          {WindowHamming, window.Hamming},
+		"hann":             {WindowHann, window.Hann},
+		"lanczos":          {WindowLanczos, window.Lanczos},
+		"nuttall":          {WindowNuttall, window.Nuttall},
+		"rectangular":      {WindowRectangular, window.Rectangular},
+		"sine":             {WindowSine, window.Sine},
+		"triangular":       {WindowTriangular, window.Triangular},
+		"unknown":          {"unknown", window.Rectangular},
+	}
+
+	numPnts := 10
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			res := WindowFunc(td.name)
+
+			seqRes := make([]float64, numPnts)
+			floats.AddConst(1.0, seqRes)
+
+			seqExp := make([]float64, numPnts)
+			floats.AddConst(1.0, seqExp)
+
+			assert.Equal(t, td.expected(seqExp), res(seqRes))
+		})
+	}
+}
+
+func TestNewLassoAutoAptions(t *testing.T) {
+	testData := map[string]struct {
+		opt      *Options
+		expected *models.LassoAutoOptions
+	}{
+		"defaults": {
+			opt: &Options{},
+			expected: &models.LassoAutoOptions{
+				Lambdas:         []float64{1.0},
+				FitIntercept:    false,
+				Iterations:      models.DefaultIterations,
+				Tolerance:       models.DefaultTolerance,
+				Parallelization: 0,
+			},
+		},
+		"with overrides": {
+			opt: &Options{
+				Regularization:  []float64{0.0, 1.0},
+				Iterations:      3,
+				Tolerance:       1e-1,
+				Parallelization: 2,
+			},
+			expected: &models.LassoAutoOptions{
+				Lambdas:         []float64{0.0, 1.0},
+				FitIntercept:    false,
+				Iterations:      3,
+				Tolerance:       1e-1,
+				Parallelization: 2,
+			},
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			res := td.opt.NewLassoAutoOptions()
+			assert.Equal(t, td.expected, res)
+		})
+	}
+}
+
+func TestGenerateTimeFeatures(t *testing.T) {
+	epoch7DaysAt6Hr := []float64{
 		0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
 		24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
 		48 * 3600, 54 * 3600.0, 60 * 3600.0, 66 * 3600.0, // Saturday
@@ -34,7 +113,7 @@ var (
 		120 * 3600, 126 * 3600.0, 132 * 3600.0, 138 * 3600.0, // Tuesday
 		144 * 3600, 150 * 3600.0, 156 * 3600.0, 162 * 3600.0, // Wednesday
 	}
-	epoch7DaysAt8Hr = []float64{
+	epoch7DaysAt8Hr := []float64{
 		0 * 3600.0, 8 * 3600.0, 16 * 3600.0, // Thursday
 		24 * 3600, 32 * 3600.0, 40 * 3600.0, // Friday
 		48 * 3600, 56 * 3600.0, 64 * 3600.0, // Saturday
@@ -43,9 +122,7 @@ var (
 		120 * 3600, 128 * 3600.0, 136 * 3600.0, // Tuesday
 		144 * 3600, 152 * 3600.0, 160 * 3600.0, // Wednesday
 	}
-)
 
-func TestGenerateTimeFeatures(t *testing.T) {
 	nowFunc := func() time.Time {
 		return time.Date(1970, 1, 8, 0, 0, 0, 0, time.UTC)
 	}
