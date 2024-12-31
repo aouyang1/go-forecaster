@@ -497,7 +497,7 @@ func ExampleForecasterWithOutliers() {
 
 	defer recoverForecastPanic()
 
-	if err := runForecastExample(opt, t, y, "examples/forecast.html"); err != nil {
+	if err := runForecastExample(opt, t, y, "examples/forecaster.html"); err != nil {
 		panic(err)
 	}
 	// Output:

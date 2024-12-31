@@ -11,13 +11,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	TZAmericaLosAngeles = "America/Los_Angeles"
+	TZEuropeLondon      = "Europe/London"
+)
+
 func TestGetLocationDSTOffset(t *testing.T) {
 	testData := map[string]struct {
 		name     string
 		err      error
 		expected int
 	}{
-		"northern hemisphere": {"America/Los_Angeles", nil, 3600},
+		"northern hemisphere": {TZAmericaLosAngeles, nil, 3600},
 		"southern hemisphere": {"Australia/South", nil, 3600},
 		"30min offset":        {"Australia/LHI", nil, 1800},
 	}
@@ -46,52 +51,52 @@ func TestAdjustTime(t *testing.T) {
 	}{
 		"america dst pre-std fall": {
 			time.Date(2024, time.November, 3, 8, 59, 59, 0, time.UTC), // 2024-11-03 01:59:59 PST
-			[]string{"America/Los_Angeles"},
+			[]string{TZAmericaLosAngeles},
 			time.Date(2024, time.November, 3, 9, 59, 59, 0, time.UTC),
 		},
 		"america to std fall": {
 			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC), // 2024-11-03 02:00:00 PST
-			[]string{"America/Los_Angeles"},
+			[]string{TZAmericaLosAngeles},
 			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC),
 		},
 		"america std pre-dst spring": {
 			time.Date(2025, time.March, 9, 9, 59, 59, 0, time.UTC), // 2024-03-09 01:59:59 PST
-			[]string{"America/Los_Angeles"},
+			[]string{TZAmericaLosAngeles},
 			time.Date(2025, time.March, 9, 9, 59, 59, 0, time.UTC),
 		},
 		"america to dst spring": {
 			time.Date(2025, time.March, 9, 10, 0, 0, 0, time.UTC), // 2024-03-09 02:00:00 PST
-			[]string{"America/Los_Angeles"},
+			[]string{TZAmericaLosAngeles},
 			time.Date(2025, time.March, 9, 11, 0, 0, 0, time.UTC),
 		},
 		"europe dst pre-std fall": {
 			time.Date(2024, time.October, 27, 0, 59, 59, 0, time.UTC), // 2024-10-27 00:59:59
-			[]string{"Europe/London"},
+			[]string{TZEuropeLondon},
 			time.Date(2024, time.October, 27, 1, 59, 59, 0, time.UTC),
 		},
 		"europe to std fall": {
 			time.Date(2024, time.October, 27, 1, 0, 0, 0, time.UTC), // 2024-11-03 01:00:00
-			[]string{"Europe/London"},
+			[]string{TZEuropeLondon},
 			time.Date(2024, time.October, 27, 1, 0, 0, 0, time.UTC),
 		},
 		"europe dst pre-std america dst fall": {
 			time.Date(2024, time.October, 27, 0, 59, 59, 0, time.UTC), // 2024-10-27 00:59:59
-			[]string{"Europe/London", "America/Los_Angeles"},
+			[]string{TZEuropeLondon, TZAmericaLosAngeles},
 			time.Date(2024, time.October, 27, 1, 59, 59, 0, time.UTC),
 		},
 		"europe to std america dst fall": {
 			time.Date(2024, time.October, 27, 1, 0, 0, 0, time.UTC),
-			[]string{"Europe/London", "America/Los_Angeles"},
+			[]string{TZEuropeLondon, TZAmericaLosAngeles},
 			time.Date(2024, time.October, 27, 1, 30, 0, 0, time.UTC),
 		},
 		"europe std america dst pre-std fall": {
 			time.Date(2024, time.November, 3, 8, 59, 59, 0, time.UTC),
-			[]string{"Europe/London", "America/Los_Angeles"},
+			[]string{TZEuropeLondon, TZAmericaLosAngeles},
 			time.Date(2024, time.November, 3, 9, 29, 59, 0, time.UTC),
 		},
 		"europe std america std fall": {
 			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC),
-			[]string{"Europe/London", "America/Los_Angeles"},
+			[]string{TZEuropeLondon, TZAmericaLosAngeles},
 			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC),
 		},
 	}
@@ -680,6 +685,63 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			),
 			err: nil,
 		},
+		"duplicate seasonality": {
+			opt: &Options{
+				SeasonalityOptions: SeasonalityOptions{
+					SeasonalityConfigs: []SeasonalityConfig{
+						NewDailySeasonalityConfig(2),
+						NewDailySeasonalityConfig(2),
+					},
+				},
+			},
+			expected: feature.NewSet().Set(
+				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 1),
+				[]float64{
+					0, 1, 0, -1, // Thursday
+					0, 1, 0, -1, // Friday
+					0, 1, 0, -1, // Saturday
+					0, 1, 0, -1, // Sunday
+					0, 1, 0, -1, // Monday
+					0, 1, 0, -1, // Tuesday
+					0, 1, 0, -1, // Wednesday
+				},
+			).Set(
+				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 1),
+				[]float64{
+					1, 0, -1, 0, // Thursday
+					1, 0, -1, 0, // Friday
+					1, 0, -1, 0, // Saturday
+					1, 0, -1, 0, // Sunday
+					1, 0, -1, 0, // Monday
+					1, 0, -1, 0, // Tuesday
+					1, 0, -1, 0, // Wednesday
+				},
+			).Set(
+				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 2),
+				[]float64{
+					0, 0, 0, 0, // Thursday
+					0, 0, 0, 0, // Friday
+					0, 0, 0, 0, // Saturday
+					0, 0, 0, 0, // Sunday
+					0, 0, 0, 0, // Monday
+					0, 0, 0, 0, // Tuesday
+					0, 0, 0, 0, // Wednesday
+				},
+			).Set(
+				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 2),
+				[]float64{
+					1, -1, 1, -1, // Thursday
+					1, -1, 1, -1, // Friday
+					1, -1, 1, -1, // Saturday
+					1, -1, 1, -1, // Sunday
+					1, -1, 1, -1, // Monday
+					1, -1, 1, -1, // Tuesday
+					1, -1, 1, -1, // Wednesday
+				},
+			),
+			err: nil,
+		},
+
 		"daily seasonality with weekend enabled": {
 			opt: &Options{
 				SeasonalityOptions: SeasonalityOptions{

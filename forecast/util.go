@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
@@ -18,8 +16,6 @@ import (
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
 
 const (
-	MaxWeekendDurBuffer = 24 * time.Hour
-
 	LabelTimeEpoch = "epoch"
 
 	LabelSeasDaily  = "daily"
@@ -54,69 +50,8 @@ func generateEventFeatures(t []time.Time, opt *Options) *feature.Set {
 
 	eFeat := feature.NewSet()
 
-	if opt.WeekendOptions.Enabled {
-		var locOverride *time.Location
-		if opt.WeekendOptions.TimezoneOverride != "" {
-			var err error
-			locOverride, err = time.LoadLocation(opt.WeekendOptions.TimezoneOverride)
-			if err != nil {
-				slog.Warn("invalid timezone location override for weekend options, using dataset timezone", "timezone_override", opt.WeekendOptions.TimezoneOverride)
-			}
-		}
-
-		if opt.WeekendOptions.DurBefore > MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurBefore = MaxWeekendDurBuffer
-		} else if opt.WeekendOptions.DurBefore < -MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurBefore = -MaxWeekendDurBuffer
-		}
-		if opt.WeekendOptions.DurAfter > MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurAfter = MaxWeekendDurBuffer
-		} else if opt.WeekendOptions.DurAfter < -MaxWeekendDurBuffer {
-			opt.WeekendOptions.DurAfter = -MaxWeekendDurBuffer
-		}
-
-		weekendMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
-			if locOverride != nil {
-				tPnt = tPnt.In(locOverride)
-			}
-
-			if opt.WeekendOptions.DurBefore == 0 && opt.WeekendOptions.DurAfter == 0 {
-				wkday := tPnt.Weekday()
-				return wkday == time.Saturday || wkday == time.Sunday
-			}
-
-			wkdayBefore := tPnt.Add(opt.WeekendOptions.DurBefore).Weekday()
-			wkdayAfter := tPnt.Add(-opt.WeekendOptions.DurAfter).Weekday()
-			if opt.WeekendOptions.DurBefore > 0 && opt.WeekendOptions.DurAfter > 0 {
-				return wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
-					wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
-			}
-
-			return (wkdayBefore == time.Saturday || wkdayBefore == time.Sunday) &&
-				(wkdayAfter == time.Saturday || wkdayAfter == time.Sunday)
-		}, winFunc)
-		feat := feature.NewEvent(LabelEventWeekend)
-		eFeat.Set(feat, weekendMask)
-	}
-
-	for _, e := range opt.EventOptions.Events {
-		if err := e.Valid(); err != nil {
-			slog.Warn("not separately modelling invalid event", "name", e.Name, "error", err.Error())
-			continue
-		}
-
-		feat := feature.NewEvent(strings.ReplaceAll(e.Name, " ", "_"))
-		if _, exists := eFeat.Get(feat); exists {
-			slog.Warn("event feature already exists", "event_name", e.Name)
-			continue
-		}
-
-		eventMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
-			return (tPnt.After(e.Start) || tPnt.Equal(e.Start)) && (tPnt.Before(e.End) || tPnt.Equal(e.End))
-		}, winFunc)
-		eFeat.Set(feat, eventMask)
-	}
-
+	opt.WeekendOptions.generateEventMask(t, eFeat, winFunc)
+	opt.EventOptions.generateEventMask(t, eFeat, winFunc)
 	return eFeat
 }
 
@@ -157,43 +92,11 @@ func generateFourierFeatures(feat *feature.Set, opt *Options) (*feature.Set, err
 	}
 	x := feature.NewSet()
 
-	// sort seasonality configs so we can find duplicate periods and remove them
-	optSeasConfigs := opt.SeasonalityOptions.SeasonalityConfigs
-	sort.Slice(optSeasConfigs, func(i, j int) bool {
-		if optSeasConfigs[i].Period < optSeasConfigs[j].Period {
-			return true
-		}
-		if optSeasConfigs[i].Period > optSeasConfigs[j].Period {
-			return false
-		}
-		if optSeasConfigs[i].Orders > optSeasConfigs[j].Orders {
-			return true
-		}
-		if optSeasConfigs[i].Orders < optSeasConfigs[j].Orders {
-			return false
-		}
-		return optSeasConfigs[i].Name < optSeasConfigs[j].Name
-	})
-	validIdx := make([]int, 0, len(optSeasConfigs))
-	var lastValidPeriod time.Duration
-	for i, seasCfg := range optSeasConfigs {
-		if seasCfg.Period > 0 && seasCfg.Period > lastValidPeriod && seasCfg.Name != "" && seasCfg.Orders > 0 {
-			validIdx = append(validIdx, i)
-			lastValidPeriod = seasCfg.Period
-		}
-	}
-	if len(validIdx) != len(optSeasConfigs) {
-		validatedSeasConfigs := make([]SeasonalityConfig, 0, len(validIdx))
-		for _, i := range validIdx {
-			validatedSeasConfigs = append(validatedSeasConfigs, optSeasConfigs[i])
-		}
-		optSeasConfigs = validatedSeasConfigs
-	}
-	opt.SeasonalityOptions.SeasonalityConfigs = optSeasConfigs
+	opt.SeasonalityOptions.removeDuplicates()
 
 	periods := make(map[float64]struct{})
 	colinearCfgOrders := make(map[SeasonalityConfig][]int)
-	for _, seasCfg := range optSeasConfigs {
+	for _, seasCfg := range opt.SeasonalityOptions.SeasonalityConfigs {
 		for i := 1; i <= seasCfg.Orders; i++ {
 			period := float64(seasCfg.Period) / float64(i)
 			if _, exists := periods[period]; exists {
@@ -205,23 +108,12 @@ func generateFourierFeatures(feat *feature.Set, opt *Options) (*feature.Set, err
 		}
 	}
 
-	// derive colinear features
-	//  24hr 12hr  8hr  6hr
-	// 168hr 84hr 56hr 42hr 33.6hr 28hr 24hr
-	// sort by lowest period to highest
-	// build up map of periods for each order/seas to find duplicates
-	// when we find a duplicate we want to flag that the period, order, seas
-	//    is colinear with an existing seasonality
-	// store these in a separate map keyed by the config to a slice of orders
-
-	for _, seasCfg := range optSeasConfigs {
+	for _, seasCfg := range opt.SeasonalityOptions.SeasonalityConfigs {
 		var orders []int
 		for i := 1; i <= seasCfg.Orders; i++ {
 			colinearOrders, colinearCfgExists := colinearCfgOrders[seasCfg]
-			if colinearCfgExists {
-				if slices.Contains(colinearOrders, i) {
-					continue
-				}
+			if colinearCfgExists && slices.Contains(colinearOrders, i) {
+				continue
 			}
 			orders = append(orders, i)
 		}

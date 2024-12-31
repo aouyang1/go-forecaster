@@ -165,10 +165,8 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 		// loop through all features and minimize loss function
 		for j := 0; j < n; j++ {
 			betaCurr := beta[j]
-			if i != 0 {
-				if betaCurr == 0 {
-					continue
-				}
+			if i != 0 && betaCurr == 0 {
+				continue
 			}
 
 			floats.Add(betaX, betaXDelta)
@@ -424,23 +422,23 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		sem <- struct{}{}
 		wg.Add(1)
 
-		go func(_opt *LassoOptions, _x, _y mat.Matrix) {
+		go func(funcOpt *LassoOptions, funcX, funcY mat.Matrix) {
 			defer func() {
 				wg.Done()
 				<-sem
 			}()
-			reg, err := NewLassoRegression(_opt)
+			reg, err := NewLassoRegression(funcOpt)
 			if err != nil {
 				slog.Error("unable to initialize lasso regression", "error", err.Error())
 				return
 			}
 
-			if err := reg.Fit(_x, _y); err != nil {
+			if err := reg.Fit(funcX, funcY); err != nil {
 				slog.Error("unable to fit lasso regression", "error", err.Error())
 				return
 			}
 
-			score, err := reg.Score(_x, _y)
+			score, err := reg.Score(funcX, funcY)
 			if err != nil {
 				slog.Error("unable to compute fit score for lasso regression", "error", err.Error())
 				return

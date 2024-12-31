@@ -3,9 +3,13 @@ package forecast
 import (
 	"fmt"
 	"io"
+	"log/slog"
+	"sort"
+	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/feature"
 	"gonum.org/v1/gonum/dsp/window"
 )
 
@@ -159,6 +163,43 @@ func NewDefaultSeasonalityOptions() SeasonalityOptions {
 	}
 }
 
+func (s *SeasonalityOptions) removeDuplicates() {
+	// sort seasonality configs so we can find duplicate periods and remove them
+	optSeasConfigs := s.SeasonalityConfigs
+	sort.Slice(optSeasConfigs, func(i, j int) bool {
+		if optSeasConfigs[i].Period < optSeasConfigs[j].Period {
+			return true
+		}
+		if optSeasConfigs[i].Period > optSeasConfigs[j].Period {
+			return false
+		}
+		if optSeasConfigs[i].Orders > optSeasConfigs[j].Orders {
+			return true
+		}
+		if optSeasConfigs[i].Orders < optSeasConfigs[j].Orders {
+			return false
+		}
+		return optSeasConfigs[i].Name < optSeasConfigs[j].Name
+	})
+	validIdx := make([]int, 0, len(optSeasConfigs))
+	var lastValidPeriod time.Duration
+	for i, seasCfg := range optSeasConfigs {
+		if seasCfg.Period > 0 && seasCfg.Period > lastValidPeriod && seasCfg.Name != "" && seasCfg.Orders > 0 {
+			validIdx = append(validIdx, i)
+			lastValidPeriod = seasCfg.Period
+		}
+	}
+
+	if len(validIdx) != len(optSeasConfigs) {
+		validatedSeasConfigs := make([]SeasonalityConfig, 0, len(validIdx))
+		for _, i := range validIdx {
+			validatedSeasConfigs = append(validatedSeasConfigs, optSeasConfigs[i])
+		}
+		optSeasConfigs = validatedSeasConfigs
+	}
+	s.SeasonalityConfigs = optSeasConfigs
+}
+
 // SeasonalityConfig represents a single seasonality configuration to model. This will generate
 // Fourier series of the specified period and number of orders. E.g. a period of 24*time.Hour
 // with 3 orders will create 6 Fourier series of order 1, 2, 3 and for the sine/cosine components
@@ -204,6 +245,11 @@ type DSTOptions struct {
 	TimezoneLocations []string `json:"timezone_locations"`
 }
 
+// MaxWeekendDurBuffer sets a limit of 1 day before or after the weekend begins at 00:00 Saturday
+// or 00:00 Monday, respectively. Timezone is based on weekend option timezone override or dataset
+// timezone
+const MaxWeekendDurBuffer = 24 * time.Hour
+
 // WeekendOptions lets us model weekends separately from weekdays.
 type WeekendOptions struct {
 	Enabled          bool          `json:"enabled"`
@@ -212,8 +258,76 @@ type WeekendOptions struct {
 	DurAfter         time.Duration `json:"duration_after"`
 }
 
+func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
+	if !w.Enabled {
+		return
+	}
+	var locOverride *time.Location
+	if w.TimezoneOverride != "" {
+		var err error
+		locOverride, err = time.LoadLocation(w.TimezoneOverride)
+		if err != nil {
+			slog.Warn("invalid timezone location override for weekend options, using dataset timezone", "timezone_override", w.TimezoneOverride)
+		}
+	}
+
+	if w.DurBefore > MaxWeekendDurBuffer {
+		w.DurBefore = MaxWeekendDurBuffer
+	} else if w.DurBefore < -MaxWeekendDurBuffer {
+		w.DurBefore = -MaxWeekendDurBuffer
+	}
+	if w.DurAfter > MaxWeekendDurBuffer {
+		w.DurAfter = MaxWeekendDurBuffer
+	} else if w.DurAfter < -MaxWeekendDurBuffer {
+		w.DurAfter = -MaxWeekendDurBuffer
+	}
+
+	weekendMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
+		if locOverride != nil {
+			tPnt = tPnt.In(locOverride)
+		}
+
+		if w.DurBefore == 0 && w.DurAfter == 0 {
+			wkday := tPnt.Weekday()
+			return wkday == time.Saturday || wkday == time.Sunday
+		}
+
+		wkdayBefore := tPnt.Add(w.DurBefore).Weekday()
+		wkdayAfter := tPnt.Add(-w.DurAfter).Weekday()
+		if w.DurBefore > 0 && w.DurAfter > 0 {
+			return wkdayBefore == time.Saturday || wkdayBefore == time.Sunday ||
+				wkdayAfter == time.Saturday || wkdayAfter == time.Sunday
+		}
+
+		return (wkdayBefore == time.Saturday || wkdayBefore == time.Sunday) &&
+			(wkdayAfter == time.Saturday || wkdayAfter == time.Sunday)
+	}, winFunc)
+	feat := feature.NewEvent(LabelEventWeekend)
+	eFeat.Set(feat, weekendMask)
+}
+
 type EventOptions struct {
 	Events []Event `json:"events"`
+}
+
+func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
+	for _, ev := range e.Events {
+		if err := ev.Valid(); err != nil {
+			slog.Warn("not separately modelling invalid event", "name", ev.Name, "error", err.Error())
+			continue
+		}
+
+		feat := feature.NewEvent(strings.ReplaceAll(ev.Name, " ", "_"))
+		if _, exists := eFeat.Get(feat); exists {
+			slog.Warn("event feature already exists", "event_name", ev.Name)
+			continue
+		}
+
+		eventMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
+			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && (tPnt.Before(ev.End) || tPnt.Equal(ev.End))
+		}, winFunc)
+		eFeat.Set(feat, eventMask)
+	}
 }
 
 func (e EventOptions) tablePrint(w io.Writer, prefix, indent string, indentGrowth int) error {
