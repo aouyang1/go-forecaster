@@ -564,6 +564,60 @@ func TestGenerateFourierFeatures(t *testing.T) {
 		return time.Date(1970, 1, 8, 0, 0, 0, 0, time.UTC)
 	}
 
+	dailySin1 := []float64{
+		0, 1, 0, -1, // Thursday
+		0, 1, 0, -1, // Friday
+		0, 1, 0, -1, // Saturday
+		0, 1, 0, -1, // Sunday
+		0, 1, 0, -1, // Monday
+		0, 1, 0, -1, // Tuesday
+		0, 1, 0, -1, // Wednesday
+	}
+	dailyCos1 := []float64{
+		1, 0, -1, 0, // Thursday
+		1, 0, -1, 0, // Friday
+		1, 0, -1, 0, // Saturday
+		1, 0, -1, 0, // Sunday
+		1, 0, -1, 0, // Monday
+		1, 0, -1, 0, // Tuesday
+		1, 0, -1, 0, // Wednesday
+	}
+	dailySin2 := []float64{
+		0, 0, 0, 0, // Thursday
+		0, 0, 0, 0, // Friday
+		0, 0, 0, 0, // Saturday
+		0, 0, 0, 0, // Sunday
+		0, 0, 0, 0, // Monday
+		0, 0, 0, 0, // Tuesday
+		0, 0, 0, 0, // Wednesday
+	}
+	dailyCos2 := []float64{
+		1, -1, 1, -1, // Thursday
+		1, -1, 1, -1, // Friday
+		1, -1, 1, -1, // Saturday
+		1, -1, 1, -1, // Sunday
+		1, -1, 1, -1, // Monday
+		1, -1, 1, -1, // Tuesday
+		1, -1, 1, -1, // Wednesday
+	}
+	weeklySin1 := []float64{
+		+0.0000, +0.2225, +0.4338, +0.6234, // Thursday
+		+0.7818, +0.9009, +0.9749, +1.0000, // Friday
+		+0.9749, +0.9009, +0.7818, +0.6234, // Saturday
+		+0.4338, +0.2225, +0.0000, -0.2225, // Sunday
+		-0.4338, -0.6234, -0.7818, -0.9009, // Monday
+		-0.9749, -1.0000, -0.9749, -0.9009, // Tuesday
+		-0.7818, -0.6234, -0.4338, -0.2225, // Wednesday
+	}
+	weeklyCos1 := []float64{
+		+1.0000, +0.9749, +0.9009, +0.7818, // Thursday
+		+0.6234, +0.4338, +0.2225, +0.0000, // Friday
+		-0.2225, -0.4338, -0.6234, -0.7818, // Saturday
+		-0.9009, -0.9749, -1.0000, -0.9749, // Sunday
+		-0.9009, -0.7818, -0.6234, -0.4338, // Monday
+		-0.2225, +0.0000, +0.2225, +0.4338, // Tuesday
+		+0.6234, +0.7818, +0.9009, +0.9749, // Wednesday
+	}
 	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	testData := map[string]struct {
 		opt      *Options
@@ -585,48 +639,16 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 1),
-				[]float64{
-					0, 1, 0, -1, // Thursday
-					0, 1, 0, -1, // Friday
-					0, 1, 0, -1, // Saturday
-					0, 1, 0, -1, // Sunday
-					0, 1, 0, -1, // Monday
-					0, 1, 0, -1, // Tuesday
-					0, 1, 0, -1, // Wednesday
-				},
+				dailySin1,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 1),
-				[]float64{
-					1, 0, -1, 0, // Thursday
-					1, 0, -1, 0, // Friday
-					1, 0, -1, 0, // Saturday
-					1, 0, -1, 0, // Sunday
-					1, 0, -1, 0, // Monday
-					1, 0, -1, 0, // Tuesday
-					1, 0, -1, 0, // Wednesday
-				},
+				dailyCos1,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 2),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 0, 0, 0, // Sunday
-					0, 0, 0, 0, // Monday
-					0, 0, 0, 0, // Tuesday
-					0, 0, 0, 0, // Wednesday
-				},
+				dailySin2,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 2),
-				[]float64{
-					1, -1, 1, -1, // Thursday
-					1, -1, 1, -1, // Friday
-					1, -1, 1, -1, // Saturday
-					1, -1, 1, -1, // Sunday
-					1, -1, 1, -1, // Monday
-					1, -1, 1, -1, // Tuesday
-					1, -1, 1, -1, // Wednesday
-				},
+				dailyCos2,
 			),
 			err: nil,
 		},
@@ -640,26 +662,10 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompSin, 1),
-				[]float64{
-					+0.0000, +0.2225, +0.4338, +0.6234, // Thursday
-					+0.7818, +0.9009, +0.9749, +1.0000, // Friday
-					+0.9749, +0.9009, +0.7818, +0.6234, // Saturday
-					+0.4338, +0.2225, +0.0000, -0.2225, // Sunday
-					-0.4338, -0.6234, -0.7818, -0.9009, // Monday
-					-0.9749, -1.0000, -0.9749, -0.9009, // Tuesday
-					-0.7818, -0.6234, -0.4338, -0.2225, // Wednesday
-				},
+				weeklySin1,
 			).Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompCos, 1),
-				[]float64{
-					+1.0000, +0.9749, +0.9009, +0.7818, // Thursday
-					+0.6234, +0.4338, +0.2225, +0.0000, // Friday
-					-0.2225, -0.4338, -0.6234, -0.7818, // Saturday
-					-0.9009, -0.9749, -1.0000, -0.9749, // Sunday
-					-0.9009, -0.7818, -0.6234, -0.4338, // Monday
-					-0.2225, +0.0000, +0.2225, +0.4338, // Tuesday
-					+0.6234, +0.7818, +0.9009, +0.9749, // Wednesday
-				},
+				weeklyCos1,
 			).Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompSin, 2),
 				[]float64{
@@ -696,48 +702,16 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 1),
-				[]float64{
-					0, 1, 0, -1, // Thursday
-					0, 1, 0, -1, // Friday
-					0, 1, 0, -1, // Saturday
-					0, 1, 0, -1, // Sunday
-					0, 1, 0, -1, // Monday
-					0, 1, 0, -1, // Tuesday
-					0, 1, 0, -1, // Wednesday
-				},
+				dailySin1,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 1),
-				[]float64{
-					1, 0, -1, 0, // Thursday
-					1, 0, -1, 0, // Friday
-					1, 0, -1, 0, // Saturday
-					1, 0, -1, 0, // Sunday
-					1, 0, -1, 0, // Monday
-					1, 0, -1, 0, // Tuesday
-					1, 0, -1, 0, // Wednesday
-				},
+				dailyCos1,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 2),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 0, 0, 0, // Sunday
-					0, 0, 0, 0, // Monday
-					0, 0, 0, 0, // Tuesday
-					0, 0, 0, 0, // Wednesday
-				},
+				dailySin2,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 2),
-				[]float64{
-					1, -1, 1, -1, // Thursday
-					1, -1, 1, -1, // Friday
-					1, -1, 1, -1, // Saturday
-					1, -1, 1, -1, // Sunday
-					1, -1, 1, -1, // Monday
-					1, -1, 1, -1, // Tuesday
-					1, -1, 1, -1, // Wednesday
-				},
+				dailyCos2,
 			),
 			err: nil,
 		},
@@ -755,26 +729,10 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 1),
-				[]float64{
-					0, 1, 0, -1, // Thursday
-					0, 1, 0, -1, // Friday
-					0, 1, 0, -1, // Saturday
-					0, 1, 0, -1, // Sunday
-					0, 1, 0, -1, // Monday
-					0, 1, 0, -1, // Tuesday
-					0, 1, 0, -1, // Wednesday
-				},
+				dailySin1,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 1),
-				[]float64{
-					1, 0, -1, 0, // Thursday
-					1, 0, -1, 0, // Friday
-					1, 0, -1, 0, // Saturday
-					1, 0, -1, 0, // Sunday
-					1, 0, -1, 0, // Monday
-					1, 0, -1, 0, // Tuesday
-					1, 0, -1, 0, // Wednesday
-				},
+				dailyCos1,
 			).Set(
 				feature.NewSeasonality("weekend_daily", feature.FourierCompSin, 1),
 				[]float64{
@@ -810,55 +768,39 @@ func TestGenerateFourierFeatures(t *testing.T) {
 				EventOptions: EventOptions{
 					Events: []Event{
 						{
-							Name:  "weekend",
-							Start: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC),
+							Name:  "myevent",
+							Start: time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 6, 0, 0, 0, 0, time.UTC),
 						},
 					},
 				},
 			},
 			expected: feature.NewSet().Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 1),
-				[]float64{
-					0, 1, 0, -1, // Thursday
-					0, 1, 0, -1, // Friday
-					0, 1, 0, -1, // Saturday
-					0, 1, 0, -1, // Sunday
-					0, 1, 0, -1, // Monday
-					0, 1, 0, -1, // Tuesday
-					0, 1, 0, -1, // Wednesday
-				},
+				dailySin1,
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 1),
-				[]float64{
-					1, 0, -1, 0, // Thursday
-					1, 0, -1, 0, // Friday
-					1, 0, -1, 0, // Saturday
-					1, 0, -1, 0, // Sunday
-					1, 0, -1, 0, // Monday
-					1, 0, -1, 0, // Tuesday
-					1, 0, -1, 0, // Wednesday
-				},
+				dailyCos1,
 			).Set(
-				feature.NewSeasonality("weekend_daily", feature.FourierCompSin, 1),
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
-					0, 1, 0, -1, // Saturday
+					0, 0, 0, 0, // Saturday
 					0, 1, 0, -1, // Sunday
-					0, 0, 0, 0, // Monday
+					0, 1, 0, -1, // Monday
 					0, 0, 0, 0, // Tuesday
 					0, 0, 0, 0, // Wednesday
 				},
 			).Set(
-				feature.NewSeasonality("weekend_daily", feature.FourierCompCos, 1),
+				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 1),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
-					1, 0, -1, 0, // Saturday
+					0, 0, 0, 0, // Saturday
 					1, 0, -1, 0, // Sunday
-					1, 0, 0, 0, // Monday
-					0, 0, 0, 0, // Tuesday
+					1, 0, -1, 0, // Monday
+					1, 0, 0, 0, // Tuesday
 					0, 0, 0, 0, // Wednesday
 				},
 			),
@@ -883,26 +825,10 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			},
 			expected: feature.NewSet().Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompSin, 1),
-				[]float64{
-					+0.0000, +0.2225, +0.4338, +0.6234, // Thursday
-					+0.7818, +0.9009, +0.9749, +1.0000, // Friday
-					+0.9749, +0.9009, +0.7818, +0.6234, // Saturday
-					+0.4338, +0.2225, +0.0000, -0.2225, // Sunday
-					-0.4338, -0.6234, -0.7818, -0.9009, // Monday
-					-0.9749, -1.0000, -0.9749, -0.9009, // Tuesday
-					-0.7818, -0.6234, -0.4338, -0.2225, // Wednesday
-				},
+				weeklySin1,
 			).Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompCos, 1),
-				[]float64{
-					+1.0000, +0.9749, +0.9009, +0.7818, // Thursday
-					+0.6234, +0.4338, +0.2225, +0.0000, // Friday
-					-0.2225, -0.4338, -0.6234, -0.7818, // Saturday
-					-0.9009, -0.9749, -1.0000, -0.9749, // Sunday
-					-0.9009, -0.7818, -0.6234, -0.4338, // Monday
-					-0.2225, +0.0000, +0.2225, +0.4338, // Tuesday
-					+0.6234, +0.7818, +0.9009, +0.9749, // Wednesday
-				},
+				weeklyCos1,
 			).Set(
 				feature.NewSeasonality("weekend_weekly", feature.FourierCompSin, 1),
 				[]float64{
@@ -987,26 +913,10 @@ func TestGenerateFourierFeatures(t *testing.T) {
 				},
 			).Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompSin, 1),
-				[]float64{
-					+0.0000, +0.2225, +0.4338, +0.6234, // Thursday
-					+0.7818, +0.9009, +0.9749, +1.0000, // Friday
-					+0.9749, +0.9009, +0.7818, +0.6234, // Saturday
-					+0.4338, +0.2225, +0.0000, -0.2225, // Sunday
-					-0.4338, -0.6234, -0.7818, -0.9009, // Monday
-					-0.9749, -1.0000, -0.9749, -0.9009, // Tuesday
-					-0.7818, -0.6234, -0.4338, -0.2225, // Wednesday
-				},
+				weeklySin1,
 			).Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompCos, 1),
-				[]float64{
-					+1.0000, +0.9749, +0.9009, +0.7818, // Thursday
-					+0.6234, +0.4338, +0.2225, +0.0000, // Friday
-					-0.2225, -0.4338, -0.6234, -0.7818, // Saturday
-					-0.9009, -0.9749, -1.0000, -0.9749, // Sunday
-					-0.9009, -0.7818, -0.6234, -0.4338, // Monday
-					-0.2225, +0.0000, +0.2225, +0.4338, // Tuesday
-					+0.6234, +0.7818, +0.9009, +0.9749, // Wednesday
-				},
+				weeklyCos1,
 			).Set(
 				feature.NewSeasonality("epoch_weekly", feature.FourierCompSin, 3),
 				[]float64{
@@ -1092,12 +1002,12 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 		},
 		"valid single changepoint with growth": {
 			chpts: []Changepoint{
-				{Name: "chpt1", T: endTime.Add(-8 * 6 * time.Hour)},
+				{Name: "chpt_with_growth", T: endTime.Add(-8 * 6 * time.Hour)},
 			},
 			trainingEndTime: endTime,
 			enableGrowth:    true,
 			expected: feature.NewSet().Set(
-				feature.NewChangepoint("chpt1", feature.ChangepointCompBias),
+				feature.NewChangepoint("chpt_with_growth", feature.ChangepointCompBias),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -1108,7 +1018,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 					1, 1, 1, 1, // Wednesday
 				},
 			).Set(
-				feature.NewChangepoint("chpt1", feature.ChangepointCompSlope),
+				feature.NewChangepoint("chpt_with_growth", feature.ChangepointCompSlope),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -1122,12 +1032,12 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 		},
 		"valid single changepoint with growth and future training date": {
 			chpts: []Changepoint{
-				{Name: "chpt1", T: endTime.Add(-8 * 6 * time.Hour)},
+				{Name: "chpt_with_growth_and_future_training", T: endTime.Add(-8 * 6 * time.Hour)},
 			},
 			trainingEndTime: endTime.Add(8 * 6 * time.Hour),
 			enableGrowth:    true,
 			expected: feature.NewSet().Set(
-				feature.NewChangepoint("chpt1", feature.ChangepointCompBias),
+				feature.NewChangepoint("chpt_with_growth_and_future_training", feature.ChangepointCompBias),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
@@ -1138,7 +1048,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 					1, 1, 1, 1, // Wednesday
 				},
 			).Set(
-				feature.NewChangepoint("chpt1", feature.ChangepointCompSlope),
+				feature.NewChangepoint("chpt_with_growth_and_future_training", feature.ChangepointCompSlope),
 				[]float64{
 					0, 0, 0, 0, // Thursday
 					0, 0, 0, 0, // Friday
