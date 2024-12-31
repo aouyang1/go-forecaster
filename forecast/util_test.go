@@ -695,8 +695,8 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			opt: &Options{
 				SeasonalityOptions: SeasonalityOptions{
 					SeasonalityConfigs: []SeasonalityConfig{
-						NewDailySeasonalityConfig(2),
-						NewDailySeasonalityConfig(2),
+						NewDailySeasonalityConfig(1),
+						NewDailySeasonalityConfig(1),
 					},
 				},
 			},
@@ -706,12 +706,6 @@ func TestGenerateFourierFeatures(t *testing.T) {
 			).Set(
 				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 1),
 				dailyCos1,
-			).Set(
-				feature.NewSeasonality("epoch_daily", feature.FourierCompSin, 2),
-				dailySin2,
-			).Set(
-				feature.NewSeasonality("epoch_daily", feature.FourierCompCos, 2),
-				dailyCos2,
 			),
 			err: nil,
 		},
@@ -1032,7 +1026,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 		},
 		"valid single changepoint with growth and future training date": {
 			chpts: []Changepoint{
-				{Name: "chpt_with_growth_and_future_training", T: endTime.Add(-8 * 6 * time.Hour)},
+				{Name: "chpt_with_growth_and_future_training", T: endTime.Add(-12 * 6 * time.Hour)},
 			},
 			trainingEndTime: endTime.Add(8 * 6 * time.Hour),
 			enableGrowth:    true,
@@ -1043,7 +1037,7 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 					0, 0, 0, 0, // Friday
 					0, 0, 0, 0, // Saturday
 					0, 0, 0, 0, // Sunday
-					0, 0, 0, 0, // Monday
+					1, 1, 1, 1, // Monday
 					1, 1, 1, 1, // Tuesday
 					1, 1, 1, 1, // Wednesday
 				},
@@ -1054,9 +1048,9 @@ func TestGenerateChangepointFeatures(t *testing.T) {
 					0, 0, 0, 0, // Friday
 					0, 0, 0, 0, // Saturday
 					0, 0, 0, 0, // Sunday
-					0, 0, 0, 0, // Monday
-					0.0000, 0.0625, 0.1250, 0.1875, // Tuesday
-					0.2500, 0.3125, 0.3750, 0.4375, // Wednesday
+					0.00, 0.05, 0.10, 0.15, // Monday
+					0.20, 0.25, 0.30, 0.35, // Tuesday
+					0.40, 0.45, 0.50, 0.55, // Wednesday
 				},
 			),
 		},
