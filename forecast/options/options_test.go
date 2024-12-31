@@ -1,4 +1,4 @@
-package forecast
+package options
 
 import (
 	"fmt"
@@ -10,105 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const (
-	TZAmericaLosAngeles = "America/Los_Angeles"
-	TZEuropeLondon      = "Europe/London"
-)
-
-func TestGetLocationDSTOffset(t *testing.T) {
-	testData := map[string]struct {
-		name     string
-		err      error
-		expected int
-	}{
-		"northern hemisphere": {TZAmericaLosAngeles, nil, 3600},
-		"southern hemisphere": {"Australia/South", nil, 3600},
-		"30min offset":        {"Australia/LHI", nil, 1800},
-	}
-
-	for name, td := range testData {
-		t.Run(name, func(t *testing.T) {
-			loc, err := time.LoadLocation(td.name)
-			require.Nil(t, err)
-			offset := getLocationDSTOffset(loc)
-			if td.err != nil {
-				assert.ErrorContains(t, err, td.err.Error())
-				return
-			}
-
-			require.Nil(t, err)
-			assert.Equal(t, td.expected, offset)
-		})
-	}
-}
-
-func TestAdjustTime(t *testing.T) {
-	testData := map[string]struct {
-		input    time.Time
-		zoneLoc  []string
-		expected time.Time
-	}{
-		"america dst pre-std fall": {
-			time.Date(2024, time.November, 3, 8, 59, 59, 0, time.UTC), // 2024-11-03 01:59:59 PST
-			[]string{TZAmericaLosAngeles},
-			time.Date(2024, time.November, 3, 9, 59, 59, 0, time.UTC),
-		},
-		"america to std fall": {
-			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC), // 2024-11-03 02:00:00 PST
-			[]string{TZAmericaLosAngeles},
-			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC),
-		},
-		"america std pre-dst spring": {
-			time.Date(2025, time.March, 9, 9, 59, 59, 0, time.UTC), // 2024-03-09 01:59:59 PST
-			[]string{TZAmericaLosAngeles},
-			time.Date(2025, time.March, 9, 9, 59, 59, 0, time.UTC),
-		},
-		"america to dst spring": {
-			time.Date(2025, time.March, 9, 10, 0, 0, 0, time.UTC), // 2024-03-09 02:00:00 PST
-			[]string{TZAmericaLosAngeles},
-			time.Date(2025, time.March, 9, 11, 0, 0, 0, time.UTC),
-		},
-		"europe dst pre-std fall": {
-			time.Date(2024, time.October, 27, 0, 59, 59, 0, time.UTC), // 2024-10-27 00:59:59
-			[]string{TZEuropeLondon},
-			time.Date(2024, time.October, 27, 1, 59, 59, 0, time.UTC),
-		},
-		"europe to std fall": {
-			time.Date(2024, time.October, 27, 1, 0, 0, 0, time.UTC), // 2024-11-03 01:00:00
-			[]string{TZEuropeLondon},
-			time.Date(2024, time.October, 27, 1, 0, 0, 0, time.UTC),
-		},
-		"europe dst pre-std america dst fall": {
-			time.Date(2024, time.October, 27, 0, 59, 59, 0, time.UTC), // 2024-10-27 00:59:59
-			[]string{TZEuropeLondon, TZAmericaLosAngeles},
-			time.Date(2024, time.October, 27, 1, 59, 59, 0, time.UTC),
-		},
-		"europe to std america dst fall": {
-			time.Date(2024, time.October, 27, 1, 0, 0, 0, time.UTC),
-			[]string{TZEuropeLondon, TZAmericaLosAngeles},
-			time.Date(2024, time.October, 27, 1, 30, 0, 0, time.UTC),
-		},
-		"europe std america dst pre-std fall": {
-			time.Date(2024, time.November, 3, 8, 59, 59, 0, time.UTC),
-			[]string{TZEuropeLondon, TZAmericaLosAngeles},
-			time.Date(2024, time.November, 3, 9, 29, 59, 0, time.UTC),
-		},
-		"europe std america std fall": {
-			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC),
-			[]string{TZEuropeLondon, TZAmericaLosAngeles},
-			time.Date(2024, time.November, 3, 9, 0, 0, 0, time.UTC),
-		},
-	}
-
-	for name, td := range testData {
-		t.Run(name, func(t *testing.T) {
-			offsets := loadLocationOffsets(td.zoneLoc)
-			res := adjustTime(td.input, offsets)
-			assert.Equal(t, td.expected, res)
-		})
-	}
-}
 
 func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
 	assert.Equal(t, expected.Len(), res.Len())
@@ -553,7 +454,7 @@ func TestGenerateTimeFeatures(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			features, _ := generateTimeFeatures(td.t, td.opt)
+			features, _ := td.opt.GenerateTimeFeatures(td.t)
 			compareFeatureSet(t, td.expected, features, 1e-4)
 		})
 	}
@@ -637,7 +538,6 @@ func TestGenerateFourierFeatures(t *testing.T) {
 		0, 0, 0, 0, // Wednesday
 	}
 
-	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	testData := map[string]struct {
 		opt      *Options
 		expected *feature.Set
@@ -941,120 +841,15 @@ func TestGenerateFourierFeatures(t *testing.T) {
 		},
 	}
 
+	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			tFeat, _ := generateTimeFeatures(tSeries, td.opt)
-			res, err := generateFourierFeatures(tFeat, td.opt)
+			tFeat, _ := td.opt.GenerateTimeFeatures(tSeries)
+			res, err := td.opt.GenerateFourierFeatures(tFeat)
 			if td.err != nil {
 				assert.EqualError(t, err, td.err.Error())
 				return
 			}
-			compareFeatureSet(t, td.expected, res, 1e-4)
-		})
-	}
-}
-
-func TestGenerateChangepointFeatures(t *testing.T) {
-	endTime := time.Date(1970, 1, 8, 0, 0, 0, 0, time.UTC)
-	nowFunc := func() time.Time {
-		return endTime
-	}
-
-	chpntBias8hr := []float64{
-		0, 0, 0, 0, // Thursday
-		0, 0, 0, 0, // Friday
-		0, 0, 0, 0, // Saturday
-		0, 0, 0, 0, // Sunday
-		0, 0, 0, 0, // Monday
-		1, 1, 1, 1, // Tuesday
-		1, 1, 1, 1, // Wednesday
-	}
-	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
-	testData := map[string]struct {
-		chpts           []Changepoint
-		trainingEndTime time.Time
-		enableGrowth    bool
-		expected        *feature.Set
-	}{
-		"no changepoints": {
-			chpts:           []Changepoint{},
-			trainingEndTime: endTime,
-			expected:        feature.NewSet(),
-		},
-		"changepoint after training end": {
-			chpts: []Changepoint{
-				{Name: "chpt1", T: endTime.Add(1 * time.Minute)},
-			},
-			trainingEndTime: endTime,
-			expected:        feature.NewSet(),
-		},
-		"valid single changepoint": {
-			chpts: []Changepoint{
-				{Name: "chpt1", T: endTime.Add(-8 * 6 * time.Hour)},
-			},
-			trainingEndTime: endTime,
-			expected: feature.NewSet().Set(
-				feature.NewChangepoint("chpt1", feature.ChangepointCompBias),
-				chpntBias8hr,
-			),
-		},
-		"valid single changepoint with growth": {
-			chpts: []Changepoint{
-				{Name: "chpt_with_growth", T: endTime.Add(-8 * 6 * time.Hour)},
-			},
-			trainingEndTime: endTime,
-			enableGrowth:    true,
-			expected: feature.NewSet().Set(
-				feature.NewChangepoint("chpt_with_growth", feature.ChangepointCompBias),
-				chpntBias8hr,
-			).Set(
-				feature.NewChangepoint("chpt_with_growth", feature.ChangepointCompSlope),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 0, 0, 0, // Sunday
-					0, 0, 0, 0, // Monday
-					0.000, 0.125, 0.250, 0.375, // Tuesday
-					0.500, 0.625, 0.750, 0.875, // Wednesday
-				},
-			),
-		},
-		"valid single changepoint with growth and future training date": {
-			chpts: []Changepoint{
-				{Name: "chpt_with_growth_and_future_training", T: endTime.Add(-12 * 6 * time.Hour)},
-			},
-			trainingEndTime: endTime.Add(8 * 6 * time.Hour),
-			enableGrowth:    true,
-			expected: feature.NewSet().Set(
-				feature.NewChangepoint("chpt_with_growth_and_future_training", feature.ChangepointCompBias),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 0, 0, 0, // Sunday
-					1, 1, 1, 1, // Monday
-					1, 1, 1, 1, // Tuesday
-					1, 1, 1, 1, // Wednesday
-				},
-			).Set(
-				feature.NewChangepoint("chpt_with_growth_and_future_training", feature.ChangepointCompSlope),
-				[]float64{
-					0, 0, 0, 0, // Thursday
-					0, 0, 0, 0, // Friday
-					0, 0, 0, 0, // Saturday
-					0, 0, 0, 0, // Sunday
-					0.00, 0.05, 0.10, 0.15, // Monday
-					0.20, 0.25, 0.30, 0.35, // Tuesday
-					0.40, 0.45, 0.50, 0.55, // Wednesday
-				},
-			),
-		},
-	}
-
-	for name, td := range testData {
-		t.Run(name, func(t *testing.T) {
-			res := generateChangepointFeatures(tSeries, td.chpts, td.trainingEndTime, td.enableGrowth)
 			compareFeatureSet(t, td.expected, res, 1e-4)
 		})
 	}

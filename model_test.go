@@ -7,6 +7,7 @@ import (
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast"
+	"github.com/aouyang1/go-forecaster/forecast/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -92,24 +93,24 @@ Uncertainty:
 				},
 				Series: forecast.Model{
 					TrainEndTime: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
-					Options: &forecast.Options{
+					Options: &options.Options{
 						Regularization: []float64{0.0, 1.0},
-						ChangepointOptions: forecast.ChangepointOptions{
-							Changepoints: []forecast.Changepoint{
+						ChangepointOptions: options.ChangepointOptions{
+							Changepoints: []options.Changepoint{
 								{Name: "c0", T: time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC)},
 							},
 						},
-						SeasonalityOptions: forecast.SeasonalityOptions{
-							SeasonalityConfigs: []forecast.SeasonalityConfig{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
 								{Name: "s0", Period: 12 * time.Hour, Orders: 1},
 							},
 						},
-						EventOptions: forecast.EventOptions{
-							Events: []forecast.Event{
+						EventOptions: options.EventOptions{
+							Events: []options.Event{
 								{Name: "e0", Start: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), End: time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC)},
 							},
 						},
-						WeekendOptions: forecast.WeekendOptions{
+						WeekendOptions: options.WeekendOptions{
 							Enabled:   true,
 							DurBefore: 1 * time.Hour,
 							DurAfter:  2 * time.Hour,
@@ -196,7 +197,7 @@ Uncertainty:
 				},
 				Series: forecast.Model{
 					TrainEndTime: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
-					Options: &forecast.Options{
+					Options: &options.Options{
 						Regularization: []float64{0.0, 1.0},
 					},
 					Scores: &forecast.Scores{

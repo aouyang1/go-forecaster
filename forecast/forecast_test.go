@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/forecast/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,10 +27,10 @@ func testFitSignal(t *testing.T) (*Forecast, []time.Time, []float64) {
 		y = append(y, bias+amp*math.Sin(2.0*math.Pi/86400.0*float64(tWin[i].Unix()+phase)))
 	}
 
-	opt := &Options{
-		SeasonalityOptions: SeasonalityOptions{
-			SeasonalityConfigs: []SeasonalityConfig{
-				NewDailySeasonalityConfig(3),
+	opt := &options.Options{
+		SeasonalityOptions: options.SeasonalityOptions{
+			SeasonalityConfigs: []options.SeasonalityConfig{
+				options.NewDailySeasonalityConfig(3),
 			},
 		},
 	}
