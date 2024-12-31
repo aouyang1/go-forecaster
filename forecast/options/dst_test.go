@@ -57,7 +57,7 @@ func TestAdjustTime(t *testing.T) {
 		"enabled with one zone": {
 			opt: DSTOptions{
 				Enabled:           true,
-				TimezoneLocations: []string{"America/Los_Angeles"},
+				TimezoneLocations: []string{TZAmericaLosAngeles},
 			},
 			t: losAngelesTransitionTimes,
 			expected: []time.Time{
@@ -70,7 +70,7 @@ func TestAdjustTime(t *testing.T) {
 		"enabled multiple": {
 			opt: DSTOptions{
 				Enabled:           true,
-				TimezoneLocations: []string{"America/Los_Angeles", "Europe/London"},
+				TimezoneLocations: []string{TZAmericaLosAngeles, TZEuropeLondon},
 			},
 			t: append(londonTransitionTimes, losAngelesTransitionTimes...),
 			expected: []time.Time{
