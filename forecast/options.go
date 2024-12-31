@@ -258,6 +258,20 @@ type WeekendOptions struct {
 	DurAfter         time.Duration `json:"duration_after"`
 }
 
+func (w *WeekendOptions) Validate() {
+	if w.DurBefore > MaxWeekendDurBuffer {
+		w.DurBefore = MaxWeekendDurBuffer
+	} else if w.DurBefore < -MaxWeekendDurBuffer {
+		w.DurBefore = -MaxWeekendDurBuffer
+	}
+
+	if w.DurAfter > MaxWeekendDurBuffer {
+		w.DurAfter = MaxWeekendDurBuffer
+	} else if w.DurAfter < -MaxWeekendDurBuffer {
+		w.DurAfter = -MaxWeekendDurBuffer
+	}
+}
+
 func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
 	if !w.Enabled {
 		return
@@ -271,16 +285,7 @@ func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, win
 		}
 	}
 
-	if w.DurBefore > MaxWeekendDurBuffer {
-		w.DurBefore = MaxWeekendDurBuffer
-	} else if w.DurBefore < -MaxWeekendDurBuffer {
-		w.DurBefore = -MaxWeekendDurBuffer
-	}
-	if w.DurAfter > MaxWeekendDurBuffer {
-		w.DurAfter = MaxWeekendDurBuffer
-	} else if w.DurAfter < -MaxWeekendDurBuffer {
-		w.DurAfter = -MaxWeekendDurBuffer
-	}
+	w.Validate()
 
 	weekendMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
 		if locOverride != nil {
