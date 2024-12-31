@@ -766,8 +766,8 @@ func TestGenerateFourierFeatures(t *testing.T) {
 					Events: []Event{
 						{
 							Name:  "myevent",
-							Start: time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
-							End:   time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC),
+							Start: time.Date(1970, 1, 3, 12, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 5, 12, 0, 0, 0, time.UTC),
 						},
 					},
 				},
@@ -780,10 +780,26 @@ func TestGenerateFourierFeatures(t *testing.T) {
 				dailyCos1,
 			).Set(
 				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
-				weekendSin1,
+				[]float64{
+					0, 0, 0, 0, // Thursday
+					0, 0, 0, 0, // Friday
+					0, 0, 0, -1, // Saturday
+					0, 1, 0, -1, // Sunday
+					0, 1, 0, 0, // Monday
+					0, 0, 0, 0, // Tuesday
+					0, 0, 0, 0, // Wednesday
+				},
 			).Set(
 				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 1),
-				weekendCos1,
+				[]float64{
+					0, 0, 0, 0, // Thursday
+					0, 0, 0, 0, // Friday
+					0, 0, -1, 0, // Saturday
+					1, 0, -1, 0, // Sunday
+					1, 0, 0, 0, // Monday
+					0, 0, 0, 0, // Tuesday
+					0, 0, 0, 0, // Wednesday
+				},
 			),
 			err: nil,
 		},
