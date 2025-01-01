@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewUnivariateDataset(t *testing.T) {
@@ -55,4 +56,24 @@ func TestNewUnivariateDataset(t *testing.T) {
 			assert.Equal(t, td.expected, ds)
 		})
 	}
+}
+
+func TestCopy(t *testing.T) {
+	tSeries := []time.Time{
+		time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+	}
+
+	y := []float64{0, 1}
+	ds, err := NewUnivariateDataset(tSeries, y)
+	require.Nil(t, err)
+
+	nextDs := ds.Copy()
+	require.Equal(t, ds, nextDs)
+
+	ds.T = []time.Time{
+		time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
+		time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
+	}
+	require.NotEqual(t, nextDs, ds)
 }
