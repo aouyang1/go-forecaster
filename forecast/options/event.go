@@ -85,10 +85,46 @@ type EventOptions struct {
 }
 
 func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
+	if len(t) < 2 {
+		return
+	}
+
+	freq := t[1].Sub(t[0])
+	start := t[0]
+	end := t[len(t)-1]
+	tOrig := t
 	for _, ev := range e.Events {
 		if err := ev.Valid(); err != nil {
 			slog.Warn("not separately modelling invalid event", "name", ev.Name, "error", err.Error())
 			continue
+		}
+
+		t := tOrig
+		// pad beginning
+		var startIdx int
+		if ev.Start.Before(start) {
+			diff := start.Sub(ev.Start)
+			numElem := int(diff/freq) + 1
+			startIdx = numElem
+
+			prefix := make([]time.Time, numElem)
+			for i := 0; i < numElem; i++ {
+				prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
+			}
+			t = append(prefix, t...)
+		}
+
+		// pad end
+		endIdx := len(t)
+		if ev.End.After(end) {
+			diff := ev.End.Sub(end)
+			numElem := int(diff/freq) + 1
+
+			suffix := make([]time.Time, numElem)
+			for i := 0; i < numElem; i++ {
+				suffix[i] = end.Add(time.Duration(i+1) * freq)
+			}
+			t = append(t, suffix...)
 		}
 
 		feat := feature.NewEvent(strings.ReplaceAll(ev.Name, " ", "_"))
@@ -100,6 +136,9 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFu
 		eventMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
 			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && tPnt.Before(ev.End)
 		}, winFunc)
+
+		// truncate result to start/end
+		eventMask = eventMask[startIdx:endIdx]
 		eFeat.Set(feat, eventMask)
 	}
 }

@@ -23,6 +23,7 @@ func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
 		require.True(t, exists)
 		gotVals, exists := res.Get(f)
 		require.True(t, exists)
+		require.Equal(t, len(expVals), len(gotVals))
 		assert.InDeltaSlice(t, expVals, gotVals, tol, fmt.Sprintf("feature: %+v, values: %+v\n", f, gotVals))
 	}
 }
@@ -335,6 +336,42 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			),
 		},
+		"weekend with hamm window and overlap ends": {
+			t: timedataset.GenerateT(4*7, 6*time.Hour,
+				func() time.Time {
+					return time.Date(1970, 1, 11, 0, 0, 0, 0, time.UTC)
+				},
+			),
+			opt: &Options{
+				MaskWindow: "hann",
+				WeekendOptions: WeekendOptions{
+					Enabled: true,
+				},
+			},
+			expected: feature.NewSet().Set(
+				feature.NewTime("epoch"),
+				[]float64{
+					72 * 3600, 78 * 3600, 84 * 3600, 90 * 3600, // Sunday
+					96 * 3600, 102 * 3600, 108 * 3600, 114 * 3600, // Monday
+					120 * 3600, 126 * 3600, 132 * 3600, 138 * 3600, // Tuesday
+					144 * 3600, 150 * 3600, 156 * 3600, 162 * 3600, // Wednesday
+					168 * 3600, 174 * 3600, 180 * 3600, 186 * 3600, // Thursday
+					192 * 3600, 198 * 3600, 204 * 3600, 210 * 3600, // Friday
+					216 * 3600, 222 * 3600, 228 * 3600, 234 * 3600, // Saturday
+				},
+			).Set(
+				feature.NewEvent("weekend"),
+				[]float64{
+					0.9504, 0.6112, 0.1882, 0, // Sunday
+					0, 0, 0, 0, // Monday
+					0, 0, 0, 0, // Tuesday
+					0, 0, 0, 0, // Wednesday
+					0, 0, 0, 0, // Thursday
+					0, 0, 0, 0, // Friday
+					0, 0.1882, 0.6112, 0.9504, // Saturday
+				},
+			),
+		},
 		"basic event": {
 			t: timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: &Options{
@@ -516,6 +553,52 @@ func TestGenerateTimeFeatures(t *testing.T) {
 					0, 0, 0, 0, // Monday
 					0, 0, 0, 0, // Tuesday
 					0, 0, 0, 0, // Wednesday
+				},
+			),
+		},
+		"event with hamm window overlapping start and end": {
+			t: timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
+			opt: &Options{
+				MaskWindow: "hann",
+				EventOptions: EventOptions{
+					Events: []Event{
+						{
+							Name:  "hamm_before",
+							Start: time.Date(1969, 12, 31, 0, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+						},
+						{
+							Name:  "hamm_after",
+							Start: time.Date(1970, 1, 7, 0, 0, 0, 0, time.UTC),
+							End:   time.Date(1970, 1, 9, 0, 0, 0, 0, time.UTC),
+						},
+					},
+				},
+			},
+			expected: feature.NewSet().Set(
+				feature.NewTime("epoch"),
+				epoch7DaysAt6Hr,
+			).Set(
+				feature.NewEvent("hamm_before"),
+				[]float64{
+					0.9504, 0.6112, 0.1882, 0.0000, // Thursday
+					0, 0, 0, 0, // Friday
+					0, 0, 0, 0, // Saturday
+					0, 0, 0, 0, // Sunday
+					0, 0, 0, 0, // Monday
+					0, 0, 0, 0, // Tuesday
+					0, 0, 0, 0, // Wednesday
+				},
+			).Set(
+				feature.NewEvent("hamm_after"),
+				[]float64{
+					0, 0, 0, 0, // Thursday
+					0, 0, 0, 0, // Friday
+					0, 0, 0, 0, // Saturday
+					0, 0, 0, 0, // Sunday
+					0, 0, 0, 0, // Monday
+					0, 0, 0, 0, // Tuesday
+					0.0000, 0.1882, 0.6112, 0.9504, // Wednesday
 				},
 			),
 		},
