@@ -54,7 +54,7 @@ func (w WeekendOptions) isWeekend(tPnt time.Time) bool {
 }
 
 func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
-	if !w.Enabled {
+	if !w.Enabled || len(t) < 2 {
 		return
 	}
 	if w.TimezoneOverride != "" {
@@ -72,7 +72,34 @@ func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, win
 
 	w.Validate()
 
+	freq := t[1].Sub(t[0])
+	start := t[0]
+	end := t[len(t)-1]
+	window := 2 * 24 * time.Hour
+
+	// pad beginning
+	numElem := int((window+w.DurBefore)/freq) + 1
+	startIdx := numElem
+	prefix := make([]time.Time, numElem)
+	for i := 0; i < numElem; i++ {
+		prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
+	}
+	t = append(prefix, t...)
+
+	// pad end
+	numElem = int((window+w.DurAfter)/freq) + 1
+	endIdx := len(t)
+	suffix := make([]time.Time, numElem)
+	for i := 0; i < numElem; i++ {
+		suffix[i] = end.Add(time.Duration(i+1) * freq)
+	}
+	t = append(t, suffix...)
+
 	weekendMask := generateEventMaskWithFunc(t, w.isWeekend, winFunc)
+
+	// truncate result to start/end
+	weekendMask = weekendMask[startIdx:endIdx]
+
 	feat := feature.NewEvent(LabelEventWeekend)
 	eFeat.Set(feat, weekendMask)
 }
