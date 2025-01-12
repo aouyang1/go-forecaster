@@ -1,3 +1,5 @@
+// floatsunrolled is inspired by the SIMD blog post
+// https://github.com/camdencheek/simd_blog/blob/main/main.go
 package floatsunrolled
 
 import "fmt"
