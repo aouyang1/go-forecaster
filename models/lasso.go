@@ -7,6 +7,7 @@ import (
 	"math"
 	"sync"
 
+	"github.com/aouyang1/go-forecaster/floatsunrolled"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"
@@ -135,14 +136,27 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 		copy(beta, l.opt.WarmStartBeta)
 	}
 
+	// ensure multiple of unroll batch for unrolling operations
+	if m%floatsunrolled.UnrollBatch != 0 {
+		m = floatsunrolled.UnrollBatch * (m/floatsunrolled.UnrollBatch + 1)
+	}
+
 	xcols := make([][]float64, n)
+	for i := 0; i < n; i++ {
+		xcols[i] = make([]float64, m)
+	}
 
 	// precompute the per feature dot product
 	xdot := make([]float64, n)
+	gamma := make([]float64, n)
 	for i := 0; i < n; i++ {
 		xi := mat.Col(nil, i, x)
-		xdot[i] = floats.Dot(xi, xi)
+		if len(xi) < m {
+			xi = append(xi, make([]float64, m-len(xi))...)
+		}
 		xcols[i] = xi
+		xdot[i] = floatsunrolled.Dot(xi, xi)
+		gamma[i] = l.opt.Lambda / xdot[i]
 	}
 
 	// tracks the per coordinate residual
@@ -157,6 +171,10 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 	betaXDelta := make([]float64, m)
 
 	yArr := mat.Col(nil, 0, y)
+	if len(yArr) < m {
+		yArr = append(yArr, make([]float64, m-len(yArr))...)
+	}
+
 	for i := 0; i < l.opt.Iterations; i++ {
 		maxCoef := 0.0
 		maxUpdate := 0.0
@@ -169,20 +187,19 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 				continue
 			}
 
-			floats.Add(betaX, betaXDelta)
-			floats.SubTo(residual, yArr, betaX)
+			floatsunrolled.Add(betaX, betaXDelta)
+			floatsunrolled.SubTo(residual, yArr, betaX)
 
 			obsCol := xcols[j]
-			num := floats.Dot(obsCol, residual)
+			num := floatsunrolled.Dot(obsCol, residual)
 			betaNext := num/xdot[j] + betaCurr
 
-			gamma := l.opt.Lambda / xdot[j]
-			betaNext = SoftThreshold(betaNext, gamma)
+			betaNext = SoftThreshold(betaNext, gamma[j])
 
 			maxCoef = math.Max(maxCoef, betaNext)
 			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
 			betaDiff = betaNext - betaCurr
-			floats.ScaleTo(betaXDelta, betaDiff, obsCol)
+			floatsunrolled.ScaleTo(betaXDelta, betaDiff, obsCol)
 			beta[j] = betaNext
 		}
 
