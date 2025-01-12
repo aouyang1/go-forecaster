@@ -2,17 +2,26 @@
 // https://github.com/camdencheek/simd_blog/blob/main/main.go
 package floatsunrolled
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 const UnrollBatch = 4
 
+var (
+	ErrSliceLengthMismatch       = errors.New("slices must have equal lengths")
+	ErrSliceMul                  = fmt.Errorf("slice length must be multiple of %d", UnrollBatch)
+	ErrOutputSliceLengthMismatch = errors.New("output slice length not the same as input")
+)
+
 func Dot(a, b []float64) float64 {
 	if len(a) != len(b) {
-		panic("slices must have equal lengths")
+		panic(ErrSliceLengthMismatch)
 	}
 
 	if len(a)%UnrollBatch != 0 {
-		panic(fmt.Sprintf("slice length must be multiple of %d", UnrollBatch))
+		panic(ErrSliceMul)
 	}
 
 	var sum float64
@@ -30,11 +39,11 @@ func Dot(a, b []float64) float64 {
 
 func Add(dst, s []float64) []float64 {
 	if len(dst) != len(s) {
-		panic("slices must have equal lengths")
+		panic(ErrSliceLengthMismatch)
 	}
 
 	if len(s)%UnrollBatch != 0 {
-		panic(fmt.Sprintf("slice length must be multiple of %d", UnrollBatch))
+		panic(ErrSliceMul)
 	}
 
 	for i := 0; i < len(s); i += UnrollBatch {
@@ -50,17 +59,17 @@ func Add(dst, s []float64) []float64 {
 
 func SubTo(dst, s, t []float64) []float64 {
 	if len(s) != len(t) {
-		panic("slices must have equal lengths")
+		panic(ErrSliceLengthMismatch)
 	}
 
 	if len(s)%UnrollBatch != 0 {
-		panic(fmt.Sprintf("slice length must be multiple of %d", UnrollBatch))
+		panic(ErrSliceMul)
 	}
 
 	if dst == nil {
 		dst = make([]float64, len(s))
 	} else if len(dst) != len(s) {
-		panic("output slice length not the same as input")
+		panic(ErrOutputSliceLengthMismatch)
 	}
 
 	for i := 0; i < len(s); i += UnrollBatch {
@@ -78,13 +87,13 @@ func SubTo(dst, s, t []float64) []float64 {
 
 func ScaleTo(dst []float64, c float64, s []float64) []float64 {
 	if len(s)%UnrollBatch != 0 {
-		panic(fmt.Sprintf("slice length must be multiple of %d", UnrollBatch))
+		panic(ErrSliceMul)
 	}
 
 	if dst == nil {
 		dst = make([]float64, len(s))
 	} else if len(dst) != len(s) {
-		panic("output slice length not the same as input")
+		panic(ErrOutputSliceLengthMismatch)
 	}
 
 	for i := 0; i < len(s); i += UnrollBatch {
