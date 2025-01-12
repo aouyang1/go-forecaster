@@ -255,7 +255,7 @@ func TestLassoAutoRegression(t *testing.T) {
 }
 
 func BenchmarkLassoRegression(b *testing.B) {
-	nObs := 1000
+	nObs := 100000
 	nFeat := 100
 
 	data := make([][]float64, nObs)
@@ -275,13 +275,15 @@ func BenchmarkLassoRegression(b *testing.B) {
 		data2 = append(data2, float64(i))
 	}
 
+	x, err := mat_.NewDenseFromArray(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	y := mat.NewDense(nObs, 1, data2)
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		x, err := mat_.NewDenseFromArray(data)
-		if err != nil {
-			b.Error(err)
-			continue
-		}
-		y := mat.NewDense(nObs, 1, data2)
 		opt := NewDefaultLassoOptions()
 		opt.FitIntercept = false
 		model, err := NewLassoRegression(opt)
