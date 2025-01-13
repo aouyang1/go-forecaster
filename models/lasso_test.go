@@ -58,204 +58,202 @@ func TestLassoOptionsValidate(t *testing.T) {
 
 func TestLassoRegression(t *testing.T) {
 	// y = 2 + 3*x0 + 4*x1
-	x, err := mat_.NewDenseFromArray(
-		[][]float64{
-			{0, 0},
-			{3, 5},
-			{9, 20},
-			{12, 6},
+	tol := 1e-5
+	desTol := 1e-6
+	lambda := 0.0
+	testData := map[string]struct {
+		x         [][]float64
+		y         []float64
+		opt       *LassoOptions
+		intercept float64
+		coef      []float64
+	}{
+		"model intercept": {
+			x: [][]float64{
+				{0, 0},
+				{3, 5},
+				{9, 20},
+				{12, 6},
+				{15, 10},
+			},
+			y: []float64{2, 31, 109, 62, 87},
+			opt: func() *LassoOptions {
+				opt := NewDefaultLassoOptions()
+				opt.Lambda = lambda
+				opt.Tolerance = desTol
+				return opt
+			}(),
+			intercept: 2.0,
+			coef:      []float64{3.0, 4.0},
 		},
-	)
-	require.Nil(t, err)
-
-	y := mat.NewDense(4, 1, []float64{2, 31, 109, 62})
-
-	opt := NewDefaultLassoOptions()
-	opt.Lambda = 0
-	opt.Tolerance = 1e-6
-
-	model, err := NewLassoRegression(opt)
-	require.Nil(t, err)
-
-	err = model.Fit(x, y)
-	require.Nil(t, err)
-
-	assert.InDelta(t, 2.0, model.Intercept(), 0.00001)
-
-	coef := model.Coef()
-	assert.InDelta(t, 3.0, coef[0], 0.00001)
-	assert.InDelta(t, 4.0, coef[1], 0.00001)
-
-	r2, err := model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
-
-	x, err = mat_.NewDenseFromArray(
-		[][]float64{
-			{1, 0, 0},
-			{1, 3, 5},
-			{1, 9, 20},
-			{1, 12, 6},
+		"model no intercept": {
+			x: [][]float64{
+				{1, 0, 0},
+				{1, 3, 5},
+				{1, 9, 20},
+				{1, 12, 6},
+				{1, 15, 10},
+			},
+			y: []float64{2, 31, 109, 62, 87},
+			opt: func() *LassoOptions {
+				opt := NewDefaultLassoOptions()
+				opt.Lambda = lambda
+				opt.Tolerance = desTol
+				opt.FitIntercept = false
+				return opt
+			}(),
+			intercept: 0.0,
+			coef:      []float64{2.0, 3.0, 4.0},
 		},
-	)
-	require.Nil(t, err)
-
-	y = mat.NewDense(4, 1, []float64{2, 31, 109, 62})
-
-	opt = NewDefaultLassoOptions()
-	opt.Lambda = 0
-	opt.Tolerance = 1e-6
-	opt.FitIntercept = false
-
-	model, err = NewLassoRegression(opt)
-	require.Nil(t, err)
-
-	err = model.Fit(x, y)
-	require.Nil(t, err)
-
-	coef = model.Coef()
-	assert.InDelta(t, 2.0, coef[0], 0.00001)
-	assert.InDelta(t, 3.0, coef[1], 0.00001)
-	assert.InDelta(t, 4.0, coef[2], 0.00001)
-
-	r2, err = model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
-
-	x, err = mat_.NewDenseFromArray(
-		[][]float64{
-			{1},
-			{1},
-			{1},
-			{1},
+		"model constant": {
+			x: [][]float64{
+				{1},
+				{1},
+				{1},
+				{1},
+				{1},
+			},
+			y: []float64{3, 3, 3, 3, 3},
+			opt: func() *LassoOptions {
+				opt := NewDefaultLassoOptions()
+				opt.Lambda = lambda
+				opt.Tolerance = desTol
+				opt.FitIntercept = false
+				return opt
+			}(),
+			intercept: 0.0,
+			coef:      []float64{3.0},
 		},
-	)
-	require.Nil(t, err)
+	}
 
-	y = mat.NewDense(4, 1, []float64{3, 3, 3, 3})
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			x, err := mat_.NewDenseFromArray(td.x)
+			require.Nil(t, err)
 
-	opt = NewDefaultLassoOptions()
-	opt.Lambda = 0
-	opt.Tolerance = 1e-6
-	opt.FitIntercept = false
+			y := mat.NewDense(len(td.y), 1, td.y)
 
-	model, err = NewLassoRegression(opt)
-	require.Nil(t, err)
+			model, err := NewLassoRegression(td.opt)
+			require.Nil(t, err)
 
-	err = model.Fit(x, y)
-	require.Nil(t, err)
+			err = model.Fit(x, y)
+			require.Nil(t, err)
 
-	coef = model.Coef()
-	assert.InDelta(t, 3.0, coef[0], 0.00001)
+			assert.InDelta(t, td.intercept, model.Intercept(), tol)
 
-	r2, err = model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
+			coef := model.Coef()
+			assert.InDeltaSlice(t, td.coef, coef, tol)
+
+			r2, err := model.Score(x, y)
+			require.Nil(t, err)
+			assert.InDelta(t, 1.0, r2, tol)
+		})
+	}
 }
 
 func TestLassoAutoRegression(t *testing.T) {
 	// y = 2 + 3*x0 + 4*x1
-	x, err := mat_.NewDenseFromArray(
-		[][]float64{
-			{0, 0},
-			{3, 5},
-			{9, 20},
-			{12, 6},
+	tol := 1e-5
+	desTol := 1e-6
+	lambdas := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
+	parallelization := 4
+
+	testData := map[string]struct {
+		x         [][]float64
+		y         []float64
+		opt       *LassoAutoOptions
+		intercept float64
+		coef      []float64
+	}{
+		"auto model intercept": {
+			x: [][]float64{
+				{0, 0},
+				{3, 5},
+				{9, 20},
+				{12, 6},
+				{15, 10},
+			},
+			y: []float64{2, 31, 109, 62, 87},
+			opt: func() *LassoAutoOptions {
+				opt := NewDefaultLassoAutoOptions()
+				opt.Lambdas = lambdas
+				opt.Tolerance = desTol
+				opt.FitIntercept = true
+				opt.Parallelization = parallelization
+				return opt
+			}(),
+			intercept: 2.0,
+			coef:      []float64{3.0, 4.0},
 		},
-	)
-	require.Nil(t, err)
-
-	y := mat.NewDense(4, 1, []float64{2, 31, 109, 62})
-
-	opt := NewDefaultLassoAutoOptions()
-	opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
-	opt.Tolerance = 1e-6
-	opt.FitIntercept = true
-	opt.Parallelization = 4
-
-	model, err := NewLassoAutoRegression(opt)
-	require.Nil(t, err)
-
-	err = model.Fit(x, y)
-	require.Nil(t, err)
-
-	assert.InDelta(t, 2.0, model.Intercept(), 0.00001)
-
-	coef := model.Coef()
-	assert.InDelta(t, 3.0, coef[0], 0.00001)
-	assert.InDelta(t, 4.0, coef[1], 0.00001)
-
-	r2, err := model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
-
-	x, err = mat_.NewDenseFromArray(
-		[][]float64{
-			{1, 0, 0},
-			{1, 3, 5},
-			{1, 9, 20},
-			{1, 12, 6},
+		"auto model no intercept": {
+			x: [][]float64{
+				{1, 0, 0},
+				{1, 3, 5},
+				{1, 9, 20},
+				{1, 12, 6},
+				{1, 15, 10},
+			},
+			y: []float64{2, 31, 109, 62, 87},
+			opt: func() *LassoAutoOptions {
+				opt := NewDefaultLassoAutoOptions()
+				opt.Lambdas = lambdas
+				opt.Tolerance = desTol
+				opt.FitIntercept = false
+				opt.Parallelization = parallelization
+				return opt
+			}(),
+			intercept: 0.0,
+			coef:      []float64{2.0, 3.0, 4.0},
 		},
-	)
-	require.Nil(t, err)
-
-	y = mat.NewDense(4, 1, []float64{2, 31, 109, 62})
-
-	opt = NewDefaultLassoAutoOptions()
-	opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
-	opt.Tolerance = 1e-6
-	opt.FitIntercept = false
-	opt.Parallelization = 4
-
-	model, err = NewLassoAutoRegression(opt)
-	require.Nil(t, err)
-
-	err = model.Fit(x, y)
-	require.Nil(t, err)
-
-	coef = model.Coef()
-	assert.InDelta(t, 2.0, coef[0], 0.00001)
-	assert.InDelta(t, 3.0, coef[1], 0.00001)
-	assert.InDelta(t, 4.0, coef[2], 0.00001)
-
-	r2, err = model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
-
-	x, err = mat_.NewDenseFromArray(
-		[][]float64{
-			{1},
-			{1},
-			{1},
-			{1},
+		"auto model constant": {
+			x: [][]float64{
+				{1},
+				{1},
+				{1},
+				{1},
+				{1},
+			},
+			y: []float64{3, 3, 3, 3, 3},
+			opt: func() *LassoAutoOptions {
+				opt := NewDefaultLassoAutoOptions()
+				opt.Lambdas = lambdas
+				opt.Tolerance = desTol
+				opt.FitIntercept = false
+				opt.Parallelization = parallelization
+				return opt
+			}(),
+			intercept: 0.0,
+			coef:      []float64{3.0},
 		},
-	)
-	require.Nil(t, err)
+	}
 
-	y = mat.NewDense(4, 1, []float64{3, 3, 3, 3})
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			x, err := mat_.NewDenseFromArray(td.x)
+			require.Nil(t, err)
 
-	opt = NewDefaultLassoAutoOptions()
-	opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
-	opt.Tolerance = 1e-6
-	opt.FitIntercept = false
-	opt.Parallelization = 4
+			y := mat.NewDense(len(td.y), 1, td.y)
 
-	model, err = NewLassoAutoRegression(opt)
-	require.Nil(t, err)
+			model, err := NewLassoAutoRegression(td.opt)
+			require.Nil(t, err)
 
-	err = model.Fit(x, y)
-	require.Nil(t, err)
+			err = model.Fit(x, y)
+			require.Nil(t, err)
 
-	coef = model.Coef()
-	assert.InDelta(t, 3.0, coef[0], 0.00001)
+			assert.InDelta(t, td.intercept, model.Intercept(), tol)
 
-	r2, err = model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
+			coef := model.Coef()
+			assert.InDeltaSlice(t, td.coef, coef, tol)
+
+			r2, err := model.Score(x, y)
+			require.Nil(t, err)
+			assert.InDelta(t, 1.0, r2, tol)
+		})
+	}
 }
 
 func BenchmarkLassoRegression(b *testing.B) {
-	nObs := 100000
+	nObs := 1000
 	nFeat := 100
 
 	data := make([][]float64, nObs)
