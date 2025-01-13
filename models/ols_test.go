@@ -41,96 +41,65 @@ func TestOLSOptionsValidate(t *testing.T) {
 }
 
 func TestOLSRegression(t *testing.T) {
-	x, err := mat_.NewDenseFromArray(
-		[][]float64{
-			{0, 0},
-			{3, 5},
-			{9, 20},
-			{12, 6},
+	tol := 1e-5
+	testData := map[string]struct {
+		x         [][]float64
+		y         []float64
+		opt       *OLSOptions
+		intercept float64
+		coef      []float64
+	}{
+		"ols model intercept": {
+			x: [][]float64{
+				{0, 0},
+				{3, 5},
+				{9, 20},
+				{12, 6},
+				{15, 10},
+			},
+			y:         []float64{2, 31, 109, 62, 87},
+			intercept: 2.0,
+			coef:      []float64{3.0, 4.0},
 		},
-	)
-	require.Nil(t, err)
-
-	y := mat.NewDense(4, 1, []float64{2, 31, 109, 62})
-
-	model, err := NewOLSRegression(nil)
-	require.Nil(t, err)
-
-	err = model.Fit(x, y)
-	require.Nil(t, err)
-
-	assert.InDelta(t, 2.0, model.Intercept(), 0.00001)
-
-	coef := model.Coef()
-	assert.InDelta(t, 3.0, coef[0], 0.00001)
-	assert.InDelta(t, 4.0, coef[1], 0.00001)
-
-	r2, err := model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
-
-	x, err = mat_.NewDenseFromArray(
-		[][]float64{
-			{1, 0, 0},
-			{1, 3, 5},
-			{1, 9, 20},
-			{1, 12, 6},
+		"ols model no intercept": {
+			x: [][]float64{
+				{1, 0, 0},
+				{1, 3, 5},
+				{1, 9, 20},
+				{1, 12, 6},
+				{1, 15, 10},
+			},
+			y: []float64{2, 31, 109, 62, 87},
+			opt: &OLSOptions{
+				FitIntercept: false,
+			},
+			intercept: 0.0,
+			coef:      []float64{2.0, 3.0, 4.0},
 		},
-	)
-	require.Nil(t, err)
+	}
 
-	y = mat.NewDense(4, 1, []float64{2, 31, 109, 62})
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			x, err := mat_.NewDenseFromArray(td.x)
+			require.Nil(t, err)
 
-	model, err = NewOLSRegression(
-		&OLSOptions{
-			FitIntercept: false,
-		},
-	)
-	require.Nil(t, err)
+			y := mat.NewDense(len(td.y), 1, td.y)
 
-	err = model.Fit(x, y)
-	require.Nil(t, err)
+			model, err := NewOLSRegression(td.opt)
+			require.Nil(t, err)
 
-	assert.InDelta(t, 0.0, model.Intercept(), 0.00001)
-
-	coef = model.Coef()
-	assert.InDelta(t, 2.0, coef[0], 0.00001)
-	assert.InDelta(t, 3.0, coef[1], 0.00001)
-	assert.InDelta(t, 4.0, coef[2], 0.00001)
-
-	r2, err = model.Score(x, y)
-	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, 0.00001)
+			testModel(t, model, x, y, td.intercept, td.coef, tol)
+		})
+	}
 }
 
 func BenchmarkOLSRegression(b *testing.B) {
-	nObs := 1000
-	nFeat := 100
-
-	data := make([][]float64, nObs)
-	for i := 0; i < nObs; i++ {
-		data[i] = make([]float64, nFeat)
-		for j := 0; j < nFeat; j++ {
-			val := float64(i*nFeat + j)
-			if j == 0 {
-				val = 1.0
-			}
-			data[i][j] = val
-		}
-	}
-
-	data2 := make([]float64, 0, nObs)
-	for i := 0; i < cap(data2); i++ {
-		data2 = append(data2, float64(i))
+	x, y, err := generateBenchData(1000, 100)
+	if err != nil {
+		b.Fatal(err)
 	}
 
 	for i := 0; i < b.N; i++ {
-		x, err := mat_.NewDenseFromArray(data)
-		if err != nil {
-			b.Error(err)
-			continue
-		}
-		y := mat.NewDense(nObs, 1, data2)
 		model, err := NewOLSRegression(
 			&OLSOptions{
 				FitIntercept: false,
