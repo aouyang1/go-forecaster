@@ -28,17 +28,17 @@ func TestDot(t *testing.T) {
 		err      error
 		expected float64
 	}{
-		"length mismatch": {
+		"dot length mismatch": {
 			a:   []float64{1, 2, 3},
 			b:   []float64{1, 2},
 			err: ErrSliceLengthMismatch,
 		},
-		"length multiple invalid": {
+		"dot length multiple invalid": {
 			a:   []float64{1, 2, 3},
 			b:   []float64{1, 2, 3},
 			err: ErrSliceMul,
 		},
-		"valid": {
+		"dot valid": {
 			a:        []float64{1, 2, 3, 4},
 			b:        []float64{4, 3, 2, 1},
 			expected: 20,
@@ -72,17 +72,17 @@ func TestAdd(t *testing.T) {
 		err      error
 		expected []float64
 	}{
-		"length mismatch": {
+		"add length mismatch": {
 			dst: []float64{1, 2, 3},
 			s:   []float64{1, 2},
 			err: ErrSliceLengthMismatch,
 		},
-		"length multiple invalid": {
+		"add length multiple invalid": {
 			dst: []float64{1, 2, 3},
 			s:   []float64{1, 2, 3},
 			err: ErrSliceMul,
 		},
-		"valid": {
+		"add valid": {
 			dst:      []float64{1, 2, 3, 4},
 			s:        []float64{4, 3, 2, 1},
 			expected: []float64{5, 5, 5, 5},
@@ -106,28 +106,28 @@ func TestSubTo(t *testing.T) {
 		err      error
 		expected []float64
 	}{
-		"length mismatch": {
+		"subto length mismatch": {
 			s:   []float64{1, 2, 3},
 			t:   []float64{1, 2},
 			err: ErrSliceLengthMismatch,
 		},
-		"length multiple invalid": {
+		"subto length multiple invalid": {
 			s:   []float64{1, 2, 3},
 			t:   []float64{1, 2, 3},
 			err: ErrSliceMul,
 		},
-		"valid no destination": {
+		"subto valid no destination": {
 			s:        []float64{1, 2, 3, 4},
 			t:        []float64{4, 3, 2, 1},
 			expected: []float64{-3, -1, 1, 3},
 		},
-		"valid with destination": {
+		"subto valid with destination": {
 			dst:      make([]float64, 4),
 			s:        []float64{1, 2, 3, 4},
 			t:        []float64{4, 3, 2, 1},
 			expected: []float64{-3, -1, 1, 3},
 		},
-		"invalid destination": {
+		"subto invalid destination": {
 			dst: make([]float64, 3),
 			s:   []float64{1, 2, 3, 4},
 			t:   []float64{4, 3, 2, 1},
@@ -152,22 +152,22 @@ func TestScaleTo(t *testing.T) {
 		err      error
 		expected []float64
 	}{
-		"length multiple invalid": {
+		"scaleto length multiple invalid": {
 			s:   []float64{1, 2, 3},
 			err: ErrSliceMul,
 		},
-		"valid no destination": {
+		"scaleto valid no destination": {
 			c:        3,
 			s:        []float64{1, 2, 3, 4},
 			expected: []float64{3, 6, 9, 12},
 		},
-		"valid with destination": {
+		"scaleto valid with destination": {
 			dst:      make([]float64, 4),
 			c:        3,
 			s:        []float64{1, 2, 3, 4},
 			expected: []float64{3, 6, 9, 12},
 		},
-		"invalid destination": {
+		"scaleto invalid destination": {
 			dst: make([]float64, 3),
 			c:   3,
 			s:   []float64{1, 2, 3, 4},
