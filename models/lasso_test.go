@@ -233,7 +233,7 @@ func TestLassoAutoRegression(t *testing.T) {
 }
 
 func BenchmarkLassoRegression(b *testing.B) {
-	x, y, err := generateBenchData(1000, 100)
+	x, y, err := generateBenchData(100000, 100)
 	if err != nil {
 		b.Fatal(err)
 	}
