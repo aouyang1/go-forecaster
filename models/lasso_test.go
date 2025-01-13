@@ -233,13 +233,12 @@ func TestLassoAutoRegression(t *testing.T) {
 }
 
 func BenchmarkLassoRegression(b *testing.B) {
-	x, y, err := generateBenchData(100000, 100)
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.ResetTimer()
-
 	for i := 0; i < b.N; i++ {
+		x, y, err := generateBenchData(100000, 100)
+		if err != nil {
+			b.Fatal(err)
+		}
+
 		opt := NewDefaultLassoOptions()
 		opt.FitIntercept = false
 		model, err := NewLassoRegression(opt)
@@ -250,6 +249,55 @@ func BenchmarkLassoRegression(b *testing.B) {
 		if err := model.Fit(x, y); err != nil {
 			b.Error(err)
 			continue
+		}
+	}
+}
+
+func BenchmarkLassoAutoRegression(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		x, y, err := generateBenchData(100000, 100)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		opt := NewDefaultLassoAutoOptions()
+		opt.FitIntercept = false
+		opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
+		opt.Parallelization = 6
+		model, err := NewLassoAutoRegression(opt)
+		if err != nil {
+			b.Error(err)
+			continue
+		}
+		if err := model.Fit(x, y); err != nil {
+			b.Error(err)
+			continue
+		}
+	}
+}
+
+func BenchmarkLassoSerialRegression(b *testing.B) {
+	lambdas := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
+	for i := 0; i < b.N; i++ {
+		x, y, err := generateBenchData(100000, 100)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		for _, lambda := range lambdas {
+
+			opt := NewDefaultLassoOptions()
+			opt.Lambda = lambda
+			opt.FitIntercept = false
+			model, err := NewLassoRegression(opt)
+			if err != nil {
+				b.Error(err)
+				continue
+			}
+			if err := model.Fit(x, y); err != nil {
+				b.Error(err)
+				continue
+			}
 		}
 	}
 }

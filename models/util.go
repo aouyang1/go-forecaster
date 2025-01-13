@@ -1,6 +1,7 @@
 package models
 
 import (
+	"math/rand/v2"
 	"testing"
 
 	mat_ "github.com/aouyang1/go-forecaster/mat"
@@ -29,7 +30,7 @@ func generateBenchData(nObs, nFeat int) (mat.Matrix, mat.Matrix, error) {
 	for i := 0; i < nObs; i++ {
 		data[i] = make([]float64, nFeat)
 		for j := 0; j < nFeat; j++ {
-			val := float64(i*nFeat + j)
+			val := rand.NormFloat64()
 			if j == 0 {
 				val = 1.0
 			}
