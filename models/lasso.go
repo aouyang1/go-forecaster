@@ -80,6 +80,12 @@ func NewDefaultLassoOptions() *LassoOptions {
 type LassoRegression struct {
 	opt *LassoOptions
 
+	// serve as precomputed data structures to reduce memory allocations
+	xcols [][]float64
+	xdot  []float64
+	gamma []float64
+	yArr  []float64
+
 	coef      []float64
 	intercept float64
 }
@@ -141,22 +147,32 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 		m = floatsunrolled.UnrollBatch * (m/floatsunrolled.UnrollBatch + 1)
 	}
 
-	xcols := make([][]float64, n)
-	for i := 0; i < n; i++ {
-		xcols[i] = make([]float64, m)
-	}
-
-	// precompute the per feature dot product
-	xdot := make([]float64, n)
-	gamma := make([]float64, n)
-	for i := 0; i < n; i++ {
-		xi := mat.Col(nil, i, x)
-		if len(xi) < m {
-			xi = append(xi, make([]float64, m-len(xi))...)
+	// precompute data structures if not previously populated. This is generally only done
+	// by the auto lasso regression
+	if len(l.xdot) == 0 && len(l.xcols) == 0 && len(l.gamma) == 0 && len(l.yArr) == 0 {
+		l.xcols = make([][]float64, n)
+		for i := 0; i < n; i++ {
+			l.xcols[i] = make([]float64, m)
 		}
-		xcols[i] = xi
-		xdot[i] = floatsunrolled.Dot(xi, xi)
-		gamma[i] = l.opt.Lambda / xdot[i]
+
+		// precompute the per feature dot product
+		l.xdot = make([]float64, n)
+		l.gamma = make([]float64, n)
+		for i := 0; i < n; i++ {
+			xi := mat.Col(nil, i, x)
+			if len(xi) < m {
+				xi = append(xi, make([]float64, m-len(xi))...)
+			}
+			l.xcols[i] = xi
+			l.xdot[i] = floatsunrolled.Dot(xi, xi)
+			l.gamma[i] = l.opt.Lambda / l.xdot[i]
+		}
+
+		l.yArr = mat.Col(nil, 0, y)
+		if len(l.yArr) < m {
+			l.yArr = append(l.yArr, make([]float64, m-len(l.yArr))...)
+		}
+
 	}
 
 	// tracks the per coordinate residual
@@ -169,11 +185,6 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 	// multiplied by the feature observations of that beta. will be added to betaX on
 	// the next beta iteration
 	betaXDelta := make([]float64, m)
-
-	yArr := mat.Col(nil, 0, y)
-	if len(yArr) < m {
-		yArr = append(yArr, make([]float64, m-len(yArr))...)
-	}
 
 	for i := 0; i < l.opt.Iterations; i++ {
 		maxCoef := 0.0
@@ -188,13 +199,13 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 			}
 
 			floatsunrolled.Add(betaX, betaXDelta)
-			floatsunrolled.SubTo(residual, yArr, betaX)
+			floatsunrolled.SubTo(residual, l.yArr, betaX)
 
-			obsCol := xcols[j]
+			obsCol := l.xcols[j]
 			num := floatsunrolled.Dot(obsCol, residual)
-			betaNext := num/xdot[j] + betaCurr
+			betaNext := num/l.xdot[j] + betaCurr
 
-			betaNext = SoftThreshold(betaNext, gamma[j])
+			betaNext = SoftThreshold(betaNext, l.gamma[j])
 
 			maxCoef = math.Max(maxCoef, betaNext)
 			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
@@ -400,7 +411,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		return ErrNoTargetMatrix
 	}
 
-	m, _ := x.Dims()
+	m, n := x.Dims()
 
 	ym, _ := y.Dims()
 	if ym != m {
@@ -416,6 +427,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		var xWithOnes mat.Dense
 		xWithOnes.Stack(onesMx, xT)
 		x = xWithOnes.T()
+		_, n = x.Dims()
 	}
 
 	lassoOpts := make([]*LassoOptions, 0, len(l.opt.Lambdas))
@@ -430,32 +442,74 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		lassoOpts = append(lassoOpts, singleOpt)
 	}
 
+	// ensure multiple of unroll batch for unrolling operations
+	if m%floatsunrolled.UnrollBatch != 0 {
+		m = floatsunrolled.UnrollBatch * (m/floatsunrolled.UnrollBatch + 1)
+	}
+
+	xcols := make([][]float64, n)
+	for i := 0; i < n; i++ {
+		xcols[i] = make([]float64, m)
+	}
+
+	// precompute the per feature dot product
+	xdot := make([]float64, n)
+	for i := 0; i < n; i++ {
+		xi := mat.Col(nil, i, x)
+		if len(xi) < m {
+			xi = append(xi, make([]float64, m-len(xi))...)
+		}
+		xcols[i] = xi
+		xdot[i] = floatsunrolled.Dot(xi, xi)
+	}
+
+	yArr := mat.Col(nil, 0, y)
+	if len(yArr) < m {
+		yArr = append(yArr, make([]float64, m-len(yArr))...)
+	}
+
 	var bestScore float64
 	var scoreMu sync.Mutex
 
 	sem := make(chan struct{}, l.opt.Parallelization)
 	var wg sync.WaitGroup
-	for _, opt := range lassoOpts {
+	for _, lambda := range l.opt.Lambdas {
 		sem <- struct{}{}
 		wg.Add(1)
 
-		go func(funcOpt *LassoOptions, funcX, funcY mat.Matrix) {
+		go func(lambda float64, x, y mat.Matrix) {
 			defer func() {
 				wg.Done()
 				<-sem
 			}()
-			reg, err := NewLassoRegression(funcOpt)
+
+			opt := &LassoOptions{
+				Lambda:       lambda,
+				Iterations:   l.opt.Iterations,
+				Tolerance:    l.opt.Tolerance,
+				FitIntercept: false, // taken care of ahead of time
+			}
+
+			gamma := make([]float64, n)
+			for i := 0; i < n; i++ {
+				gamma[i] = lambda / xdot[i]
+			}
+			reg, err := NewLassoRegression(opt)
 			if err != nil {
 				slog.Error("unable to initialize lasso regression", "error", err.Error())
 				return
 			}
+			reg.xcols = xcols
+			reg.xdot = xdot
+			reg.gamma = gamma
+			reg.yArr = yArr
 
-			if err := reg.Fit(funcX, funcY); err != nil {
+			if err := reg.Fit(x, y); err != nil {
 				slog.Error("unable to fit lasso regression", "error", err.Error())
 				return
 			}
 
-			score, err := reg.Score(funcX, funcY)
+			score, err := reg.Score(x, y)
 			if err != nil {
 				slog.Error("unable to compute fit score for lasso regression", "error", err.Error())
 				return
@@ -467,7 +521,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 				bestScore = score
 				l.bestModel = reg
 			}
-		}(opt, x, y)
+		}(lambda, x, y)
 
 	}
 	wg.Wait()
