@@ -1,9 +1,11 @@
 package floatsunrolled
 
 import (
+	"math/rand/v2"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gonum.org/v1/gonum/floats"
 )
 
 func checkPanic(t *testing.T, err error) {
@@ -181,5 +183,77 @@ func TestScaleTo(t *testing.T) {
 			res := ScaleTo(td.dst, td.c, td.s)
 			assert.Equal(t, td.expected, res)
 		})
+	}
+}
+
+func generateRandomSlice(size int) []float64 {
+	a := make([]float64, size)
+	for i := 0; i < len(a); i++ {
+		a[i] = rand.NormFloat64()
+	}
+	return a
+}
+
+func BenchmarkDot(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Dot(a, a)
+	}
+}
+
+func BenchmarkNaiveDot(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		floats.Dot(a, a)
+	}
+}
+
+func BenchmarkAdd(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Add(a, a)
+	}
+}
+
+func BenchmarkNaiveAdd(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		floats.Add(a, a)
+	}
+}
+
+func BenchmarkSubTo(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		SubTo(a, a, a)
+	}
+}
+
+func BenchmarkNaiveSubTo(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		floats.SubTo(a, a, a)
+	}
+}
+
+func BenchmarkScaleTo(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ScaleTo(a, 3, a)
+	}
+}
+
+func BenchmarkNaiveScaleTo(b *testing.B) {
+	a := generateRandomSlice(1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		floats.ScaleTo(a, 3, a)
 	}
 }
