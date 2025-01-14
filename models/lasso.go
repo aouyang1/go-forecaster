@@ -7,7 +7,6 @@ import (
 	"math"
 	"sync"
 
-	"github.com/aouyang1/go-forecaster/floatsunrolled"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"
@@ -142,11 +141,6 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 		copy(beta, l.opt.WarmStartBeta)
 	}
 
-	// ensure multiple of unroll batch for unrolling operations
-	if m%floatsunrolled.UnrollBatch != 0 {
-		m = floatsunrolled.UnrollBatch * (m/floatsunrolled.UnrollBatch + 1)
-	}
-
 	// precompute data structures if not previously populated. This is generally only done
 	// by the auto lasso regression
 	if len(l.xdot) == 0 && len(l.xcols) == 0 && len(l.gamma) == 0 && len(l.yArr) == 0 {
@@ -164,7 +158,7 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 				xi = append(xi, make([]float64, m-len(xi))...)
 			}
 			l.xcols[i] = xi
-			l.xdot[i] = floatsunrolled.Dot(xi, xi)
+			l.xdot[i] = floats.Dot(xi, xi)
 			l.gamma[i] = l.opt.Lambda / l.xdot[i]
 		}
 
@@ -198,11 +192,11 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 				continue
 			}
 
-			floatsunrolled.Add(betaX, betaXDelta)
-			floatsunrolled.SubTo(residual, l.yArr, betaX)
+			floats.Add(betaX, betaXDelta)
+			floats.SubTo(residual, l.yArr, betaX)
 
 			obsCol := l.xcols[j]
-			num := floatsunrolled.Dot(obsCol, residual)
+			num := floats.Dot(obsCol, residual)
 			betaNext := num/l.xdot[j] + betaCurr
 
 			betaNext = SoftThreshold(betaNext, l.gamma[j])
@@ -210,7 +204,7 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 			maxCoef = math.Max(maxCoef, betaNext)
 			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
 			betaDiff = betaNext - betaCurr
-			floatsunrolled.ScaleTo(betaXDelta, betaDiff, obsCol)
+			floats.ScaleTo(betaXDelta, betaDiff, obsCol)
 			beta[j] = betaNext
 		}
 
@@ -442,11 +436,6 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		lassoOpts = append(lassoOpts, singleOpt)
 	}
 
-	// ensure multiple of unroll batch for unrolling operations
-	if m%floatsunrolled.UnrollBatch != 0 {
-		m = floatsunrolled.UnrollBatch * (m/floatsunrolled.UnrollBatch + 1)
-	}
-
 	xcols := make([][]float64, n)
 	for i := 0; i < n; i++ {
 		xcols[i] = make([]float64, m)
@@ -460,7 +449,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 			xi = append(xi, make([]float64, m-len(xi))...)
 		}
 		xcols[i] = xi
-		xdot[i] = floatsunrolled.Dot(xi, xi)
+		xdot[i] = floats.Dot(xi, xi)
 	}
 
 	yArr := mat.Col(nil, 0, y)
