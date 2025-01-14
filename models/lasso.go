@@ -69,7 +69,7 @@ func NewDefaultLassoOptions() *LassoOptions {
 	return &LassoOptions{
 		Lambda:        DefaultLambda,
 		Iterations:    DefaultIterations,
-		Tolerance:     DefaultIterations,
+		Tolerance:     DefaultTolerance,
 		WarmStartBeta: nil,
 		FitIntercept:  true,
 	}
@@ -166,7 +166,6 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 		if len(l.yArr) < m {
 			l.yArr = append(l.yArr, make([]float64, m-len(l.yArr))...)
 		}
-
 	}
 
 	// tracks the per coordinate residual
