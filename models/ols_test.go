@@ -94,7 +94,7 @@ func TestOLSRegression(t *testing.T) {
 }
 
 func BenchmarkOLSRegression(b *testing.B) {
-	x, y, err := generateBenchData(1000, 100)
+	x, y, err := generateBenchData(24*60, 50)
 	if err != nil {
 		b.Fatal(err)
 	}
