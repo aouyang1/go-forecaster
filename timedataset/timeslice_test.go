@@ -19,11 +19,11 @@ func TestStartTime(t *testing.T) {
 		},
 		"valid start time": {
 			tSlice: TimeSlice([]time.Time{
-				time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
-				time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
-				time.Date(1970, 1, 3, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC),
+				time.Date(1970, 1, 6, 0, 0, 0, 0, time.UTC),
 			}),
-			expected: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			expected: time.Date(1970, 1, 4, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
