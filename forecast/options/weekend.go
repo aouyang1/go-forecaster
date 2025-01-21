@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
+	"github.com/aouyang1/go-forecaster/timedataset"
 )
 
 // MaxWeekendDurBuffer sets a limit of 1 day before or after the weekend begins at 00:00 Saturday
@@ -72,9 +73,14 @@ func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, win
 
 	w.Validate()
 
-	freq := t[1].Sub(t[0])
-	start := t[0]
-	end := t[len(t)-1]
+	ts := timedataset.TimeSlice(t)
+	freq, err := ts.EstimateFreq()
+	if err != nil {
+		panic(err)
+	}
+
+	start := ts.StartTime()
+	end := ts.EndTime()
 	window := 2 * 24 * time.Hour
 
 	// pad beginning

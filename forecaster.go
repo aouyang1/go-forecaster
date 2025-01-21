@@ -414,15 +414,15 @@ func (f *Forecaster) FitResults() *Results {
 // a zero freq will be inferred from the training data.
 func (f *Forecaster) MakeFuturePeriods(periods int, freq time.Duration) ([]time.Time, error) {
 	td := f.TrainingData()
-	lastTime := td.T[len(td.T)-1]
+	t := timedataset.TimeSlice(td.T)
+	lastTime := t.EndTime()
 
 	if freq == 0 {
-		if len(td.T) < 2 {
-			return nil, ErrCannotInferInterval
+		var err error
+		freq, err = t.EstimateFreq()
+		if err != nil {
+			return nil, err
 		}
-		// may want to take more samples to infer in the future
-		freq = td.T[len(td.T)-1].Sub(td.T[len(td.T)-2])
-
 	}
 	horizon := make([]time.Time, 0, periods)
 	for i := 0; i < periods; i++ {

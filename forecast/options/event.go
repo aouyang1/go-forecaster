@@ -11,6 +11,7 @@ import (
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast/util"
+	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/rickar/cal/v2"
 	"github.com/rickar/cal/v2/us"
 )
@@ -89,9 +90,13 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFu
 		return
 	}
 
-	freq := t[1].Sub(t[0])
-	start := t[0]
-	end := t[len(t)-1]
+	ts := timedataset.TimeSlice(t)
+	freq, err := ts.EstimateFreq()
+	if err != nil {
+		panic(err)
+	}
+	start := ts.StartTime()
+	end := ts.EndTime()
 	tOrig := t
 	for _, ev := range e.Events {
 		if err := ev.Valid(); err != nil {
