@@ -27,7 +27,7 @@ func NewOutlierOptions() *OutlierOptions {
 }
 
 type SeriesOptions struct {
-	ForecastOptions *options.Options `json:"-"`
+	ForecastOptions *options.Options `json:"forecast_options"`
 	OutlierOptions  *OutlierOptions  `json:"outlier_options"`
 }
 
@@ -39,7 +39,7 @@ func NewSeriesOptions() *SeriesOptions {
 }
 
 type UncertaintyOptions struct {
-	ForecastOptions *options.Options `json:"-"`
+	ForecastOptions *options.Options `json:"forecast_options"`
 	ResidualWindow  int              `json:"residual_window"`
 	ResidualZscore  float64          `json:"residual_zscore"`
 }

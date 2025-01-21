@@ -3,7 +3,6 @@ package forecast
 import (
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
@@ -135,29 +134,20 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	}
 
 	// remove any NaNs from training set
-	trainingT := make([]time.Time, 0, len(trainingData.T))
-	trainingY := make([]float64, 0, len(trainingData.Y))
-
-	// drop out nans
-	for i := 0; i < len(trainingData.T); i++ {
-		if math.IsNaN(trainingData.Y[i]) {
-			continue
-		}
-		trainingT = append(trainingT, trainingData.T[i])
-		trainingY = append(trainingY, trainingData.Y[i])
-	}
-
+	trainingDataFiltered := trainingData.DropNan()
+	trainingT := trainingDataFiltered.T
 	if len(trainingT) <= 1 {
 		return ErrInsufficientTrainingData
 	}
 
-	f.trainEndTime = trainingT[len(trainingT)-1]
+	f.trainEndTime = timedataset.TimeSlice(trainingT).EndTime()
 	// generate features
 	x, err := f.generateFeatures(trainingT)
 	if err != nil {
 		return err
 	}
 
+	trainingY := trainingDataFiltered.Y
 	features := x.Matrix(true)
 	target := mat.NewDense(len(trainingY), 1, trainingY)
 
