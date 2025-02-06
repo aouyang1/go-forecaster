@@ -101,7 +101,7 @@ func TestForecaster(t *testing.T) {
 		},
 		"daily wave with bias": {
 			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
-			y: timedataset.GenerateConstY(4*24*60, 3.0).
+			y: timedataset.GenerateConstY(4*24*60, 3.3).
 				Add(timedataset.GenerateWaveY(
 					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
 					7.2, 86400.0, 1.0, 0.0)),
@@ -126,8 +126,8 @@ func TestForecaster(t *testing.T) {
 						},
 						Regularization: []float64{1.0},
 					},
-					ResidualWindow: 100,
-					ResidualZscore: 4.0,
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
 				},
 			},
 			expectedModel: Model{
@@ -138,7 +138,7 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: 3.0,
+						Intercept: 3.3,
 						Coef: []forecast.FeatureWeight{
 							{
 								Labels: map[string]string{
@@ -434,7 +434,7 @@ func recoverForecastPanic() {
 	}
 }
 
-func ExampleForecasterWithOutliers() {
+func setupWithOutliers() ([]time.Time, []float64, *Options) {
 	t, y := generateExampleSeries()
 
 	changepoints := []options.Changepoint{
@@ -495,6 +495,12 @@ func ExampleForecasterWithOutliers() {
 			ResidualZscore: 4.0,
 		},
 	}
+
+	return t, y, opt
+}
+
+func ExampleForecasterWithOutliers() {
+	t, y, opt := setupWithOutliers()
 
 	defer recoverForecastPanic()
 
@@ -652,66 +658,7 @@ func TestMatrixMulWithNaN(t *testing.T) {
 var benchPredictRes *Results
 
 func BenchmarkPredictFromModel(b *testing.B) {
-	t, y := generateExampleSeries()
-
-	changepoints := []options.Changepoint{
-		options.NewChangepoint("anomaly1", t[len(t)/2]),
-		options.NewChangepoint("anomaly2", t[len(t)*17/20]),
-	}
-	events := []options.Event{
-		options.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
-	}
-
-	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
-	opt := &Options{
-		SeriesOptions: &SeriesOptions{
-			ForecastOptions: &options.Options{
-				Regularization: regularization,
-				SeasonalityOptions: options.SeasonalityOptions{
-					SeasonalityConfigs: []options.SeasonalityConfig{
-						options.NewDailySeasonalityConfig(12),
-						options.NewWeeklySeasonalityConfig(12),
-					},
-				},
-				Iterations: 500,
-				Tolerance:  1e-3,
-				ChangepointOptions: options.ChangepointOptions{
-					Changepoints: changepoints,
-				},
-				WeekendOptions: options.WeekendOptions{
-					Enabled: true,
-				},
-				EventOptions: options.EventOptions{
-					Events: events,
-				},
-			},
-			OutlierOptions: NewOutlierOptions(),
-		},
-		UncertaintyOptions: &UncertaintyOptions{
-			ForecastOptions: &options.Options{
-				Regularization: regularization,
-				SeasonalityOptions: options.SeasonalityOptions{
-					SeasonalityConfigs: []options.SeasonalityConfig{
-						options.NewDailySeasonalityConfig(12),
-						options.NewWeeklySeasonalityConfig(12),
-					},
-				},
-				Iterations: 250,
-				Tolerance:  1e-2,
-				ChangepointOptions: options.ChangepointOptions{
-					Changepoints: nil,
-				},
-				WeekendOptions: options.WeekendOptions{
-					Enabled: true,
-				},
-				EventOptions: options.EventOptions{
-					Events: events,
-				},
-			},
-			ResidualWindow: 100,
-			ResidualZscore: 4.0,
-		},
-	}
+	t, y, opt := setupWithOutliers()
 
 	f, err := New(opt)
 	if err != nil {
