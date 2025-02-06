@@ -11,7 +11,6 @@ import (
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/models"
-	"gonum.org/v1/gonum/dsp/window"
 	"gonum.org/v1/gonum/floats"
 )
 
@@ -22,55 +21,9 @@ const (
 	LabelSeasWeekly = "weekly"
 
 	LabelEventWeekend = "weekend"
-
-	WindowBartlettHann    = "bartlett_hann"
-	WindowBlackman        = "blackman"
-	WindowBlackmanHarris  = "blackman_harris"
-	WindowBlackmanNuttall = "blackman_nuttall"
-	WindowFlatTop         = "flat_top"
-	WindowHamming         = "hamming"
-	WindowHann            = "hann"
-	WindowLanczos         = "lanczos"
-	WindowNuttall         = "nuttall"
-	WindowRectangular     = "rectangular"
-	WindowSine            = "sine"
-	WindowTriangular      = "triangular"
 )
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
-
-func WindowFunc(name string) func(seq []float64) []float64 {
-	var winFunc func(seq []float64) []float64
-	switch name {
-	case WindowBartlettHann:
-		winFunc = window.BartlettHann
-	case WindowBlackman:
-		winFunc = window.Blackman
-	case WindowBlackmanHarris:
-		winFunc = window.BlackmanHarris
-	case WindowBlackmanNuttall:
-		winFunc = window.BlackmanNuttall
-	case WindowFlatTop:
-		winFunc = window.FlatTop
-	case WindowHamming:
-		winFunc = window.Hamming
-	case WindowHann:
-		winFunc = window.Hann
-	case WindowLanczos:
-		winFunc = window.Lanczos
-	case WindowNuttall:
-		winFunc = window.Nuttall
-	case WindowRectangular:
-		winFunc = window.Rectangular
-	case WindowSine:
-		winFunc = window.Sine
-	case WindowTriangular:
-		winFunc = window.Triangular
-	default:
-		winFunc = window.Rectangular
-	}
-	return winFunc
-}
 
 // Options configures a forecast by specifying changepoints, seasonality order
 // and an optional regularization parameter where higher values removes more features
@@ -204,7 +157,7 @@ func (o *Options) GenerateFourierFeatures(feat *feature.Set) (*feature.Set, erro
 			if o.WeekendOptions.Enabled {
 				eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, LabelEventWeekend, LabelSeasDaily)
 				if err != nil {
-					slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend)
+					slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend, "error", err.Error())
 				} else {
 					x.Update(eventSeasFeat)
 				}
@@ -214,7 +167,7 @@ func (o *Options) GenerateFourierFeatures(feat *feature.Set) (*feature.Set, erro
 		for _, e := range o.EventOptions.Events {
 			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, e.Name, seasCfg.Name)
 			if err != nil {
-				slog.Warn("unable to generate event seasonality", "feature_name", e.Name, "seasonality", seasCfg.Name)
+				slog.Warn("unable to generate event seasonality", "feature_name", e.Name, "seasonality", seasCfg.Name, "error", err.Error())
 				continue
 			}
 
