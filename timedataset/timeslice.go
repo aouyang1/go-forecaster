@@ -1,7 +1,6 @@
 package timedataset
 
 import (
-	"math"
 	"time"
 )
 
@@ -37,13 +36,13 @@ func (t TimeSlice) EstimateFreq() (time.Duration, error) {
 	}
 
 	var maxCnt int
-	maxDelta := time.Duration(math.MaxInt64)
+	var delta time.Duration
 
-	for delta, cnt := range frequencies {
-		if cnt >= maxCnt && delta < maxDelta {
+	for d, cnt := range frequencies {
+		if cnt >= maxCnt {
 			maxCnt = cnt
-			maxDelta = delta
+			delta = d
 		}
 	}
-	return maxDelta, nil
+	return delta, nil
 }
