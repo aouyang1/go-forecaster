@@ -648,3 +648,101 @@ func TestMatrixMulWithNaN(t *testing.T) {
 	fmt.Printf("c = %v", fc)
 	// Output: c = [16  0  12  NaN]
 }
+
+var benchPredictRes *Results
+
+func BenchmarkPredictFromModel(b *testing.B) {
+	t, y := generateExampleSeries()
+
+	changepoints := []options.Changepoint{
+		options.NewChangepoint("anomaly1", t[len(t)/2]),
+		options.NewChangepoint("anomaly2", t[len(t)*17/20]),
+	}
+	events := []options.Event{
+		options.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
+	}
+
+	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
+	opt := &Options{
+		SeriesOptions: &SeriesOptions{
+			ForecastOptions: &options.Options{
+				Regularization: regularization,
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 500,
+				Tolerance:  1e-3,
+				ChangepointOptions: options.ChangepointOptions{
+					Changepoints: changepoints,
+				},
+				WeekendOptions: options.WeekendOptions{
+					Enabled: true,
+				},
+				EventOptions: options.EventOptions{
+					Events: events,
+				},
+			},
+			OutlierOptions: NewOutlierOptions(),
+		},
+		UncertaintyOptions: &UncertaintyOptions{
+			ForecastOptions: &options.Options{
+				Regularization: regularization,
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 250,
+				Tolerance:  1e-2,
+				ChangepointOptions: options.ChangepointOptions{
+					Changepoints: nil,
+				},
+				WeekendOptions: options.WeekendOptions{
+					Enabled: true,
+				},
+				EventOptions: options.EventOptions{
+					Events: events,
+				},
+			},
+			ResidualWindow: 100,
+			ResidualZscore: 4.0,
+		},
+	}
+
+	f, err := New(opt)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := f.Fit(t, y); err != nil {
+		panic(err)
+	}
+
+	m, err := f.Model()
+	if err != nil {
+		panic(err)
+	}
+
+	input := make([]time.Time, 0, 2)
+	ct := time.Now()
+	for i := 0; i < cap(input); i++ {
+		input = append(input, ct.Add(time.Duration(i)*time.Minute))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		f, err := NewFromModel(m)
+		if err != nil {
+			panic(err)
+		}
+
+		benchPredictRes, err = f.Predict(input)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
