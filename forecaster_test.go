@@ -314,6 +314,39 @@ func TestForecaster(t *testing.T) {
 				},
 			},
 		},
+		"daily wave with bias with log and negative": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			y: timedataset.GenerateConstY(4*24*60, 1.0).
+				Add(timedataset.GenerateWaveY(
+					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					7.2, 86400.0, 1.0, 0.0)),
+			expectedErr: forecast.ErrNegativeTrainingDataWithLog,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						UseLog: true,
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+					},
+					OutlierOptions: NewOutlierOptions(),
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+						Regularization: []float64{1.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+		},
 		"daily and weekly wave with bias": {
 			t: timedataset.GenerateT(14*24*60, time.Minute, time.Now),
 			y: timedataset.GenerateConstY(14*24*60, 3.0).
