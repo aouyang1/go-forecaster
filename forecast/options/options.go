@@ -29,6 +29,8 @@ var ErrUnknownTimeFeature = errors.New("unknown time feature")
 // and an optional regularization parameter where higher values removes more features
 // that contribute the least to the fit.
 type Options struct {
+	UseLog bool `json:"use_log"`
+
 	ChangepointOptions ChangepointOptions `json:"changepoint_options"`
 
 	// Lasso related options

@@ -39,7 +39,15 @@ func (t TimeSlice) EstimateFreq() (time.Duration, error) {
 	var delta time.Duration
 
 	for d, cnt := range frequencies {
-		if cnt >= maxCnt {
+		if cnt == maxCnt {
+			// we've already set delta but this one is greater than the tracked one
+			if delta > 0 && d > delta {
+				continue
+			}
+			delta = d
+			continue
+		}
+		if cnt > maxCnt {
 			maxCnt = cnt
 			delta = d
 		}

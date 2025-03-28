@@ -99,6 +99,60 @@ func TestForecaster(t *testing.T) {
 				},
 			},
 		},
+		"all constant use log": {
+			t:   timedataset.GenerateT(10, time.Minute, time.Now),
+			y:   timedataset.GenerateConstY(10, 3.0),
+			tol: 1e-5,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(1),
+							},
+						},
+						UseLog:         true,
+						Regularization: []float64{0.0},
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(1),
+							},
+						},
+						Regularization: []float64{0.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: math.Log1p(3.0),
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: 0.0,
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
 		"daily wave with bias": {
 			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
 			y: timedataset.GenerateConstY(4*24*60, 3.3).
@@ -340,7 +394,7 @@ func TestForecaster(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			defer recoverForecastPanic()
+			defer recoverForecastPanic(t)
 
 			f, err := New(td.opt)
 			require.Nil(t, err)
@@ -427,9 +481,13 @@ func runForecastExample(opt *Options, t []time.Time, y []float64, filename strin
 	return f.PlotFit(file, nil)
 }
 
-func recoverForecastPanic() {
+func recoverForecastPanic(t *testing.T) {
 	if r := recover(); r != nil {
-		fmt.Printf("panic: %v\n", r)
+		if t != nil {
+			t.Errorf("panic: %v\n", r)
+		} else {
+			fmt.Printf("panic: %v\n", r)
+		}
 		debug.PrintStack()
 	}
 }
@@ -502,7 +560,7 @@ func setupWithOutliers() ([]time.Time, []float64, *Options) {
 func ExampleForecasterWithOutliers() {
 	t, y, opt := setupWithOutliers()
 
-	defer recoverForecastPanic()
+	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster.html"); err != nil {
 		panic(err)
@@ -574,7 +632,7 @@ func ExampleForecasterAutoChangepoint() {
 	opt.SetMinValue(0.0)
 	opt.SetMaxValue(170.0)
 
-	defer recoverForecastPanic()
+	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster_auto_changepoint.html"); err != nil {
 		panic(err)
@@ -627,7 +685,7 @@ func ExampleForecasterWithTrend() {
 		},
 	}
 
-	defer recoverForecastPanic()
+	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster_with_trend.html"); err != nil {
 		panic(err)
