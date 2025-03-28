@@ -48,7 +48,7 @@ func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol fl
 		if expectedVal > 0 {
 			percDiff = math.Abs((actualVal - expectedVal) / expectedVal)
 		}
-		assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("%s feature weight value, %.3f, %+v", msg, actualVal, expected[i].Labels))
+		assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("%s feature weight value, %.5f, %+v", msg, actualVal, expected[i].Labels))
 	}
 }
 
@@ -215,6 +215,101 @@ func TestForecaster(t *testing.T) {
 					Weights: forecast.Weights{
 						Intercept: 0.0,
 						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
+		"daily wave with bias with log": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			y: timedataset.GenerateConstY(4*24*60, 14.3).
+				Add(timedataset.GenerateWaveY(
+					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					7.2, 86400.0, 1.0, 0.0)),
+			tol: 1e-5,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						UseLog: true,
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+					},
+					OutlierOptions: NewOutlierOptions(),
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+						Regularization: []float64{1.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: math.Log1p(14.3),
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.500,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "2",
+									"fourier_component": "cos",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.062,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 1.0,
+						MSE:  0.0,
+						R2:   -4.54,
+					},
+					Weights: forecast.Weights{
+						Intercept: 0.1467,
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.033,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "2",
+									"fourier_component": "cos",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.00054,
+							},
+						},
 					},
 				},
 			},
@@ -416,7 +511,7 @@ func TestForecaster(t *testing.T) {
 			if expectedInt != 0 {
 				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
 			}
-			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("series intercept, %.3f", actualInt))
+			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("series intercept, %.5f", actualInt))
 			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, td.tol, "series")
 
 			actualInt = m.Uncertainty.Weights.Intercept
@@ -426,7 +521,7 @@ func TestForecaster(t *testing.T) {
 			if expectedInt != 0 {
 				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
 			}
-			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("uncertainty intercept, %.3f", actualInt))
+			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("uncertainty intercept, %.5f", actualInt))
 
 			compareScores(t, td.expectedModel.Uncertainty.Scores, m.Uncertainty.Scores, "uncertainty")
 			compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, td.tol, "uncertainty")

@@ -17,15 +17,16 @@ import (
 )
 
 var (
-	ErrUninitializedForecast    = errors.New("uninitialized forecast")
-	ErrInsufficientTrainingData = errors.New("insufficient training data after removing Nans")
-	ErrLabelExists              = errors.New("label already exists in TimeDataset")
-	ErrMismatchedDataLen        = errors.New("input data has different length than time")
-	ErrFeatureLabelsInitialized = errors.New("feature labels already initialized")
-	ErrNoModelCoefficients      = errors.New("no model coefficients from fit")
-	ErrUntrainedForecast        = errors.New("forecast has not been trained yet")
-	ErrNoOptionsInModel         = errors.New("no options set in model")
-	ErrNoFeaturesForFit         = errors.New("no features for fitting")
+	ErrUninitializedForecast       = errors.New("uninitialized forecast")
+	ErrInsufficientTrainingData    = errors.New("insufficient training data after removing Nans")
+	ErrLabelExists                 = errors.New("label already exists in TimeDataset")
+	ErrMismatchedDataLen           = errors.New("input data has different length than time")
+	ErrFeatureLabelsInitialized    = errors.New("feature labels already initialized")
+	ErrNoModelCoefficients         = errors.New("no model coefficients from fit")
+	ErrUntrainedForecast           = errors.New("forecast has not been trained yet")
+	ErrNoOptionsInModel            = errors.New("no options set in model")
+	ErrNoFeaturesForFit            = errors.New("no features for fitting")
+	ErrNegativeTrainingDataWithLog = errors.New("cannot use log transformation with negative training data")
 )
 
 // Forecast represents a single forecast model of a time series. This is a linear model using
@@ -159,6 +160,11 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 
 	trainingY := trainingDataFiltered.Y
 	if f.opt.UseLog {
+		for _, y := range trainingY {
+			if y < 0 {
+				return ErrNegativeTrainingDataWithLog
+			}
+		}
 		util.SliceMap(trainingY, math.Log1p)
 	}
 	features := x.Matrix(true)
