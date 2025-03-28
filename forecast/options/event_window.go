@@ -16,9 +16,9 @@ const (
 	WindowSine            = "sine"
 	WindowTriangular      = "triangular"
 	WindowTukey           = "tukey"
-
-	WindowParamTukeyAlpha = 0.80
 )
+
+var WindowParamTukeyAlpha = 0.95
 
 func WindowFunc(name string) func(seq []float64) []float64 {
 	var winFunc func(seq []float64) []float64

@@ -8,3 +8,10 @@ func IndentExpand(indent string, growth int) string {
 	}
 	return string(out)
 }
+
+func SliceMap(arr []float64, lambda func(float64) float64) []float64 {
+	for i, v := range arr {
+		arr[i] = lambda(v)
+	}
+	return arr
+}

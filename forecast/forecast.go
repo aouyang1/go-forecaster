@@ -3,10 +3,12 @@ package forecast
 import (
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast/options"
+	"github.com/aouyang1/go-forecaster/forecast/util"
 	"github.com/aouyang1/go-forecaster/models"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
@@ -15,13 +17,16 @@ import (
 )
 
 var (
-	ErrUninitializedForecast    = errors.New("uninitialized forecast")
-	ErrInsufficientTrainingData = errors.New("insufficient training data after removing Nans")
-	ErrLabelExists              = errors.New("label already exists in TimeDataset")
-	ErrMismatchedDataLen        = errors.New("input data has different length than time")
-	ErrFeatureLabelsInitialized = errors.New("feature labels already initialized")
-	ErrNoModelCoefficients      = errors.New("no model coefficients from fit")
-	ErrUntrainedForecast        = errors.New("forecast has not been trained yet")
+	ErrUninitializedForecast       = errors.New("uninitialized forecast")
+	ErrInsufficientTrainingData    = errors.New("insufficient training data after removing Nans")
+	ErrLabelExists                 = errors.New("label already exists in TimeDataset")
+	ErrMismatchedDataLen           = errors.New("input data has different length than time")
+	ErrFeatureLabelsInitialized    = errors.New("feature labels already initialized")
+	ErrNoModelCoefficients         = errors.New("no model coefficients from fit")
+	ErrUntrainedForecast           = errors.New("forecast has not been trained yet")
+	ErrNoOptionsInModel            = errors.New("no options set in model")
+	ErrNoFeaturesForFit            = errors.New("no features for fitting")
+	ErrNegativeTrainingDataWithLog = errors.New("cannot use log transformation with negative training data")
 )
 
 // Forecast represents a single forecast model of a time series. This is a linear model using
@@ -54,6 +59,9 @@ func New(opt *options.Options) (*Forecast, error) {
 // NewFromModel creates a new forecast instance given a forecast Model to initialize. This
 // instance can be used for inference immediately and does not need to be trained again.
 func NewFromModel(model Model) (*Forecast, error) {
+	if model.Options == nil {
+		return nil, ErrNoOptionsInModel
+	}
 	f := &Forecast{
 		opt:            model.Options,
 		trainEndTime:   model.TrainEndTime,
@@ -146,8 +154,19 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	if err != nil {
 		return err
 	}
+	if x.Len() == 0 {
+		return ErrNoFeaturesForFit
+	}
 
 	trainingY := trainingDataFiltered.Y
+	if f.opt.UseLog {
+		for _, y := range trainingY {
+			if y < 0 {
+				return ErrNegativeTrainingDataWithLog
+			}
+		}
+		util.SliceMap(trainingY, math.Log1p)
+	}
 	features := x.Matrix(true)
 	target := mat.NewDense(len(trainingY), 1, trainingY)
 
@@ -324,6 +343,9 @@ func (f *Forecast) runInference(x *feature.Set, withIntercept bool, numObs int) 
 		if withIntercept {
 			floats.AddConst(f.intercept, res)
 		}
+		if f.opt.UseLog {
+			util.SliceMap(res, math.Expm1)
+		}
 		return res, nil
 	}
 
@@ -357,7 +379,9 @@ func (f *Forecast) runInference(x *feature.Set, withIntercept bool, numObs int) 
 	resMx.Mul(wMx, featMx)
 
 	yhat := mat.Row(nil, 0, &resMx)
-
+	if f.opt.UseLog {
+		util.SliceMap(yhat, math.Expm1)
+	}
 	return yhat, nil
 }
 

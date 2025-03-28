@@ -48,7 +48,7 @@ func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol fl
 		if expectedVal > 0 {
 			percDiff = math.Abs((actualVal - expectedVal) / expectedVal)
 		}
-		assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("%s feature weight value, %.3f, %+v", msg, actualVal, expected[i].Labels))
+		assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("%s feature weight value, %.5f, %+v", msg, actualVal, expected[i].Labels))
 	}
 }
 
@@ -83,6 +83,60 @@ func TestForecaster(t *testing.T) {
 					},
 					Weights: forecast.Weights{
 						Intercept: 3.0,
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: 0.0,
+						Coef:      []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
+		"all constant use log": {
+			t:   timedataset.GenerateT(10, time.Minute, time.Now),
+			y:   timedataset.GenerateConstY(10, 3.0),
+			tol: 1e-5,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(1),
+							},
+						},
+						UseLog:         true,
+						Regularization: []float64{0.0},
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(1),
+							},
+						},
+						Regularization: []float64{0.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: math.Log1p(3.0),
 						Coef:      []forecast.FeatureWeight{},
 					},
 				},
@@ -162,6 +216,134 @@ func TestForecaster(t *testing.T) {
 						Intercept: 0.0,
 						Coef:      []forecast.FeatureWeight{},
 					},
+				},
+			},
+		},
+		"daily wave with bias with log": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			y: timedataset.GenerateConstY(4*24*60, 14.3).
+				Add(timedataset.GenerateWaveY(
+					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					7.2, 86400.0, 1.0, 0.0)),
+			tol: 1e-5,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						UseLog: true,
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+					},
+					OutlierOptions: NewOutlierOptions(),
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+						Regularization: []float64{1.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Intercept: math.Log1p(14.3),
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.500,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "2",
+									"fourier_component": "cos",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.062,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 1.0,
+						MSE:  0.0,
+						R2:   -4.54,
+					},
+					Weights: forecast.Weights{
+						Intercept: 0.1467,
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.033,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "2",
+									"fourier_component": "cos",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 0.00054,
+							},
+						},
+					},
+				},
+			},
+		},
+		"daily wave with bias with log and negative": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			y: timedataset.GenerateConstY(4*24*60, 1.0).
+				Add(timedataset.GenerateWaveY(
+					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					7.2, 86400.0, 1.0, 0.0)),
+			expectedErr: forecast.ErrNegativeTrainingDataWithLog,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						UseLog: true,
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+					},
+					OutlierOptions: NewOutlierOptions(),
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+						Regularization: []float64{1.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
 				},
 			},
 		},
@@ -340,7 +522,7 @@ func TestForecaster(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			defer recoverForecastPanic()
+			defer recoverForecastPanic(t)
 
 			f, err := New(td.opt)
 			require.Nil(t, err)
@@ -362,7 +544,7 @@ func TestForecaster(t *testing.T) {
 			if expectedInt != 0 {
 				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
 			}
-			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("series intercept, %.3f", actualInt))
+			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("series intercept, %.5f", actualInt))
 			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, td.tol, "series")
 
 			actualInt = m.Uncertainty.Weights.Intercept
@@ -372,7 +554,7 @@ func TestForecaster(t *testing.T) {
 			if expectedInt != 0 {
 				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
 			}
-			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("uncertainty intercept, %.3f", actualInt))
+			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("uncertainty intercept, %.5f", actualInt))
 
 			compareScores(t, td.expectedModel.Uncertainty.Scores, m.Uncertainty.Scores, "uncertainty")
 			compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, td.tol, "uncertainty")
@@ -427,9 +609,13 @@ func runForecastExample(opt *Options, t []time.Time, y []float64, filename strin
 	return f.PlotFit(file, nil)
 }
 
-func recoverForecastPanic() {
+func recoverForecastPanic(t *testing.T) {
 	if r := recover(); r != nil {
-		fmt.Printf("panic: %v\n", r)
+		if t != nil {
+			t.Errorf("panic: %v\n", r)
+		} else {
+			fmt.Printf("panic: %v\n", r)
+		}
 		debug.PrintStack()
 	}
 }
@@ -502,7 +688,7 @@ func setupWithOutliers() ([]time.Time, []float64, *Options) {
 func ExampleForecasterWithOutliers() {
 	t, y, opt := setupWithOutliers()
 
-	defer recoverForecastPanic()
+	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster.html"); err != nil {
 		panic(err)
@@ -574,7 +760,7 @@ func ExampleForecasterAutoChangepoint() {
 	opt.SetMinValue(0.0)
 	opt.SetMaxValue(170.0)
 
-	defer recoverForecastPanic()
+	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster_auto_changepoint.html"); err != nil {
 		panic(err)
@@ -627,7 +813,7 @@ func ExampleForecasterWithTrend() {
 		},
 	}
 
-	defer recoverForecastPanic()
+	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster_with_trend.html"); err != nil {
 		panic(err)

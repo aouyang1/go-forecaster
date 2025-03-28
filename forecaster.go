@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	ErrInsufficientResidual = errors.New("insufficient samples from residual after outlier removal")
-	ErrEmptyTimeDataset     = errors.New("no timedataset or uninitialized")
-	ErrNoOptionsInModel     = errors.New("no options set in model")
-	ErrCannotInferInterval  = errors.New("cannot infer interval from training data time")
+	ErrInsufficientResidual         = errors.New("insufficient samples from residual after outlier removal")
+	ErrEmptyTimeDataset             = errors.New("no timedataset or uninitialized")
+	ErrCannotInferInterval          = errors.New("cannot infer interval from training data time")
+	ErrNoSeriesOrUncertaintyOptions = errors.New("no series or uncertainty options provided")
 )
 
 const (
@@ -49,6 +49,9 @@ func New(opt *Options) (*Forecaster, error) {
 		opt = NewDefaultOptions()
 	}
 
+	if opt.SeriesOptions == nil || opt.UncertaintyOptions == nil {
+		return nil, ErrNoSeriesOrUncertaintyOptions
+	}
 	f := &Forecaster{
 		opt: opt,
 	}
@@ -71,7 +74,7 @@ func New(opt *Options) (*Forecaster, error) {
 // from a previous forecaster call to Model().
 func NewFromModel(model Model) (*Forecaster, error) {
 	if model.Options == nil {
-		return nil, ErrNoOptionsInModel
+		return nil, forecast.ErrNoOptionsInModel
 	}
 	opt := model.Options
 	opt.SeriesOptions.ForecastOptions = model.Series.Options
