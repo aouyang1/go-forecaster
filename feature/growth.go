@@ -58,3 +58,7 @@ func (g *Growth) UnmarshalJSON(data []byte) error {
 	g.Name = labelStr.Name
 	return nil
 }
+
+func Intercept() *Growth {
+	return NewGrowth(GrowthIntercept)
+}

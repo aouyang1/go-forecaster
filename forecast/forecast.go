@@ -86,7 +86,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 		return nil, err
 	}
 	feat.Update(eFeat)
-	interceptLabel := feature.NewGrowth(feature.GrowthIntercept)
+	interceptLabel := feature.Intercept()
 	interceptData, exists := tFeat.Get(interceptLabel)
 	if exists {
 		feat.Set(interceptLabel, interceptData)
@@ -171,7 +171,7 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 		}
 		util.SliceMap(trainingY, math.Log1p)
 	}
-	features := x.Matrix(false)
+	features := x.Matrix()
 	target := mat.NewDense(len(trainingY), 1, trainingY)
 
 	// run coordinate descent
@@ -236,8 +236,7 @@ func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []floa
 			return nil, nil, fmt.Errorf("unable to extract feature to prune degenerate features, %v, %w", fw, err)
 		}
 
-		name, exists := f.Get("name")
-		if fw.Value == 0 && (fw.Type != feature.FeatureTypeGrowth || !exists || name != feature.GrowthIntercept) {
+		if fw.Value == 0 && (f.String() != feature.Intercept().String()) {
 			continue
 		}
 
@@ -350,7 +349,7 @@ func (f *Forecast) runInference(x *feature.Set) ([]float64, error) {
 	}
 
 	wMx := mat.NewDense(1, n, xWeights)
-	featMx := x.Matrix(false).T()
+	featMx := x.Matrix().T()
 
 	var resMx mat.Dense
 	resMx.Mul(wMx, featMx)
@@ -419,8 +418,7 @@ func (f *Forecast) Coefficients() (map[string]float64, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to convert to feature in retrieving coefficients, %v, %w", fw, err)
 		}
-		name, exists := f.Get("name")
-		if fw.Type == feature.FeatureTypeGrowth && exists && name == feature.GrowthIntercept {
+		if f.String() == feature.Intercept().String() {
 			continue
 		}
 
@@ -446,8 +444,7 @@ func (f *Forecast) Intercept() (float64, error) {
 		if err != nil {
 			return 0, fmt.Errorf("unable to convert to feature in retrieving intercept, %v, %w", fw, err)
 		}
-		name, exists := f.Get("name")
-		if exists && name == feature.GrowthIntercept {
+		if f.String() == feature.Intercept().String() {
 			return fw.Value, nil
 		}
 	}

@@ -87,7 +87,7 @@ func (o *Options) GenerateTimeFeatures(t []time.Time) (*feature.Set, *feature.Se
 
 	tFeat := feature.NewSet()
 
-	interceptFeat := feature.NewGrowth(feature.GrowthIntercept)
+	interceptFeat := feature.Intercept()
 	ones := make([]float64, len(t))
 	floats.AddConst(1.0, ones)
 	tFeat.Set(interceptFeat, ones)

@@ -58,7 +58,7 @@ func TestFit(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, label := range labels {
-		if label.String() == feature.NewGrowth(feature.GrowthIntercept).String() {
+		if label.String() == feature.Intercept().String() {
 			continue
 		}
 		res = append(res, coef[label.String()])
@@ -100,7 +100,7 @@ func TestFitFromModel(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, label := range labels {
-		if label.String() == feature.NewGrowth(feature.GrowthIntercept).String() {
+		if label.String() == feature.Intercept().String() {
 			continue
 		}
 		res = append(res, coef[label.String()])

@@ -132,17 +132,26 @@ func (s *Set) Update(other *Set) *Set {
 	return s
 }
 
-// Labels returns the sorted slice of all tracked features in the FeatureSet
+// Labels returns the sorted slice of all tracked features in the FeatureSet prioritizing
+// intercept to be the first
 func (s *Set) Labels() []Feature {
 	if s == nil {
 		return nil
 	}
+	interceptFeat := Intercept()
 
 	labels := make([]Feature, len(s.labels))
 	copy(labels, s.labels)
 	sort.Slice(
 		labels,
 		func(i, j int) bool {
+			if labels[i].String() == interceptFeat.String() {
+				return true
+			}
+			if labels[j].String() == interceptFeat.String() {
+				return false
+			}
+
 			return labels[i].String() < labels[j].String()
 		},
 	)
@@ -152,7 +161,7 @@ func (s *Set) Labels() []Feature {
 // Matrix returns a metric representation of the FeatureSet to be used with matrix methods
 // The matrix has m rows representing the number of observations and n columns representing
 // the number of features.
-func (s *Set) Matrix(intercept bool) *mat.Dense {
+func (s *Set) Matrix() *mat.Dense {
 	if s == nil {
 		return nil
 	}
@@ -164,28 +173,14 @@ func (s *Set) Matrix(intercept bool) *mat.Dense {
 
 	m := s.m
 	n := len(featureLabels)
-	if intercept {
-		n += 1
-	}
 
 	obs := make([]float64, m*n)
 
-	featNum := 0
-	if intercept {
-		for i := 0; i < m; i++ {
-			idx := n * i
-			obs[idx] = 1.0
-		}
-		featNum += 1
-	}
-
-	for _, label := range featureLabels {
+	for featNum, label := range featureLabels {
 		for i, pnt := range s.set[label.String()] {
 			idx := n*i + featNum
 			obs[idx] = pnt
-
 		}
-		featNum += 1
 	}
 	return mat.NewDense(m, n, obs)
 }
