@@ -67,10 +67,9 @@ func (m Model) TablePrint(w io.Writer, prefix, indent string) error {
 	return m.Weights.tablePrint(w, prefix, indent, 0)
 }
 
-// Weights stores the intercept and the coefficients for the forecast model
+// Weights stores the coefficients for the forecast model
 type Weights struct {
-	Coef      []FeatureWeight `json:"coefficients"`
-	Intercept float64         `json:"intercept"`
+	Coef []FeatureWeight `json:"coefficients"`
 }
 
 // FeatureLabels returns all of the feature labels in the same order as the coefficients
@@ -99,7 +98,6 @@ func (w Weights) tablePrint(wr io.Writer, prefix, indent string, indentGrowth in
 	fmt.Fprintf(wr, "%s%sWeights:\n", prefix, util.IndentExpand(indent, indentGrowth))
 	tbl := tabwriter.NewWriter(wr, 0, 0, 1, ' ', tabwriter.AlignRight)
 	fmt.Fprintf(tbl, "%s%sType\tLabels\tValue\t\n", prefix, util.IndentExpand(indent, indentGrowth+1))
-	fmt.Fprintf(tbl, "%s%sIntercept\t\t%.3f\t\n", prefix, util.IndentExpand(indent, indentGrowth+1), w.Intercept)
 	for _, fw := range w.Coef {
 		labelOut, err := json.Marshal(fw.Labels)
 		if err != nil {
@@ -167,6 +165,16 @@ func (fw *FeatureWeight) ToFeature() (feature.Feature, error) {
 		}
 		return feat, nil
 
+	case feature.FeatureTypeGrowth:
+		bytes, err := json.Marshal(fw.Labels)
+		if err != nil {
+			return nil, err
+		}
+		feat := new(feature.Growth)
+		if err := json.Unmarshal(bytes, feat); err != nil {
+			return nil, err
+		}
+		return feat, nil
 	}
 
 	return nil, ErrUnknownFeatureType

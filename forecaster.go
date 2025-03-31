@@ -353,7 +353,7 @@ func (f *Forecaster) EventComponent() []float64 {
 }
 
 // SeriesIntercept returns the intercept of the series fit
-func (f *Forecaster) SeriesIntercept() float64 {
+func (f *Forecaster) SeriesIntercept() (float64, error) {
 	return f.seriesForecast.Intercept()
 }
 
@@ -363,7 +363,7 @@ func (f *Forecaster) SeriesCoefficients() (map[string]float64, error) {
 }
 
 // UncertaintyIntercept returns the intercept of the uncertainty fit
-func (f *Forecaster) UncertaintyIntercept() float64 {
+func (f *Forecaster) UncertaintyIntercept() (float64, error) {
 	return f.uncertaintyForecast.Intercept()
 }
 

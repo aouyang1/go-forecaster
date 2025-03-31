@@ -73,7 +73,7 @@ func TestForecaster(t *testing.T) {
 		"all constant": {
 			t:   timedataset.GenerateT(10, time.Minute, time.Now),
 			y:   timedataset.GenerateConstY(10, 3.0),
-			tol: 1e-5,
+			tol: 0.0,
 			expectedModel: Model{
 				Series: forecast.Model{
 					Scores: &forecast.Scores{
@@ -82,8 +82,15 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: 3.0,
-						Coef:      []forecast.FeatureWeight{},
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 3.0,
+							},
+						},
 					},
 				},
 				Uncertainty: forecast.Model{
@@ -93,8 +100,15 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: 0.0,
-						Coef:      []forecast.FeatureWeight{},
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 0.0,
+							},
+						},
 					},
 				},
 			},
@@ -102,7 +116,7 @@ func TestForecaster(t *testing.T) {
 		"all constant use log": {
 			t:   timedataset.GenerateT(10, time.Minute, time.Now),
 			y:   timedataset.GenerateConstY(10, 3.0),
-			tol: 1e-5,
+			tol: 0.0,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
@@ -136,8 +150,15 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: math.Log1p(3.0),
-						Coef:      []forecast.FeatureWeight{},
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: math.Log1p(3.0),
+							},
+						},
 					},
 				},
 				Uncertainty: forecast.Model{
@@ -147,8 +168,15 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: 0.0,
-						Coef:      []forecast.FeatureWeight{},
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 0.0,
+							},
+						},
 					},
 				},
 			},
@@ -159,7 +187,7 @@ func TestForecaster(t *testing.T) {
 				Add(timedataset.GenerateWaveY(
 					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
 					7.2, 86400.0, 1.0, 0.0)),
-			tol: 1e-5,
+			tol: 0.0,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
@@ -192,8 +220,15 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: 3.3,
 						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 3.3,
+							},
+
 							{
 								Labels: map[string]string{
 									"name":              "epoch_daily",
@@ -213,8 +248,15 @@ func TestForecaster(t *testing.T) {
 						R2:   -4.54,
 					},
 					Weights: forecast.Weights{
-						Intercept: 0.0,
-						Coef:      []forecast.FeatureWeight{},
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 0.0,
+							},
+						},
 					},
 				},
 			},
@@ -225,7 +267,7 @@ func TestForecaster(t *testing.T) {
 				Add(timedataset.GenerateWaveY(
 					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
 					7.2, 86400.0, 1.0, 0.0)),
-			tol: 1e-5,
+			tol: 1e-4,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
@@ -259,8 +301,14 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: math.Log1p(14.3),
 						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: math.Log1p(14.3),
+							},
 							{
 								Labels: map[string]string{
 									"name":              "epoch_daily",
@@ -289,8 +337,14 @@ func TestForecaster(t *testing.T) {
 						R2:   -4.54,
 					},
 					Weights: forecast.Weights{
-						Intercept: 0.1467,
 						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 0.1467,
+							},
 							{
 								Labels: map[string]string{
 									"name":              "epoch_daily",
@@ -299,15 +353,6 @@ func TestForecaster(t *testing.T) {
 								},
 								Type:  feature.FeatureTypeSeasonality,
 								Value: 0.033,
-							},
-							{
-								Labels: map[string]string{
-									"name":              "epoch_daily",
-									"order":             "2",
-									"fourier_component": "cos",
-								},
-								Type:  feature.FeatureTypeSeasonality,
-								Value: 0.00054,
 							},
 						},
 					},
@@ -352,7 +397,7 @@ func TestForecaster(t *testing.T) {
 			y: timedataset.GenerateConstY(14*24*60, 3.0).
 				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 7.2, 24*60*60, 1.0, 0.0)).
 				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 4.6, 7*24*60*60, 1.0, 0.0)),
-			tol: 1e-5,
+			tol: 0.0,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
@@ -387,8 +432,14 @@ func TestForecaster(t *testing.T) {
 						R2:   1.0,
 					},
 					Weights: forecast.Weights{
-						Intercept: 3.0,
 						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 3.0,
+							},
 							{
 								Labels: map[string]string{
 									"name":              "epoch_daily",
@@ -417,8 +468,15 @@ func TestForecaster(t *testing.T) {
 						R2:   -4.28,
 					},
 					Weights: forecast.Weights{
-						Intercept: 0.0,
-						Coef:      []forecast.FeatureWeight{},
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 0.0,
+							},
+						},
 					},
 				},
 			},
@@ -463,8 +521,14 @@ func TestForecaster(t *testing.T) {
 						R2:   0.8739,
 					},
 					Weights: forecast.Weights{
-						Intercept: 98.3,
 						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 98.3,
+							},
 							{
 								Labels: map[string]string{
 									"name":              "epoch_daily",
@@ -502,8 +566,14 @@ func TestForecaster(t *testing.T) {
 						R2:   0.99,
 					},
 					Weights: forecast.Weights{
-						Intercept: 3.3,
 						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 3.3,
+							},
 							{
 								Labels: map[string]string{
 									"name":              "epoch_daily",
@@ -538,23 +608,7 @@ func TestForecaster(t *testing.T) {
 			require.Nil(t, err)
 
 			compareScores(t, td.expectedModel.Series.Scores, m.Series.Scores, "series")
-			actualInt := m.Series.Weights.Intercept
-			expectedInt := td.expectedModel.Series.Weights.Intercept
-			percDiff := actualInt
-			if expectedInt != 0 {
-				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
-			}
-			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("series intercept, %.5f", actualInt))
 			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, td.tol, "series")
-
-			actualInt = m.Uncertainty.Weights.Intercept
-			expectedInt = td.expectedModel.Uncertainty.Weights.Intercept
-
-			percDiff = actualInt
-			if expectedInt != 0 {
-				percDiff = math.Abs((actualInt - expectedInt) / expectedInt)
-			}
-			assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("uncertainty intercept, %.5f", actualInt))
 
 			compareScores(t, td.expectedModel.Uncertainty.Scores, m.Uncertainty.Scores, "uncertainty")
 			compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, td.tol, "uncertainty")

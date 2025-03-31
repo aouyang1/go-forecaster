@@ -105,6 +105,12 @@ func TestNewLassoAutoAptions(t *testing.T) {
 }
 
 func TestGenerateTimeFeatures(t *testing.T) {
+	ones7DaysAt6Hr := make([]float64, 28)
+	floats.AddConst(1.0, ones7DaysAt6Hr)
+
+	ones7DaysAt8Hr := make([]float64, 21)
+	floats.AddConst(1.0, ones7DaysAt8Hr)
+
 	epoch7DaysAt6Hr := []float64{
 		0 * 3600.0, 6 * 3600.0, 12 * 3600.0, 18 * 3600.0, // Thursday
 		24 * 3600, 30 * 3600.0, 36 * 3600.0, 42 * 3600.0, // Friday
@@ -136,6 +142,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			t:   timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: &Options{},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			),
@@ -148,6 +157,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -173,6 +185,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -198,6 +213,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -223,6 +241,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -248,6 +269,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -273,6 +297,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt8Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt8Hr,
 			).Set(
@@ -297,6 +324,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt8Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt8Hr,
 			).Set(
@@ -321,6 +351,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -349,6 +382,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				[]float64{
 					72 * 3600, 78 * 3600, 84 * 3600, 90 * 3600, // Sunday
@@ -391,6 +427,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -436,6 +475,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -481,6 +523,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -522,6 +567,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			),
@@ -541,6 +589,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -576,6 +627,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 				},
 			},
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			).Set(
@@ -606,6 +660,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 			t:   timedataset.GenerateT(4*7, 6*time.Hour, nowFunc),
 			opt: nil,
 			expected: feature.NewSet().Set(
+				feature.NewGrowth(feature.GrowthIntercept),
+				ones7DaysAt6Hr,
+			).Set(
 				feature.NewTime("epoch"),
 				epoch7DaysAt6Hr,
 			),

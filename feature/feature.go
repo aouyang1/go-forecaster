@@ -3,6 +3,7 @@ package feature
 type FeatureType string
 
 const (
+	FeatureTypeGrowth      FeatureType = "growth"
 	FeatureTypeChangepoint FeatureType = "changepoint"
 	FeatureTypeSeasonality FeatureType = "seasonality"
 	FeatureTypeTime        FeatureType = "time"
