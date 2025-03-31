@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestModelTablePrint(t *testing.T) {
+func TestForecasterModelTablePrint(t *testing.T) {
 	testData := map[string]struct {
 		m        Model
 		prefix   string
@@ -24,15 +24,13 @@ func TestModelTablePrint(t *testing.T) {
   Forecast:
     Training End Time: 0001-01-01 00:00:00 +0000 UTC
   Weights:
-          Type Labels Value
-     Intercept        0.000
+     Type Labels Value
 
 Uncertainty:
   Forecast:
     Training End Time: 0001-01-01 00:00:00 +0000 UTC
   Weights:
-          Type Labels Value
-     Intercept        0.000
+     Type Labels Value
 
 `,
 		},
@@ -61,8 +59,7 @@ Uncertainty:
   Scores:
     MAPE: 0.123    MSE: 1.234    R2: 0.012
   Weights:
-          Type Labels Value
-     Intercept        0.000
+     Type Labels Value
 
 Uncertainty:
   Forecast:
@@ -70,8 +67,7 @@ Uncertainty:
   Scores:
     MAPE: 0.223    MSE: 1.335    R2: 0.412
   Weights:
-          Type Labels Value
-     Intercept        0.000
+     Type Labels Value
 
 `,
 		},
@@ -122,8 +118,14 @@ Uncertainty:
 						R2:   0.0123,
 					},
 					Weights: forecast.Weights{
-						Intercept: 1.1,
 						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 1.1,
+							},
 							{
 								Labels: map[string]string{
 									"changepoint_component": "bias",
@@ -174,7 +176,7 @@ Uncertainty:
     MAPE: 0.123    MSE: 1.234    R2: 0.012
   Weights:
             Type                                              Labels Value
-       Intercept                                                     1.100
+          growth                                {"name":"intercept"} 1.100
      changepoint        {"changepoint_component":"bias","name":"c0"} 9.800
      seasonality {"fourier_component":"sin","name":"s0","order":"1"} 8.700
            event                                       {"name":"e0"} 7.600
@@ -185,8 +187,7 @@ Uncertainty:
   Forecast:
     Training End Time: 0001-01-01 00:00:00 +0000 UTC
   Weights:
-          Type Labels Value
-     Intercept        0.000
+     Type Labels Value
 
 `,
 		},
@@ -206,7 +207,15 @@ Uncertainty:
 						R2:   0.0123,
 					},
 					Weights: forecast.Weights{
-						Intercept: 1.1,
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 1.1,
+							},
+						},
 					},
 				},
 			},
@@ -223,16 +232,15 @@ Uncertainty:
   Scores:
     MAPE: 0.123    MSE: 1.234    R2: 0.012
   Weights:
-          Type Labels Value
-     Intercept        1.100
+       Type               Labels Value
+     growth {"name":"intercept"} 1.100
 
 Uncertainty:
   Options:
   Forecast:
     Training End Time: 0001-01-01 00:00:00 +0000 UTC
   Weights:
-          Type Labels Value
-     Intercept        0.000
+     Type Labels Value
 
 `,
 		},

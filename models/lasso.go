@@ -456,7 +456,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		yArr = append(yArr, make([]float64, m-len(yArr))...)
 	}
 
-	var bestScore float64
+	bestScore := math.Inf(-1)
 	var scoreMu sync.Mutex
 
 	sem := make(chan struct{}, l.opt.Parallelization)

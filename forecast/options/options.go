@@ -87,6 +87,11 @@ func (o *Options) GenerateTimeFeatures(t []time.Time) (*feature.Set, *feature.Se
 
 	tFeat := feature.NewSet()
 
+	interceptFeat := feature.NewGrowth(feature.GrowthIntercept)
+	ones := make([]float64, len(t))
+	floats.AddConst(1.0, ones)
+	tFeat.Set(interceptFeat, ones)
+
 	epoch := make([]float64, len(t))
 	for i, tPnt := range t {
 		epochNano := float64(tPnt.UnixNano()) / 1e9

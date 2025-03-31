@@ -22,8 +22,7 @@ func TestModelTablePrint(t *testing.T) {
 			expected: `Forecast:
 Training End Time: 0001-01-01 00:00:00 +0000 UTC
 Weights:
-      Type Labels Value
- Intercept        0.000
+ Type Labels Value
 `,
 		},
 		"basic input with prefix and indent": {
@@ -42,8 +41,7 @@ Weights:
 --Scores:
 --**MAPE: 0.123    MSE: 1.234    R2: 0.012
 --Weights:
-      --**Type Labels Value
- --**Intercept        0.000
+ --**Type Labels Value
 `,
 		},
 		"with all options": {
@@ -78,8 +76,14 @@ Weights:
 					R2:   0.0123,
 				},
 				Weights: Weights{
-					Intercept: 1.1,
 					Coef: []FeatureWeight{
+						{
+							Labels: map[string]string{
+								"name": "intercept",
+							},
+							Type:  feature.FeatureTypeGrowth,
+							Value: 1.1,
+						},
 						{
 							Labels: map[string]string{
 								"changepoint_component": "bias",
@@ -127,7 +131,7 @@ Weights:
     MAPE: 0.123    MSE: 1.234    R2: 0.012
   Weights:
             Type                                              Labels Value
-       Intercept                                                     1.100
+          growth                                {"name":"intercept"} 1.100
      changepoint        {"changepoint_component":"bias","name":"c0"} 9.800
      seasonality {"fourier_component":"sin","name":"s0","order":"1"} 8.700
            event                                       {"name":"e0"} 7.600
@@ -145,7 +149,15 @@ Weights:
 					R2:   0.0123,
 				},
 				Weights: Weights{
-					Intercept: 1.1,
+					Coef: []FeatureWeight{
+						{
+							Labels: map[string]string{
+								"name": "intercept",
+							},
+							Type:  feature.FeatureTypeGrowth,
+							Value: 1.1,
+						},
+					},
 				},
 			},
 			prefix: "  ",
@@ -160,8 +172,8 @@ Weights:
   Scores:
     MAPE: 0.123    MSE: 1.234    R2: 0.012
   Weights:
-          Type Labels Value
-     Intercept        1.100
+       Type               Labels Value
+     growth {"name":"intercept"} 1.100
 `,
 		},
 	}

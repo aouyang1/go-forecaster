@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,10 +36,10 @@ func testFitSignal(t *testing.T) (*Forecast, []time.Time, []float64) {
 		},
 	}
 	f, err := New(opt)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = f.Fit(tWin, y)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	return f, tWin, y
 }
@@ -47,17 +48,21 @@ func TestFit(t *testing.T) {
 	f, _, _ := testFitSignal(t)
 
 	labels, err := f.FeatureLabels()
-	require.Nil(t, err)
-	res := make([]float64, 0, len(labels)+1)
-	res = append(res, f.Intercept())
+	require.NoError(t, err)
+	res := make([]float64, 0, len(labels))
+	intercept, err := f.Intercept()
+	require.NoError(t, err)
+	res = append(res, intercept)
 
 	coef, err := f.Coefficients()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	for _, label := range labels {
+		if label.String() == feature.NewGrowth(feature.GrowthIntercept).String() {
+			continue
+		}
 		res = append(res, coef[label.String()])
 	}
-
 	expected := []float64{
 		7.90,
 		3.72, 2.14,
@@ -75,24 +80,29 @@ func TestFitFromModel(t *testing.T) {
 	f, tWin, y := testFitSignal(t)
 
 	model, err := f.Model()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// generate new forecast from thhe previous model and perform inference
 	fNew, err := NewFromModel(model)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	predicted, _, err := fNew.Predict(tWin)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	labels, err := fNew.FeatureLabels()
-	require.Nil(t, err)
-	res := make([]float64, 0, len(labels)+1)
-	res = append(res, f.Intercept())
+	require.NoError(t, err)
+	res := make([]float64, 0, len(labels))
+	intercept, err := f.Intercept()
+	require.NoError(t, err)
+	res = append(res, intercept)
 
 	coef, err := fNew.Coefficients()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	for _, label := range labels {
+		if label.String() == feature.NewGrowth(feature.GrowthIntercept).String() {
+			continue
+		}
 		res = append(res, coef[label.String()])
 	}
 
@@ -105,7 +115,7 @@ func TestFitFromModel(t *testing.T) {
 	assert.InDeltaSlice(t, expected, res, 0.1)
 
 	scores, err := NewScores(predicted, y)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Less(t, scores.MSE, 0.0001)
 	assert.Less(t, scores.MAPE, 0.0001)
 }

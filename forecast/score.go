@@ -43,7 +43,7 @@ func NewScores(predicted, actual []float64) (*Scores, error) {
 // A score of 0 means a perfect match with no errors.
 func MSE(predicted, actual []float64) (float64, error) {
 	if len(predicted) != len(actual) {
-		return 0, ErrResLenMismatch
+		return 0, fmt.Errorf("expected %d, but got %d, %w", len(actual), len(predicted), ErrResLenMismatch)
 	}
 
 	mse := 0.0
@@ -61,7 +61,7 @@ func MSE(predicted, actual []float64) (float64, error) {
 // A score of 0 means a perfect match with no errors.
 func MAPE(predicted, actual []float64) (float64, error) {
 	if len(predicted) != len(actual) {
-		return 0, ErrResLenMismatch
+		return 0, fmt.Errorf("expected %d, but got %d, %w", len(actual), len(predicted), ErrResLenMismatch)
 	}
 
 	mape := 0.0
@@ -79,7 +79,7 @@ func MAPE(predicted, actual []float64) (float64, error) {
 // fit and 0 represents no relationship
 func RSquared(predicted, actual []float64) (float64, error) {
 	if len(predicted) != len(actual) {
-		return 0, ErrResLenMismatch
+		return 0, fmt.Errorf("expected %d, but got %d, %w", len(actual), len(predicted), ErrResLenMismatch)
 	}
 
 	predictCopy := make([]float64, 0, len(predicted))

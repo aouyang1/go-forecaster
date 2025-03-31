@@ -27,6 +27,7 @@ var (
 	ErrNoOptionsInModel            = errors.New("no options set in model")
 	ErrNoFeaturesForFit            = errors.New("no features for fitting")
 	ErrNegativeTrainingDataWithLog = errors.New("cannot use log transformation with negative training data")
+	ErrNoIntercept                 = errors.New("no intercept in model")
 )
 
 // Forecast represents a single forecast model of a time series. This is a linear model using
@@ -42,7 +43,6 @@ type Forecast struct {
 	trainComponents Components
 
 	featureWeights []FeatureWeight
-	intercept      float64
 	trained        bool
 }
 
@@ -65,7 +65,6 @@ func NewFromModel(model Model) (*Forecast, error) {
 	f := &Forecast{
 		opt:            model.Options,
 		trainEndTime:   model.TrainEndTime,
-		intercept:      model.Weights.Intercept,
 		featureWeights: model.Weights.Coef,
 		scores:         model.Scores,
 		trained:        true,
@@ -87,6 +86,11 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 		return nil, err
 	}
 	feat.Update(eFeat)
+	interceptLabel := feature.NewGrowth(feature.GrowthIntercept)
+	interceptData, exists := tFeat.Get(interceptLabel)
+	if exists {
+		feat.Set(interceptLabel, interceptData)
+	}
 
 	// do not include weekly fourier features if time range is less than 1 week
 	if !f.trained && t[len(t)-1].Sub(t[0]) < time.Duration(7*24*time.Hour) {
@@ -167,7 +171,7 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 		}
 		util.SliceMap(trainingY, math.Log1p)
 	}
-	features := x.Matrix(true)
+	features := x.Matrix(false)
 	target := mat.NewDense(len(trainingY), 1, trainingY)
 
 	// run coordinate descent
@@ -179,18 +183,9 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	if err := model.Fit(features, target); err != nil {
 		return err
 	}
-	coef := model.Coef()
-	intercept := 0.0
-	if len(coef) > 0 {
-		intercept = coef[0]
-	}
-	if len(coef) > 1 {
-		coef = coef[1:]
-	}
 	f.trained = true
 
-	f.intercept = intercept
-
+	coef := model.Coef()
 	relevantFws, relevantChpts, err := f.pruneDegenerateFeatures(x.Labels(), coef)
 	if err != nil {
 		return err
@@ -241,7 +236,8 @@ func (f *Forecast) pruneDegenerateFeatures(labels []feature.Feature, coef []floa
 			return nil, nil, fmt.Errorf("unable to extract feature to prune degenerate features, %v, %w", fw, err)
 		}
 
-		if fw.Value == 0 {
+		name, exists := f.Get("name")
+		if fw.Value == 0 && (fw.Type != feature.FeatureTypeGrowth || !exists || name != feature.GrowthIntercept) {
 			continue
 		}
 
@@ -294,7 +290,7 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 			continue
 		}
 		switch feat.Type() {
-		case feature.FeatureTypeChangepoint:
+		case feature.FeatureTypeChangepoint, feature.FeatureTypeGrowth:
 			changepointFeatureSet.Set(feat, data)
 		case feature.FeatureTypeSeasonality:
 			seasonalityFeatureSet.Set(feat, data)
@@ -303,15 +299,15 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 		}
 	}
 
-	trendComp, err := f.runInference(changepointFeatureSet, true, len(t))
+	trendComp, err := f.runInference(changepointFeatureSet)
 	if err != nil {
 		return nil, Components{}, fmt.Errorf("unable to run inference for trend, %w", err)
 	}
-	seasonalityComp, err := f.runInference(seasonalityFeatureSet, false, len(t))
+	seasonalityComp, err := f.runInference(seasonalityFeatureSet)
 	if err != nil {
 		return nil, Components{}, fmt.Errorf("unable to run inference for seasonality, %w", err)
 	}
-	eventComp, err := f.runInference(eventFeatureSet, false, len(t))
+	eventComp, err := f.runInference(eventFeatureSet)
 	if err != nil {
 		return nil, Components{}, fmt.Errorf("unable to run inference for event, %w", err)
 	}
@@ -322,41 +318,22 @@ func (f *Forecast) Predict(t []time.Time) ([]float64, Components, error) {
 		Event:       eventComp,
 	}
 
-	res, err := f.runInference(x, true, len(t))
+	res, err := f.runInference(x)
 	return res, comp, err
 }
 
-func (f *Forecast) runInference(x *feature.Set, withIntercept bool, numObs int) ([]float64, error) {
+func (f *Forecast) runInference(x *feature.Set) ([]float64, error) {
 	if f == nil {
 		return nil, nil
 	}
 
-	if x == nil {
+	if x == nil || x.Len() == 0 {
 		return nil, nil
 	}
 
 	n := x.Len()
 
-	// account for case where we have just a bias
-	if n == 0 {
-		res := make([]float64, numObs)
-		if withIntercept {
-			floats.AddConst(f.intercept, res)
-		}
-		if f.opt.UseLog {
-			util.SliceMap(res, math.Expm1)
-		}
-		return res, nil
-	}
-
-	if withIntercept {
-		n += 1
-	}
-
 	xWeights := make([]float64, 0, n)
-	if withIntercept {
-		xWeights = append(xWeights, f.intercept)
-	}
 
 	labels := make(map[string]struct{})
 	for _, f := range x.Labels() {
@@ -373,7 +350,7 @@ func (f *Forecast) runInference(x *feature.Set, withIntercept bool, numObs int) 
 	}
 
 	wMx := mat.NewDense(1, n, xWeights)
-	featMx := x.Matrix(withIntercept).T()
+	featMx := x.Matrix(false).T()
 
 	var resMx mat.Dense
 	resMx.Mul(wMx, featMx)
@@ -442,17 +419,39 @@ func (f *Forecast) Coefficients() (map[string]float64, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to convert to feature in retrieving coefficients, %v, %w", fw, err)
 		}
+		name, exists := f.Get("name")
+		if fw.Type == feature.FeatureTypeGrowth && exists && name == feature.GrowthIntercept {
+			continue
+		}
+
 		coef[f.String()] = fw.Value
 	}
 	return coef, nil
 }
 
 // Intercept returns the intercept of the forecast model
-func (f *Forecast) Intercept() float64 {
+func (f *Forecast) Intercept() (float64, error) {
 	if f == nil {
-		return 0
+		return 0, ErrUninitializedForecast
 	}
-	return f.intercept
+
+	if len(f.featureWeights) == 0 {
+		return 0, ErrNoModelCoefficients
+	}
+	for _, fw := range f.featureWeights {
+		if fw.Type != feature.FeatureTypeGrowth {
+			continue
+		}
+		f, err := fw.ToFeature()
+		if err != nil {
+			return 0, fmt.Errorf("unable to convert to feature in retrieving intercept, %v, %w", fw, err)
+		}
+		name, exists := f.Get("name")
+		if exists && name == feature.GrowthIntercept {
+			return fw.Value, nil
+		}
+	}
+	return 0, ErrNoIntercept
 }
 
 // Model returns the serializeable format of the forecast model composing of the
@@ -470,8 +469,7 @@ func (f *Forecast) Model() (Model, error) {
 		TrainEndTime: f.trainEndTime,
 		Options:      f.opt,
 		Weights: Weights{
-			Intercept: f.intercept,
-			Coef:      f.featureWeights,
+			Coef: f.featureWeights,
 		},
 		Scores: f.scores,
 	}
@@ -487,7 +485,11 @@ func (f *Forecast) ModelEq() (string, error) {
 
 	eq := "y ~ "
 
-	eq += fmt.Sprintf("%.2f", f.Intercept())
+	intercept, err := f.Intercept()
+	if err != nil {
+		return "", err
+	}
+	eq += fmt.Sprintf("%.2f", intercept)
 	for _, fw := range f.featureWeights {
 		if fw.Value == 0 {
 			continue
