@@ -309,17 +309,15 @@ func TestSetUpdate(t *testing.T) {
 
 func TestMatrix(t *testing.T) {
 	testData := map[string]struct {
-		init      *Set
-		intercept bool
-		expected  *mat.Dense
+		init     *Set
+		expected *mat.Dense
 	}{
-		"nil": {nil, true, nil},
+		"nil": {nil, nil},
 		"initialized empty": {
-			init:      &Set{},
-			intercept: true,
-			expected:  nil,
+			init:     &Set{},
+			expected: nil,
 		},
-		"with intercept": {
+		"valid": {
 			init: &Set{
 				m: 4,
 				set: map[string][]float64{
@@ -329,32 +327,13 @@ func TestMatrix(t *testing.T) {
 					NewEvent("blargh"),
 				},
 			},
-			intercept: true,
-			expected: mat.NewDense(4, 2, []float64{
-				1, 1,
-				1, 2,
-				1, 3,
-				1, 4,
-			}),
-		},
-		"without intercept": {
-			init: &Set{
-				m: 4,
-				set: map[string][]float64{
-					"event_blargh": {1, 2, 3, 4},
-				},
-				labels: []Feature{
-					NewEvent("blargh"),
-				},
-			},
-			intercept: false,
-			expected:  mat.NewDense(4, 1, []float64{1, 2, 3, 4}),
+			expected: mat.NewDense(4, 1, []float64{1, 2, 3, 4}),
 		},
 	}
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			res := td.init.Matrix(td.intercept)
+			res := td.init.Matrix()
 			if td.expected == nil {
 				assert.Nil(t, res)
 				return

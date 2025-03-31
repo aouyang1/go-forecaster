@@ -131,51 +131,30 @@ func NewFeatureWeight(f feature.Feature, val float64) FeatureWeight {
 
 // ToFeature transforms the Type and Labels into a feature type
 func (fw *FeatureWeight) ToFeature() (feature.Feature, error) {
-	switch fw.Type {
-	case feature.FeatureTypeChangepoint:
-		bytes, err := json.Marshal(fw.Labels)
-		if err != nil {
-			return nil, err
-		}
-		feat := new(feature.Changepoint)
-		if err := json.Unmarshal(bytes, feat); err != nil {
-			return nil, err
-		}
-		return feat, nil
-
-	case feature.FeatureTypeSeasonality:
-		bytes, err := json.Marshal(fw.Labels)
-		if err != nil {
-			return nil, err
-		}
-		feat := new(feature.Seasonality)
-		if err := json.Unmarshal(bytes, &feat); err != nil {
-			return nil, err
-		}
-		return feat, nil
-
-	case feature.FeatureTypeEvent:
-		bytes, err := json.Marshal(fw.Labels)
-		if err != nil {
-			return nil, err
-		}
-		feat := new(feature.Event)
-		if err := json.Unmarshal(bytes, feat); err != nil {
-			return nil, err
-		}
-		return feat, nil
-
-	case feature.FeatureTypeGrowth:
-		bytes, err := json.Marshal(fw.Labels)
-		if err != nil {
-			return nil, err
-		}
-		feat := new(feature.Growth)
-		if err := json.Unmarshal(bytes, feat); err != nil {
-			return nil, err
-		}
-		return feat, nil
+	if fw == nil {
+		return nil, ErrUnknownFeatureType
 	}
 
-	return nil, ErrUnknownFeatureType
+	bytes, err := json.Marshal(fw.Labels)
+	if err != nil {
+		return nil, err
+	}
+
+	var feat feature.Feature
+	switch fw.Type {
+	case feature.FeatureTypeChangepoint:
+		feat = new(feature.Changepoint)
+	case feature.FeatureTypeSeasonality:
+		feat = new(feature.Seasonality)
+	case feature.FeatureTypeEvent:
+		feat = new(feature.Event)
+	case feature.FeatureTypeGrowth:
+		feat = new(feature.Growth)
+	default:
+		return nil, ErrUnknownFeatureType
+	}
+	if err := json.Unmarshal(bytes, feat); err != nil {
+		return nil, err
+	}
+	return feat, nil
 }

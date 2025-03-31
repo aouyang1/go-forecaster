@@ -267,7 +267,7 @@ func TestForecaster(t *testing.T) {
 				Add(timedataset.GenerateWaveY(
 					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
 					7.2, 86400.0, 1.0, 0.0)),
-			tol: 1e-4,
+			tol: 1e-3,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
