@@ -74,6 +74,20 @@ func TestForecaster(t *testing.T) {
 			t:   timedataset.GenerateT(10, time.Minute, time.Now),
 			y:   timedataset.GenerateConstY(10, 3.0),
 			tol: 0.0,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						Regularization: []float64{0.0},
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						Regularization: []float64{0.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
 			expectedModel: Model{
 				Series: forecast.Model{
 					Scores: &forecast.Scores{
@@ -120,23 +134,15 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(1),
-							},
-						},
-						UseLog:         true,
-						Regularization: []float64{0.0},
+						SeasonalityOptions: options.SeasonalityOptions{},
+						UseLog:             true,
+						Regularization:     []float64{0.0},
 					},
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(1),
-							},
-						},
-						Regularization: []float64{0.0},
+						SeasonalityOptions: options.SeasonalityOptions{},
+						Regularization:     []float64{0.0},
 					},
 					ResidualWindow: 50,
 					ResidualZscore: 8.0,

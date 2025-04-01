@@ -89,28 +89,25 @@ type SeasonalityConfig struct {
 	Period time.Duration `json:"period"`
 }
 
-// NewDailySeasonalityConfig creates a daily seasonality config given a specified number of orders
-func NewDailySeasonalityConfig(orders int) SeasonalityConfig {
+// NewSeasonalityConfig creates a new seasonality config given a name, period and orders
+func NewSeasonalityConfig(name string, period time.Duration, orders int) SeasonalityConfig {
 	if orders < 0 {
 		orders = 0
 	}
 
 	return SeasonalityConfig{
-		Name:   LabelSeasDaily,
+		Name:   name,
 		Orders: orders,
-		Period: 24 * time.Hour,
+		Period: period,
 	}
+}
+
+// NewDailySeasonalityConfig creates a daily seasonality config given a specified number of orders
+func NewDailySeasonalityConfig(orders int) SeasonalityConfig {
+	return NewSeasonalityConfig(LabelSeasDaily, 24*time.Hour, orders)
 }
 
 // NewWeeklySeasonalityConfig creates a weekly seasonality config given a specified number of orders
 func NewWeeklySeasonalityConfig(orders int) SeasonalityConfig {
-	if orders < 0 {
-		orders = 0
-	}
-
-	return SeasonalityConfig{
-		Name:   LabelSeasWeekly,
-		Orders: orders,
-		Period: 7 * 24 * time.Hour,
-	}
+	return NewSeasonalityConfig(LabelSeasWeekly, 7*24*time.Hour, orders)
 }
