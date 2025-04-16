@@ -209,7 +209,6 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 	residual := make([]float64, len(trainingData.T))
 	floats.Add(residual, trainingData.Y)
 	floats.Sub(residual, predicted)
-	floats.Scale(-1.0, residual)
 	f.residual = residual
 
 	return nil
