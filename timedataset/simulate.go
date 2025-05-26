@@ -96,3 +96,19 @@ func GenerateChange(t []time.Time, chpt time.Time, bias, slope float64) Series {
 	}
 	return Series(y)
 }
+
+func GeneratePulseY(t []time.Time, amp, periodSec, order, timeOffset, duty float64) Series {
+	n := len(t)
+	y := make([]float64, 0, n)
+	cycleCutoff := 1.0 - duty/2.0
+	for i := 0; i < n; i++ {
+		cyclePos := math.Cos(2.0 * math.Pi * order / periodSec * (float64(t[i].Unix()) + timeOffset))
+		val := 0.0
+		if cyclePos >= cycleCutoff {
+			val = amp
+		}
+
+		y = append(y, val)
+	}
+	return Series(y)
+}
