@@ -53,6 +53,9 @@ func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol fl
 }
 
 func TestForecaster(t *testing.T) {
+	nowFunc := func() time.Time {
+		return time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC)
+	}
 	testData := map[string]struct {
 		expectedErr   error
 		opt           *Options
@@ -66,12 +69,12 @@ func TestForecaster(t *testing.T) {
 			expectedErr: timedataset.ErrNoTrainingData,
 		},
 		"all nan": {
-			t:           timedataset.GenerateT(10, time.Minute, time.Now),
+			t:           timedataset.GenerateT(10, time.Minute, nowFunc),
 			y:           timedataset.GenerateConstY(10, math.NaN()),
 			expectedErr: forecast.ErrInsufficientTrainingData,
 		},
 		"all constant": {
-			t:   timedataset.GenerateT(10, time.Minute, time.Now),
+			t:   timedataset.GenerateT(10, time.Minute, nowFunc),
 			y:   timedataset.GenerateConstY(10, 3.0),
 			tol: 0.0,
 			opt: &Options{
@@ -128,7 +131,7 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"all constant use log": {
-			t:   timedataset.GenerateT(10, time.Minute, time.Now),
+			t:   timedataset.GenerateT(10, time.Minute, nowFunc),
 			y:   timedataset.GenerateConstY(10, 3.0),
 			tol: 0.0,
 			opt: &Options{
@@ -188,10 +191,10 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily wave with bias": {
-			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			t: timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
 			y: timedataset.GenerateConstY(4*24*60, 3.3).
 				Add(timedataset.GenerateWaveY(
-					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
 					7.2, 86400.0, 1.0, 0.0)),
 			tol: 0.0,
 			opt: &Options{
@@ -268,10 +271,10 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily wave with bias with log": {
-			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			t: timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
 			y: timedataset.GenerateConstY(4*24*60, 14.3).
 				Add(timedataset.GenerateWaveY(
-					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
 					7.2, 86400.0, 1.0, 0.0)),
 			tol: 1e-3,
 			opt: &Options{
@@ -366,10 +369,10 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily wave with bias with log and negative": {
-			t: timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+			t: timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
 			y: timedataset.GenerateConstY(4*24*60, 1.0).
 				Add(timedataset.GenerateWaveY(
-					timedataset.GenerateT(4*24*60, time.Minute, time.Now),
+					timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
 					7.2, 86400.0, 1.0, 0.0)),
 			expectedErr: forecast.ErrNegativeTrainingDataWithLog,
 			opt: &Options{
@@ -399,10 +402,10 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily and weekly wave with bias": {
-			t: timedataset.GenerateT(14*24*60, time.Minute, time.Now),
+			t: timedataset.GenerateT(14*24*60, time.Minute, nowFunc),
 			y: timedataset.GenerateConstY(14*24*60, 3.0).
-				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 7.2, 24*60*60, 1.0, 0.0)).
-				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 4.6, 7*24*60*60, 1.0, 0.0)),
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, nowFunc), 7.2, 24*60*60, 1.0, 0.0)).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, nowFunc), 4.6, 7*24*60*60, 1.0, 0.0)),
 			tol: 0.0,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
@@ -488,12 +491,12 @@ func TestForecaster(t *testing.T) {
 			},
 		},
 		"daily and weekly wave with bias with noise": {
-			t: timedataset.GenerateT(14*24*60, time.Minute, time.Now),
+			t: timedataset.GenerateT(14*24*60, time.Minute, nowFunc),
 			y: timedataset.GenerateConstY(14*24*60, 98.3).
-				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 10.5, 24*60*60, 1.0, 0.0)).
-				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 7.6, 24*60*60, 3.0, 0.0)).
-				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 4.6, 7*24*60*60, 1.0, 0.0)).
-				Add(timedataset.GenerateNoise(timedataset.GenerateT(14*24*60, time.Minute, time.Now), 3.2, 3.2, 24*60*60, 5.0, 0.0)),
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, nowFunc), 10.5, 24*60*60, 1.0, 0.0)).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, nowFunc), 7.6, 24*60*60, 3.0, 0.0)).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(14*24*60, time.Minute, nowFunc), 4.6, 7*24*60*60, 1.0, 0.0)).
+				Add(timedataset.GenerateNoise(timedataset.GenerateT(14*24*60, time.Minute, nowFunc), 3.2, 3.2, 24*60*60, 5.0, 0.0)),
 			tol: 1.0,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
@@ -876,6 +879,90 @@ func ExampleForecasterWithTrend() {
 	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster_with_trend.html"); err != nil {
+		panic(err)
+	}
+	// Output:
+}
+
+func generateExamplePulseSeries() ([]time.Time, []float64) {
+	// create a daily sine wave at minutely with one week
+	minutes := 28 * 24 * 60
+	t := timedataset.GenerateT(minutes, time.Minute, time.Now)
+	y := make(timedataset.Series, minutes)
+
+	period := (3 * time.Hour).Seconds()
+	y.Add(timedataset.GenerateConstY(len(t), 30)).
+		Add(timedataset.GeneratePulseY(t, 100.0, period, 1.0, 0.0, 0.05)).
+		Add(timedataset.GenerateNoise(t, 3.2, 0.0, period, 5.0, 0.0))
+
+	return t, y
+}
+
+func setupWithPulses() ([]time.Time, []float64, *Options) {
+	t, y := generateExamplePulseSeries()
+
+	changepoints := []options.Changepoint{}
+	events := []options.Event{}
+
+	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
+	opt := &Options{
+		SeriesOptions: &SeriesOptions{
+			ForecastOptions: &options.Options{
+				Regularization: regularization,
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewSeasonalityConfig("pulse", 3*time.Hour, 24),
+					},
+				},
+				Iterations: 500,
+				Tolerance:  1e-3,
+				ChangepointOptions: options.ChangepointOptions{
+					Changepoints: changepoints,
+				},
+				WeekendOptions: options.WeekendOptions{
+					Enabled: false,
+				},
+				EventOptions: options.EventOptions{
+					Events: events,
+				},
+			},
+			OutlierOptions: NewOutlierOptions(),
+		},
+		UncertaintyOptions: &UncertaintyOptions{
+			ForecastOptions: &options.Options{
+				Regularization: regularization,
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 250,
+				Tolerance:  1e-2,
+				ChangepointOptions: options.ChangepointOptions{
+					Changepoints: nil,
+				},
+				WeekendOptions: options.WeekendOptions{
+					Enabled: false,
+				},
+				EventOptions: options.EventOptions{
+					Events: events,
+				},
+			},
+			ResidualWindow: 100,
+			ResidualZscore: 4.0,
+		},
+	}
+
+	return t, y, opt
+}
+
+func ExampleForecasterWithPulses() {
+	t, y, opt := setupWithPulses()
+
+	defer recoverForecastPanic(nil)
+
+	if err := runForecastExample(opt, t, y, "examples/forecaster_pulses.html"); err != nil {
 		panic(err)
 	}
 	// Output:
