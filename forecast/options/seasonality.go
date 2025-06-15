@@ -86,11 +86,11 @@ func (s *SeasonalityOptions) colinearConfigOrders() map[SeasonalityConfig][]int 
 	periods := make(map[float64]struct{})
 	colinearCfgOrders := make(map[SeasonalityConfig][]int)
 	for _, seasCfg := range s.SeasonalityConfigs {
-		for i := 1; i <= seasCfg.Orders; i++ {
-			period := float64(seasCfg.Period) / float64(i)
+		for i := range seasCfg.Orders {
+			period := float64(seasCfg.Period) / float64(i+1)
 			if _, exists := periods[period]; exists {
 				// store colinear period
-				colinearCfgOrders[seasCfg] = append(colinearCfgOrders[seasCfg], i)
+				colinearCfgOrders[seasCfg] = append(colinearCfgOrders[seasCfg], i+1)
 				continue
 			}
 			periods[period] = struct{}{}
@@ -141,7 +141,7 @@ func (s SeasonalityConfig) filterOutColinearOrders(colinearCfgOrders map[Seasona
 		if colinearCfgExists && slices.Contains(colinearOrders, i+1) {
 			continue
 		}
-		orders = append(orders, i)
+		orders = append(orders, i+1)
 	}
 	return orders
 }
