@@ -136,17 +136,6 @@ func (o *Options) GenerateFourierFeatures(feat *feature.Set) (*feature.Set, erro
 		}
 		x.Update(seasFeatures)
 
-		if seasCfg.Name == LabelSeasDaily && o.WeekendOptions.Enabled {
-			// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
-			// to capture weekly seasonality.
-			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, LabelEventWeekend, LabelSeasDaily)
-			if err != nil {
-				slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend, "error", err.Error())
-			} else {
-				x.Update(eventSeasFeat)
-			}
-		}
-
 		// generate seasonality features for events
 		for _, e := range o.EventOptions.Events {
 			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, e.Name, seasCfg.Name)
@@ -155,6 +144,18 @@ func (o *Options) GenerateFourierFeatures(feat *feature.Set) (*feature.Set, erro
 				continue
 			}
 
+			x.Update(eventSeasFeat)
+		}
+
+		// weekend seasonality
+		if seasCfg.Name == LabelSeasDaily && o.WeekendOptions.Enabled {
+			// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
+			// to capture weekly seasonality.
+			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, LabelEventWeekend, LabelSeasDaily)
+			if err != nil {
+				slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend, "error", err.Error())
+				continue
+			}
 			x.Update(eventSeasFeat)
 		}
 

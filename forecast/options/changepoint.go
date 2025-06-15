@@ -110,42 +110,12 @@ func (c ChangepointOptions) GenerateFeatures(t []time.Time, trainingEndTime time
 		filteredChpts = append(filteredChpts, chpt)
 	}
 
-	// create a slice of features where it goes in the order of bias, slope for each changepoint
-	chptBiasFeatures := make([][]float64, len(filteredChpts))
-	var chptGrowthFeatures [][]float64
-	if c.EnableGrowth {
-		chptGrowthFeatures = make([][]float64, len(filteredChpts))
-	}
-	for i := 0; i < len(filteredChpts); i++ {
-		chptBias := make([]float64, len(t))
-		chptBiasFeatures[i] = chptBias
+	chptFeatures := newChangepointFeatures(filteredChpts, t, c.EnableGrowth)
 
-		if c.EnableGrowth {
-			chptGrowth := make([]float64, len(t))
-			chptGrowthFeatures[i] = chptGrowth
-		}
-
-	}
-
-	// compute dt between training end time and changepoint time
-	deltaT := make([]float64, len(filteredChpts))
 	for i, chpt := range filteredChpts {
-		deltaT[i] = trainingEndTime.Sub(chpt.T).Seconds()
-	}
-
-	bias := 1.0
-	var slope float64
-	for i := 0; i < len(t); i++ {
-		for j := 0; j < len(filteredChpts); j++ {
-			if t[i].Equal(filteredChpts[j].T) || t[i].After(filteredChpts[j].T) {
-				chptBiasFeatures[j][i] = bias
-
-				if c.EnableGrowth {
-					slope = t[i].Sub(filteredChpts[j].T).Seconds() / deltaT[j]
-					chptGrowthFeatures[j][i] = slope
-				}
-			}
-		}
+		// compute dt between training end time and changepoint time
+		delta := trainingEndTime.Sub(chpt.T).Seconds()
+		chptFeatures[i].generate(chpt, t, delta, c.EnableGrowth)
 	}
 
 	feat := feature.NewSet()
@@ -155,12 +125,44 @@ func (c ChangepointOptions) GenerateFeatures(t []time.Time, trainingEndTime time
 			chpntName = filteredChpts[i].Name
 		}
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
-		feat.Set(chpntBias, chptBiasFeatures[i])
+		feat.Set(chpntBias, chptFeatures[i].bias)
 
 		if c.EnableGrowth {
 			chpntGrowth := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
-			feat.Set(chpntGrowth, chptGrowthFeatures[i])
+			feat.Set(chpntGrowth, chptFeatures[i].growth)
 		}
 	}
 	return feat
+}
+
+type changepointFeatures struct {
+	bias   []float64
+	growth []float64
+}
+
+func newChangepointFeatures(chpts []Changepoint, t []time.Time, enableGrowth bool) []changepointFeatures {
+	chptFeatures := make([]changepointFeatures, len(chpts))
+	for i := range chpts {
+		chptFeatures[i].bias = make([]float64, len(t))
+
+		if enableGrowth {
+			chptFeatures[i].growth = make([]float64, len(t))
+		}
+	}
+	return chptFeatures
+}
+
+func (c *changepointFeatures) generate(chpt Changepoint, t []time.Time, delta float64, enableGrowth bool) {
+	bias := 1.0
+	var slope float64
+	for i := 0; i < len(t); i++ {
+		if t[i].Equal(chpt.T) || t[i].After(chpt.T) {
+			c.bias[i] = bias
+
+			if enableGrowth {
+				slope = t[i].Sub(chpt.T).Seconds() / delta
+				c.growth[i] = slope
+			}
+		}
+	}
 }
