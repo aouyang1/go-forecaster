@@ -143,30 +143,7 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 
 	// precompute data structures if not previously populated. This is generally only done
 	// by the auto lasso regression
-	if len(l.xdot) == 0 && len(l.xcols) == 0 && len(l.gamma) == 0 && len(l.yArr) == 0 {
-		l.xcols = make([][]float64, n)
-		for i := 0; i < n; i++ {
-			l.xcols[i] = make([]float64, m)
-		}
-
-		// precompute the per feature dot product
-		l.xdot = make([]float64, n)
-		l.gamma = make([]float64, n)
-		for i := 0; i < n; i++ {
-			xi := mat.Col(nil, i, x)
-			if len(xi) < m {
-				xi = append(xi, make([]float64, m-len(xi))...)
-			}
-			l.xcols[i] = xi
-			l.xdot[i] = floats.Dot(xi, xi)
-			l.gamma[i] = l.opt.Lambda / l.xdot[i]
-		}
-
-		l.yArr = mat.Col(nil, 0, y)
-		if len(l.yArr) < m {
-			l.yArr = append(l.yArr, make([]float64, m-len(l.yArr))...)
-		}
-	}
+	l.precompute(n, m, x, y)
 
 	// tracks the per coordinate residual
 	residual := make([]float64, m)
@@ -221,6 +198,34 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 	}
 
 	return nil
+}
+
+func (l *LassoRegression) precompute(n, m int, x, y mat.Matrix) {
+	if len(l.xdot) != 0 || len(l.xcols) != 0 || len(l.gamma) != 0 || len(l.yArr) != 0 {
+		return
+	}
+	l.xcols = make([][]float64, n)
+	for i := 0; i < n; i++ {
+		l.xcols[i] = make([]float64, m)
+	}
+
+	// precompute the per feature dot product
+	l.xdot = make([]float64, n)
+	l.gamma = make([]float64, n)
+	for i := 0; i < n; i++ {
+		xi := mat.Col(nil, i, x)
+		if len(xi) < m {
+			xi = append(xi, make([]float64, m-len(xi))...)
+		}
+		l.xcols[i] = xi
+		l.xdot[i] = floats.Dot(xi, xi)
+		l.gamma[i] = l.opt.Lambda / l.xdot[i]
+	}
+
+	l.yArr = mat.Col(nil, 0, y)
+	if len(l.yArr) < m {
+		l.yArr = append(l.yArr, make([]float64, m-len(l.yArr))...)
+	}
 }
 
 // Predict using the Lasso model
