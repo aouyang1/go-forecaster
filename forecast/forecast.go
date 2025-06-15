@@ -17,17 +17,17 @@ import (
 )
 
 var (
-	ErrUninitializedForecast       = errors.New("uninitialized forecast")
-	ErrInsufficientTrainingData    = errors.New("insufficient training data after removing Nans")
-	ErrLabelExists                 = errors.New("label already exists in TimeDataset")
-	ErrMismatchedDataLen           = errors.New("input data has different length than time")
-	ErrFeatureLabelsInitialized    = errors.New("feature labels already initialized")
-	ErrNoModelCoefficients         = errors.New("no model coefficients from fit")
-	ErrUntrainedForecast           = errors.New("forecast has not been trained yet")
-	ErrNoOptionsInModel            = errors.New("no options set in model")
-	ErrNoFeaturesForFit            = errors.New("no features for fitting")
-	ErrNegativeTrainingDataWithLog = errors.New("cannot use log transformation with negative training data")
-	ErrNoIntercept                 = errors.New("no intercept in model")
+	ErrUninitializedForecast    = errors.New("uninitialized forecast")
+	ErrInsufficientTrainingData = errors.New("insufficient training data after removing Nans")
+	ErrLabelExists              = errors.New("label already exists in TimeDataset")
+	ErrMismatchedDataLen        = errors.New("input data has different length than time")
+	ErrFeatureLabelsInitialized = errors.New("feature labels already initialized")
+	ErrNoModelCoefficients      = errors.New("no model coefficients from fit")
+	ErrUntrainedForecast        = errors.New("forecast has not been trained yet")
+	ErrNoOptionsInModel         = errors.New("no options set in model")
+	ErrNoFeaturesForFit         = errors.New("no features for fitting")
+	ErrNegativeDataWithLog      = errors.New("cannot use log transformation with negative data")
+	ErrNoIntercept              = errors.New("no intercept in model")
 )
 
 // Forecast represents a single forecast model of a time series. This is a linear model using
@@ -115,11 +115,18 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	}
 
 	// evict any features that are not in the model if already trained since this is used for prediction
+	if err := f.pruneNonRelevantFeatures(feat); err != nil {
+		return nil, err
+	}
+	return feat, nil
+}
+
+func (f *Forecast) pruneNonRelevantFeatures(feat *feature.Set) error {
 	relevantFeatures := make(map[string]struct{})
 	for _, fw := range f.featureWeights {
 		f, err := fw.ToFeature()
 		if err != nil {
-			return nil, fmt.Errorf("unable to extract feature from feature weight for extracting relevant features, %v, %w", fw, err)
+			return fmt.Errorf("unable to extract feature from feature weight for extracting relevant features, %v, %w", fw, err)
 		}
 		relevantFeatures[f.String()] = struct{}{}
 	}
@@ -129,8 +136,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 			feat.Del(f)
 		}
 	}
-
-	return feat, nil
+	return nil
 }
 
 // Fit takes the input training data and fits a forecast model for possible changepoints,
@@ -164,12 +170,10 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 
 	trainingY := trainingDataFiltered.Y
 	if f.opt.UseLog {
-		for _, y := range trainingY {
-			if y < 0 {
-				return ErrNegativeTrainingDataWithLog
-			}
+		_, err := util.LogTranformSeries(trainingY)
+		if err != nil {
+			return err
 		}
-		util.SliceMap(trainingY, math.Log1p)
 	}
 	features := x.Matrix()
 	target := mat.NewDense(len(trainingY), 1, trainingY)
@@ -355,7 +359,7 @@ func (f *Forecast) runInference(x *feature.Set) ([]float64, error) {
 
 	yhat := mat.Row(nil, 0, &resMx)
 	if f.opt.UseLog {
-		util.SliceMap(yhat, math.Expm1)
+		util.SliceMap(yhat, func(y float64) (float64, error) { return math.Expm1(y), nil })
 	}
 	return yhat, nil
 }
