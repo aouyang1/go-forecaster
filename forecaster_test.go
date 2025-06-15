@@ -13,6 +13,7 @@ import (
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast"
 	"github.com/aouyang1/go-forecaster/forecast/options"
+	"github.com/aouyang1/go-forecaster/forecast/util"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -374,7 +375,7 @@ func TestForecaster(t *testing.T) {
 				Add(timedataset.GenerateWaveY(
 					timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
 					7.2, 86400.0, 1.0, 0.0)),
-			expectedErr: forecast.ErrNegativeTrainingDataWithLog,
+			expectedErr: util.ErrNegativeDataWithLog,
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{

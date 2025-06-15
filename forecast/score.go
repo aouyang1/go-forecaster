@@ -19,33 +19,33 @@ type Scores struct {
 
 // NewScores calculates the fit scores given the predicted and actual input slice values
 func NewScores(predicted, actual []float64) (*Scores, error) {
-	mse, err := MSE(predicted, actual)
+	if len(predicted) != len(actual) {
+		return nil, fmt.Errorf("expected %d, but got %d, %w", len(actual), len(predicted), ErrResLenMismatch)
+	}
+
+	mseScore, err := mse(predicted, actual)
 	if err != nil {
 		return nil, fmt.Errorf("unable to compute mean squared error, %w", err)
 	}
-	mape, err := MAPE(predicted, actual)
+	mapeScore, err := mape(predicted, actual)
 	if err != nil {
 		return nil, fmt.Errorf("unable to compute mean average percent error, %w", err)
 	}
-	rs, err := RSquared(predicted, actual)
+	rsScore, err := rsquared(predicted, actual)
 	if err != nil {
 		return nil, fmt.Errorf("unable to compute r-squared, %w", err)
 	}
 
 	return &Scores{
-		MSE:  mse,
-		MAPE: mape,
-		R2:   rs,
+		MSE:  mseScore,
+		MAPE: mapeScore,
+		R2:   rsScore,
 	}, nil
 }
 
 // MSE computes the mean squared error. This is the same as sum((y-yhat)^2).
 // A score of 0 means a perfect match with no errors.
-func MSE(predicted, actual []float64) (float64, error) {
-	if len(predicted) != len(actual) {
-		return 0, fmt.Errorf("expected %d, but got %d, %w", len(actual), len(predicted), ErrResLenMismatch)
-	}
-
+func mse(predicted, actual []float64) (float64, error) {
 	mse := 0.0
 	for i := 0; i < len(actual); i++ {
 		if math.IsNaN(actual[i]) || math.IsNaN(predicted[i]) {
@@ -59,11 +59,7 @@ func MSE(predicted, actual []float64) (float64, error) {
 
 // MAPE calculates the mean average percent error. This is the same as sum(abs((y-yhat)/y)).
 // A score of 0 means a perfect match with no errors.
-func MAPE(predicted, actual []float64) (float64, error) {
-	if len(predicted) != len(actual) {
-		return 0, fmt.Errorf("expected %d, but got %d, %w", len(actual), len(predicted), ErrResLenMismatch)
-	}
-
+func mape(predicted, actual []float64) (float64, error) {
 	mape := 0.0
 	for i := 0; i < len(actual); i++ {
 		if math.IsNaN(actual[i]) || math.IsNaN(predicted[i]) || actual[i] == 0 {
@@ -77,11 +73,7 @@ func MAPE(predicted, actual []float64) (float64, error) {
 
 // RSquared computes the r squared value between the predicted and actual where 1.0 means perfect
 // fit and 0 represents no relationship
-func RSquared(predicted, actual []float64) (float64, error) {
-	if len(predicted) != len(actual) {
-		return 0, fmt.Errorf("expected %d, but got %d, %w", len(actual), len(predicted), ErrResLenMismatch)
-	}
-
+func rsquared(predicted, actual []float64) (float64, error) {
 	predictCopy := make([]float64, 0, len(predicted))
 	actualCopy := make([]float64, 0, len(actual))
 	for i := 0; i < len(predicted); i++ {
