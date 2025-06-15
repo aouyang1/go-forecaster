@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"slices"
 	"strconv"
 	"time"
 
@@ -127,50 +126,28 @@ func (o *Options) GenerateFourierFeatures(feat *feature.Set) (*feature.Set, erro
 	x := feature.NewSet()
 
 	o.SeasonalityOptions.removeDuplicates()
-
-	periods := make(map[float64]struct{})
-	colinearCfgOrders := make(map[SeasonalityConfig][]int)
-	for _, seasCfg := range o.SeasonalityOptions.SeasonalityConfigs {
-		for i := 1; i <= seasCfg.Orders; i++ {
-			period := float64(seasCfg.Period) / float64(i)
-			if _, exists := periods[period]; exists {
-				// store colinear period
-				colinearCfgOrders[seasCfg] = append(colinearCfgOrders[seasCfg], i)
-				continue
-			}
-			periods[period] = struct{}{}
-		}
-	}
+	colinearCfgOrders := o.SeasonalityOptions.colinearConfigOrders()
 
 	for _, seasCfg := range o.SeasonalityOptions.SeasonalityConfigs {
-		var orders []int
-		for i := 1; i <= seasCfg.Orders; i++ {
-			colinearOrders, colinearCfgExists := colinearCfgOrders[seasCfg]
-			if colinearCfgExists && slices.Contains(colinearOrders, i) {
-				continue
-			}
-			orders = append(orders, i)
-		}
+		orders := seasCfg.filterOutColinearOrders(colinearCfgOrders)
 		seasFeatures, err := generateFourierOrders(feat, orders, seasCfg.Period, seasCfg.Name)
 		if err != nil {
 			return nil, fmt.Errorf("unable to generate seasonality features for %q, %w", seasCfg.Name, err)
 		}
 		x.Update(seasFeatures)
 
-		switch seasCfg.Name {
-		case LabelSeasDaily:
+		if seasCfg.Name == LabelSeasDaily && o.WeekendOptions.Enabled {
 			// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
 			// to capture weekly seasonality.
-			if o.WeekendOptions.Enabled {
-				eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, LabelEventWeekend, LabelSeasDaily)
-				if err != nil {
-					slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend, "error", err.Error())
-				} else {
-					x.Update(eventSeasFeat)
-				}
+			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, LabelEventWeekend, LabelSeasDaily)
+			if err != nil {
+				slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend, "error", err.Error())
+			} else {
+				x.Update(eventSeasFeat)
 			}
 		}
 
+		// generate seasonality features for events
 		for _, e := range o.EventOptions.Events {
 			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, e.Name, seasCfg.Name)
 			if err != nil {
