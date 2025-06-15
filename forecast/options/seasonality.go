@@ -3,6 +3,7 @@ package options
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"text/tabwriter"
 	"time"
@@ -79,6 +80,25 @@ func (s *SeasonalityOptions) removeDuplicates() {
 	s.SeasonalityConfigs = optSeasConfigs
 }
 
+// colinearConfigOrders returns a mapping of seasonality configs to a slice or fourier orders that
+// can be pruned
+func (s *SeasonalityOptions) colinearConfigOrders() map[SeasonalityConfig][]int {
+	periods := make(map[float64]struct{})
+	colinearCfgOrders := make(map[SeasonalityConfig][]int)
+	for _, seasCfg := range s.SeasonalityConfigs {
+		for i := range seasCfg.Orders {
+			period := float64(seasCfg.Period) / float64(i+1)
+			if _, exists := periods[period]; exists {
+				// store colinear period
+				colinearCfgOrders[seasCfg] = append(colinearCfgOrders[seasCfg], i+1)
+				continue
+			}
+			periods[period] = struct{}{}
+		}
+	}
+	return colinearCfgOrders
+}
+
 // SeasonalityConfig represents a single seasonality configuration to model. This will generate
 // Fourier series of the specified period and number of orders. E.g. a period of 24*time.Hour
 // with 3 orders will create 6 Fourier series of order 1, 2, 3 and for the sine/cosine components
@@ -110,4 +130,18 @@ func NewDailySeasonalityConfig(orders int) SeasonalityConfig {
 // NewWeeklySeasonalityConfig creates a weekly seasonality config given a specified number of orders
 func NewWeeklySeasonalityConfig(orders int) SeasonalityConfig {
 	return NewSeasonalityConfig(LabelSeasWeekly, 7*24*time.Hour, orders)
+}
+
+// filterOutColinearOrders creates a slice or orders from one removing any previously declared
+// colinear seasonal orders
+func (s SeasonalityConfig) filterOutColinearOrders(colinearCfgOrders map[SeasonalityConfig][]int) []int {
+	var orders []int
+	for i := range s.Orders {
+		colinearOrders, colinearCfgExists := colinearCfgOrders[s]
+		if colinearCfgExists && slices.Contains(colinearOrders, i+1) {
+			continue
+		}
+		orders = append(orders, i+1)
+	}
+	return orders
 }

@@ -51,6 +51,38 @@ func (e *Event) Valid() error {
 	return nil
 }
 
+// padTime padding is done for the sake of applying a relevant window to the mask. this
+// is only necessary is using anything beyond a rect window function
+func (e *Event) padTime(t []time.Time, start, end time.Time, freq time.Duration) ([]time.Time, int, int) {
+	// pad beginning
+	var startIdx int
+	if e.Start.Before(start) {
+		diff := start.Sub(e.Start)
+		numElem := int(diff/freq) + 1
+		startIdx = numElem
+
+		prefix := make([]time.Time, numElem)
+		for i := 0; i < numElem; i++ {
+			prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
+		}
+		t = append(prefix, t...)
+	}
+
+	// pad end
+	endIdx := len(t)
+	if e.End.After(end) {
+		diff := e.End.Sub(end)
+		numElem := int(diff/freq) + 1
+
+		suffix := make([]time.Time, numElem)
+		for i := 0; i < numElem; i++ {
+			suffix[i] = end.Add(time.Duration(i+1) * freq)
+		}
+		t = append(t, suffix...)
+	}
+	return t, startIdx, endIdx
+}
+
 func Christmas(start, end time.Time, durBefore, durAfter time.Duration) []Event {
 	return Holiday(us.ChristmasDay, start, end, durBefore, durAfter)
 }
@@ -97,40 +129,13 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFu
 	}
 	start := ts.StartTime()
 	end := ts.EndTime()
-	tOrig := t
 	for _, ev := range e.Events {
 		if err := ev.Valid(); err != nil {
 			slog.Warn("not separately modelling invalid event", "name", ev.Name, "error", err.Error())
 			continue
 		}
 
-		t := tOrig
-		// pad beginning
-		var startIdx int
-		if ev.Start.Before(start) {
-			diff := start.Sub(ev.Start)
-			numElem := int(diff/freq) + 1
-			startIdx = numElem
-
-			prefix := make([]time.Time, numElem)
-			for i := 0; i < numElem; i++ {
-				prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
-			}
-			t = append(prefix, t...)
-		}
-
-		// pad end
-		endIdx := len(t)
-		if ev.End.After(end) {
-			diff := ev.End.Sub(end)
-			numElem := int(diff/freq) + 1
-
-			suffix := make([]time.Time, numElem)
-			for i := 0; i < numElem; i++ {
-				suffix[i] = end.Add(time.Duration(i+1) * freq)
-			}
-			t = append(t, suffix...)
-		}
+		evT, startIdx, endIdx := ev.padTime(t, start, end, freq)
 
 		feat := feature.NewEvent(strings.ReplaceAll(ev.Name, " ", "_"))
 		if _, exists := eFeat.Get(feat); exists {
@@ -138,7 +143,7 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFu
 			continue
 		}
 
-		eventMask := generateEventMaskWithFunc(t, func(tPnt time.Time) bool {
+		eventMask := generateEventMaskWithFunc(evT, func(tPnt time.Time) bool {
 			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && tPnt.Before(ev.End)
 		}, winFunc)
 
