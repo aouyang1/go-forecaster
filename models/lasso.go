@@ -102,38 +102,11 @@ func NewLassoRegression(opt *LassoOptions) (*LassoRegression, error) {
 
 // Fit the model according to the given training data
 func (l *LassoRegression) Fit(x, y mat.Matrix) error {
-	if l.opt == nil {
-		return ErrNoOptions
+	x, y, err := l.fitValidate(x, y)
+	if err != nil {
+		return err
 	}
-	if x == nil {
-		return ErrNoTrainingMatrix
-	}
-	if y == nil {
-		return ErrNoTargetMatrix
-	}
-
 	m, n := x.Dims()
-
-	ym, _ := y.Dims()
-	if ym != m {
-		return fmt.Errorf("training data has %d rows and target has %d row, %w", m, ym, ErrTargetLenMismatch)
-	}
-
-	if l.opt.FitIntercept {
-		ones := make([]float64, m)
-		floats.AddConst(1.0, ones)
-		onesMx := mat.NewDense(1, m, ones)
-		xT := x.T()
-
-		var xWithOnes mat.Dense
-		xWithOnes.Stack(onesMx, xT)
-		x = xWithOnes.T()
-		_, n = x.Dims()
-	}
-
-	if l.opt.WarmStartBeta != nil && len(l.opt.WarmStartBeta) != n {
-		return fmt.Errorf("warm start beta has %d features instead of %d, %w", len(l.opt.WarmStartBeta), n, ErrWarmStartBetaSize)
-	}
 
 	// tracks current betas
 	beta := make([]float64, n)
@@ -193,11 +166,46 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 	if l.opt.FitIntercept {
 		l.intercept = beta[0]
 		l.coef = beta[1:]
-	} else {
-		l.coef = beta
+		return nil
+	}
+	l.coef = beta
+	return nil
+}
+
+func (l *LassoRegression) fitValidate(x, y mat.Matrix) (mat.Matrix, mat.Matrix, error) {
+	if l.opt == nil {
+		return nil, nil, ErrNoOptions
+	}
+	if x == nil {
+		return nil, nil, ErrNoTrainingMatrix
+	}
+	if y == nil {
+		return nil, nil, ErrNoTargetMatrix
 	}
 
-	return nil
+	m, n := x.Dims()
+
+	ym, _ := y.Dims()
+	if ym != m {
+		return nil, nil, fmt.Errorf("training data has %d rows and target has %d row, %w", m, ym, ErrTargetLenMismatch)
+	}
+
+	if l.opt.FitIntercept {
+		ones := make([]float64, m)
+		floats.AddConst(1.0, ones)
+		onesMx := mat.NewDense(1, m, ones)
+		xT := x.T()
+
+		var xWithOnes mat.Dense
+		xWithOnes.Stack(onesMx, xT)
+		x = xWithOnes.T()
+		_, n = x.Dims()
+	}
+
+	if l.opt.WarmStartBeta != nil && len(l.opt.WarmStartBeta) != n {
+		return nil, nil, fmt.Errorf("warm start beta has %d features instead of %d, %w", len(l.opt.WarmStartBeta), n, ErrWarmStartBetaSize)
+	}
+	return x, y, nil
 }
 
 func (l *LassoRegression) precompute(n, m int, x, y mat.Matrix) {
@@ -382,6 +390,13 @@ func NewDefaultLassoAutoOptions() *LassoAutoOptions {
 type LassoAutoRegression struct {
 	opt *LassoAutoOptions
 
+	// serve as precomputed data structures to reduce memory allocations
+	xcols [][]float64
+	xdot  []float64
+	yArr  []float64
+
+	scoreMu   sync.Mutex
+	bestScore float64
 	bestModel *LassoRegression
 }
 
@@ -393,40 +408,18 @@ func NewLassoAutoRegression(opt *LassoAutoOptions) (*LassoAutoRegression, error)
 	}
 
 	return &LassoAutoRegression{
-		opt: opt,
+		opt:       opt,
+		bestScore: math.Inf(-1),
 	}, nil
 }
 
 // Fit the model according to the given training data
 func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
-	if l.opt == nil {
-		return ErrNoOptions
+	x, y, err := l.fitValidate(x, y)
+	if err != nil {
+		return err
 	}
-	if x == nil {
-		return ErrNoTrainingMatrix
-	}
-	if y == nil {
-		return ErrNoTargetMatrix
-	}
-
 	m, n := x.Dims()
-
-	ym, _ := y.Dims()
-	if ym != m {
-		return fmt.Errorf("training data has %d rows and target has %d row, %w", m, ym, ErrTargetLenMismatch)
-	}
-
-	if l.opt.FitIntercept {
-		ones := make([]float64, m)
-		floats.AddConst(1.0, ones)
-		onesMx := mat.NewDense(1, m, ones)
-		xT := x.T()
-
-		var xWithOnes mat.Dense
-		xWithOnes.Stack(onesMx, xT)
-		x = xWithOnes.T()
-		_, n = x.Dims()
-	}
 
 	lassoOpts := make([]*LassoOptions, 0, len(l.opt.Lambdas))
 	for _, lambda := range l.opt.Lambdas {
@@ -440,29 +433,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		lassoOpts = append(lassoOpts, singleOpt)
 	}
 
-	xcols := make([][]float64, n)
-	for i := 0; i < n; i++ {
-		xcols[i] = make([]float64, m)
-	}
-
-	// precompute the per feature dot product
-	xdot := make([]float64, n)
-	for i := 0; i < n; i++ {
-		xi := mat.Col(nil, i, x)
-		if len(xi) < m {
-			xi = append(xi, make([]float64, m-len(xi))...)
-		}
-		xcols[i] = xi
-		xdot[i] = floats.Dot(xi, xi)
-	}
-
-	yArr := mat.Col(nil, 0, y)
-	if len(yArr) < m {
-		yArr = append(yArr, make([]float64, m-len(yArr))...)
-	}
-
-	bestScore := math.Inf(-1)
-	var scoreMu sync.Mutex
+	l.precompute(n, m, x, y)
 
 	sem := make(chan struct{}, l.opt.Parallelization)
 	var wg sync.WaitGroup
@@ -470,56 +441,113 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 		sem <- struct{}{}
 		wg.Add(1)
 
-		go func(lambda float64, x, y mat.Matrix) {
-			defer func() {
-				wg.Done()
-				<-sem
-			}()
-
-			opt := &LassoOptions{
-				Lambda:       lambda,
-				Iterations:   l.opt.Iterations,
-				Tolerance:    l.opt.Tolerance,
-				FitIntercept: false, // taken care of ahead of time
-			}
-
-			gamma := make([]float64, n)
-			for i := 0; i < n; i++ {
-				gamma[i] = lambda / xdot[i]
-			}
-			reg, err := NewLassoRegression(opt)
-			if err != nil {
-				slog.Error("unable to initialize lasso regression", "error", err.Error())
-				return
-			}
-			reg.xcols = xcols
-			reg.xdot = xdot
-			reg.gamma = gamma
-			reg.yArr = yArr
-
-			if err := reg.Fit(x, y); err != nil {
-				slog.Error("unable to fit lasso regression", "error", err.Error())
-				return
-			}
-
-			score, err := reg.Score(x, y)
-			if err != nil {
-				slog.Error("unable to compute fit score for lasso regression", "error", err.Error())
-				return
-			}
-
-			scoreMu.Lock()
-			defer scoreMu.Unlock()
-			if score > bestScore {
-				bestScore = score
-				l.bestModel = reg
-			}
-		}(lambda, x, y)
-
+		go l.runLasso(lambda, x, y, &wg, sem)
 	}
 	wg.Wait()
 
 	return nil
+}
+
+func (l *LassoAutoRegression) fitValidate(x, y mat.Matrix) (mat.Matrix, mat.Matrix, error) {
+	if l.opt == nil {
+		return nil, nil, ErrNoOptions
+	}
+	if x == nil {
+		return nil, nil, ErrNoTrainingMatrix
+	}
+	if y == nil {
+		return nil, nil, ErrNoTargetMatrix
+	}
+
+	m, _ := x.Dims()
+
+	ym, _ := y.Dims()
+	if ym != m {
+		return nil, nil, fmt.Errorf("training data has %d rows and target has %d row, %w", m, ym, ErrTargetLenMismatch)
+	}
+
+	if l.opt.FitIntercept {
+		ones := make([]float64, m)
+		floats.AddConst(1.0, ones)
+		onesMx := mat.NewDense(1, m, ones)
+		xT := x.T()
+
+		var xWithOnes mat.Dense
+		xWithOnes.Stack(onesMx, xT)
+		x = xWithOnes.T()
+	}
+
+	return x, y, nil
+}
+
+func (l *LassoAutoRegression) precompute(n, m int, x, y mat.Matrix) {
+	l.xcols = make([][]float64, n)
+	for i := 0; i < n; i++ {
+		l.xcols[i] = make([]float64, m)
+	}
+
+	// precompute the per feature dot product
+	l.xdot = make([]float64, n)
+	for i := 0; i < n; i++ {
+		xi := mat.Col(nil, i, x)
+		if len(xi) < m {
+			xi = append(xi, make([]float64, m-len(xi))...)
+		}
+		l.xcols[i] = xi
+		l.xdot[i] = floats.Dot(xi, xi)
+	}
+
+	l.yArr = mat.Col(nil, 0, y)
+	if len(l.yArr) < m {
+		l.yArr = append(l.yArr, make([]float64, m-len(l.yArr))...)
+	}
+}
+
+func (l *LassoAutoRegression) runLasso(lambda float64, x, y mat.Matrix, wg *sync.WaitGroup, sem chan struct{}) {
+	defer func() {
+		wg.Done()
+		<-sem
+	}()
+	_, n := x.Dims()
+
+	opt := &LassoOptions{
+		Lambda:       lambda,
+		Iterations:   l.opt.Iterations,
+		Tolerance:    l.opt.Tolerance,
+		FitIntercept: false, // taken care of ahead of time
+	}
+
+	gamma := make([]float64, n)
+	for i := 0; i < n; i++ {
+		gamma[i] = lambda / l.xdot[i]
+	}
+	reg, err := NewLassoRegression(opt)
+	if err != nil {
+		slog.Error("unable to initialize lasso regression", "error", err.Error())
+		return
+	}
+	reg.xcols = l.xcols
+	reg.xdot = l.xdot
+	reg.gamma = gamma
+	reg.yArr = l.yArr
+
+	if err := reg.Fit(x, y); err != nil {
+		slog.Error("unable to fit lasso regression", "error", err.Error())
+		return
+	}
+
+	score, err := reg.Score(x, y)
+	if err != nil {
+		slog.Error("unable to compute fit score for lasso regression", "error", err.Error())
+		return
+	}
+
+	l.scoreMu.Lock()
+	defer l.scoreMu.Unlock()
+	if score > l.bestScore {
+		l.bestScore = score
+		l.bestModel = reg
+	}
 }
 
 // Predict using the Lasso model
