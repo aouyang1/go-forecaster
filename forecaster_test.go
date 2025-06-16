@@ -57,6 +57,24 @@ func TestForecaster(t *testing.T) {
 	nowFunc := func() time.Time {
 		return time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC)
 	}
+
+	testDailySeasonalityOptions := options.SeasonalityOptions{
+		SeasonalityConfigs: []options.SeasonalityConfig{
+			options.NewDailySeasonalityConfig(2),
+		},
+	}
+	testDailyWeeklySeasonalityOptions := options.SeasonalityOptions{
+		SeasonalityConfigs: []options.SeasonalityConfig{
+			options.NewDailySeasonalityConfig(2),
+			options.NewWeeklySeasonalityConfig(2),
+		},
+	}
+	perfectScores := &forecast.Scores{
+		MAPE: 0.0,
+		MSE:  0.0,
+		R2:   1.0,
+	}
+
 	testData := map[string]struct {
 		expectedErr   error
 		opt           *Options
@@ -94,11 +112,7 @@ func TestForecaster(t *testing.T) {
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
-					Scores: &forecast.Scores{
-						MAPE: 0.0,
-						MSE:  0.0,
-						R2:   1.0,
-					},
+					Scores: perfectScores,
 					Weights: forecast.Weights{
 						Coef: []forecast.FeatureWeight{
 							{
@@ -112,11 +126,7 @@ func TestForecaster(t *testing.T) {
 					},
 				},
 				Uncertainty: forecast.Model{
-					Scores: &forecast.Scores{
-						MAPE: 0.0,
-						MSE:  0.0,
-						R2:   1.0,
-					},
+					Scores: perfectScores,
 					Weights: forecast.Weights{
 						Coef: []forecast.FeatureWeight{
 							{
@@ -154,11 +164,7 @@ func TestForecaster(t *testing.T) {
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
-					Scores: &forecast.Scores{
-						MAPE: 0.0,
-						MSE:  0.0,
-						R2:   1.0,
-					},
+					Scores: perfectScores,
 					Weights: forecast.Weights{
 						Coef: []forecast.FeatureWeight{
 							{
@@ -172,11 +178,7 @@ func TestForecaster(t *testing.T) {
 					},
 				},
 				Uncertainty: forecast.Model{
-					Scores: &forecast.Scores{
-						MAPE: 0.0,
-						MSE:  0.0,
-						R2:   1.0,
-					},
+					Scores: perfectScores,
 					Weights: forecast.Weights{
 						Coef: []forecast.FeatureWeight{
 							{
@@ -201,22 +203,14 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-							},
-						},
+						SeasonalityOptions: testDailySeasonalityOptions,
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-							},
-						},
-						Regularization: []float64{1.0},
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{1.0},
 					},
 					ResidualWindow: 50,
 					ResidualZscore: 8.0,
@@ -224,11 +218,7 @@ func TestForecaster(t *testing.T) {
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
-					Scores: &forecast.Scores{
-						MAPE: 0.0,
-						MSE:  0.0,
-						R2:   1.0,
-					},
+					Scores: perfectScores,
 					Weights: forecast.Weights{
 						Coef: []forecast.FeatureWeight{
 							{
@@ -281,23 +271,15 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
-						UseLog: true,
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-							},
-						},
+						UseLog:             true,
+						SeasonalityOptions: testDailySeasonalityOptions,
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-							},
-						},
-						Regularization: []float64{1.0},
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{1.0},
 					},
 					ResidualWindow: 50,
 					ResidualZscore: 8.0,
@@ -305,11 +287,7 @@ func TestForecaster(t *testing.T) {
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
-					Scores: &forecast.Scores{
-						MAPE: 0.0,
-						MSE:  0.0,
-						R2:   1.0,
-					},
+					Scores: perfectScores,
 					Weights: forecast.Weights{
 						Coef: []forecast.FeatureWeight{
 							{
@@ -379,23 +357,15 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
-						UseLog: true,
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-							},
-						},
+						UseLog:             true,
+						SeasonalityOptions: testDailySeasonalityOptions,
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-							},
-						},
-						Regularization: []float64{1.0},
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{1.0},
 					},
 					ResidualWindow: 50,
 					ResidualZscore: 8.0,
@@ -411,24 +381,14 @@ func TestForecaster(t *testing.T) {
 			opt: &Options{
 				SeriesOptions: &SeriesOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-								options.NewWeeklySeasonalityConfig(2),
-							},
-						},
+						SeasonalityOptions: testDailyWeeklySeasonalityOptions,
 					},
 					OutlierOptions: NewOutlierOptions(),
 				},
 				UncertaintyOptions: &UncertaintyOptions{
 					ForecastOptions: &options.Options{
-						SeasonalityOptions: options.SeasonalityOptions{
-							SeasonalityConfigs: []options.SeasonalityConfig{
-								options.NewDailySeasonalityConfig(2),
-								options.NewWeeklySeasonalityConfig(2),
-							},
-						},
-						Regularization: []float64{1.0},
+						SeasonalityOptions: testDailyWeeklySeasonalityOptions,
+						Regularization:     []float64{1.0},
 					},
 					ResidualWindow: 100,
 					ResidualZscore: 4.0,
@@ -436,11 +396,7 @@ func TestForecaster(t *testing.T) {
 			},
 			expectedModel: Model{
 				Series: forecast.Model{
-					Scores: &forecast.Scores{
-						MAPE: 0.0,
-						MSE:  0.0,
-						R2:   1.0,
-					},
+					Scores: perfectScores,
 					Weights: forecast.Weights{
 						Coef: []forecast.FeatureWeight{
 							{
