@@ -141,14 +141,12 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 				continue
 			}
 
-			obsCol := l.xcols[m*j : m*(j+1)]
-			num := 0.0
+			floats.Add(betaX, betaXDelta)
+			floats.SubTo(residual, l.yArr, betaX)
 
-			for k := 0; k < m; k++ {
-				betaX[k] += betaXDelta[k]
-				residual[k] = l.yArr[k] - betaX[k]
-				num += obsCol[k] * residual[k]
-			}
+			obsCol := l.xcols[m*j : m*(j+1)]
+			num := floats.Dot(obsCol, residual)
+
 			betaNext := num/l.xdot[j] + betaCurr
 
 			betaNext = SoftThreshold(betaNext, l.gamma[j])
@@ -156,9 +154,7 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 			maxCoef = math.Max(maxCoef, betaNext)
 			maxUpdate = math.Max(maxUpdate, math.Abs(betaNext-betaCurr))
 			betaDiff = betaNext - betaCurr
-			for k := 0; k < m; k++ {
-				betaXDelta[k] = betaDiff * obsCol[k]
-			}
+			floats.ScaleTo(betaXDelta, betaDiff, obsCol)
 			beta[j] = betaNext
 		}
 
@@ -227,8 +223,7 @@ func (l *LassoRegression) precompute(n, m int, x, y mat.Matrix) {
 		if len(xi) < m {
 			xi = append(xi, make([]float64, m-len(xi))...)
 		}
-		xcol := l.xcols[m*i : m*(i+1)]
-		copy(xcol, xi)
+		copy(l.xcols[m*i:m*(i+1)], xi)
 		l.xdot[i] = floats.Dot(xi, xi)
 		l.gamma[i] = l.opt.Lambda / l.xdot[i]
 	}
