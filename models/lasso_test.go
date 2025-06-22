@@ -233,12 +233,14 @@ func TestLassoAutoRegression(t *testing.T) {
 }
 
 func BenchmarkLassoRegression(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		x, y, err := generateBenchData(28*24*60, 200)
-		if err != nil {
-			b.Fatal(err)
-		}
+	x, y, err := generateBenchData(28*24*60, 200)
+	if err != nil {
+		b.Fatal(err)
+	}
 
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
 		opt := NewDefaultLassoOptions()
 		opt.Lambda = 0.0
 		opt.FitIntercept = false
@@ -255,12 +257,14 @@ func BenchmarkLassoRegression(b *testing.B) {
 }
 
 func BenchmarkLassoAutoRegression(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		x, y, err := generateBenchData(24*60, 50)
-		if err != nil {
-			b.Fatal(err)
-		}
+	x, y, err := generateBenchData(24*60, 50)
+	if err != nil {
+		b.Fatal(err)
+	}
 
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
 		opt := NewDefaultLassoAutoOptions()
 		opt.FitIntercept = false
 		opt.Lambdas = []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
@@ -279,12 +283,14 @@ func BenchmarkLassoAutoRegression(b *testing.B) {
 
 func BenchmarkLassoSerialRegression(b *testing.B) {
 	lambdas := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
-	for i := 0; i < b.N; i++ {
-		x, y, err := generateBenchData(24*60, 50)
-		if err != nil {
-			b.Fatal(err)
-		}
+	x, y, err := generateBenchData(24*60, 50)
+	if err != nil {
+		b.Fatal(err)
+	}
 
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
 		for _, lambda := range lambdas {
 
 			opt := NewDefaultLassoOptions()
