@@ -80,7 +80,7 @@ type LassoRegression struct {
 	opt *LassoOptions
 
 	// serve as precomputed data structures to reduce memory allocations
-	xcols [][]float64
+	xcols []float64
 	xdot  []float64
 	gamma []float64
 	yArr  []float64
@@ -144,8 +144,9 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 			floats.Add(betaX, betaXDelta)
 			floats.SubTo(residual, l.yArr, betaX)
 
-			obsCol := l.xcols[j]
+			obsCol := l.xcols[m*j : m*(j+1)]
 			num := floats.Dot(obsCol, residual)
+
 			betaNext := num/l.xdot[j] + betaCurr
 
 			betaNext = SoftThreshold(betaNext, l.gamma[j])
@@ -212,10 +213,7 @@ func (l *LassoRegression) precompute(n, m int, x, y mat.Matrix) {
 	if len(l.xdot) != 0 || len(l.xcols) != 0 || len(l.gamma) != 0 || len(l.yArr) != 0 {
 		return
 	}
-	l.xcols = make([][]float64, n)
-	for i := 0; i < n; i++ {
-		l.xcols[i] = make([]float64, m)
-	}
+	l.xcols = make([]float64, m*n)
 
 	// precompute the per feature dot product
 	l.xdot = make([]float64, n)
@@ -225,7 +223,7 @@ func (l *LassoRegression) precompute(n, m int, x, y mat.Matrix) {
 		if len(xi) < m {
 			xi = append(xi, make([]float64, m-len(xi))...)
 		}
-		l.xcols[i] = xi
+		copy(l.xcols[m*i:m*(i+1)], xi)
 		l.xdot[i] = floats.Dot(xi, xi)
 		l.gamma[i] = l.opt.Lambda / l.xdot[i]
 	}
@@ -391,7 +389,7 @@ type LassoAutoRegression struct {
 	opt *LassoAutoOptions
 
 	// serve as precomputed data structures to reduce memory allocations
-	xcols [][]float64
+	xcols []float64
 	xdot  []float64
 	yArr  []float64
 
@@ -481,10 +479,7 @@ func (l *LassoAutoRegression) fitValidate(x, y mat.Matrix) (mat.Matrix, mat.Matr
 }
 
 func (l *LassoAutoRegression) precompute(n, m int, x, y mat.Matrix) {
-	l.xcols = make([][]float64, n)
-	for i := 0; i < n; i++ {
-		l.xcols[i] = make([]float64, m)
-	}
+	l.xcols = make([]float64, m*n)
 
 	// precompute the per feature dot product
 	l.xdot = make([]float64, n)
@@ -493,7 +488,8 @@ func (l *LassoAutoRegression) precompute(n, m int, x, y mat.Matrix) {
 		if len(xi) < m {
 			xi = append(xi, make([]float64, m-len(xi))...)
 		}
-		l.xcols[i] = xi
+		xcol := l.xcols[m*i : m*(i+1)]
+		copy(xcol, xi)
 		l.xdot[i] = floats.Dot(xi, xi)
 	}
 
