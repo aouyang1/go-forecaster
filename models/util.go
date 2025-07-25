@@ -46,7 +46,7 @@ func generateBenchData(minutes, nFeat int) (mat.Matrix, mat.Matrix, error) {
 	}
 
 	data := make([][]float64, minutes)
-	for i := 0; i < minutes; i++ {
+	for i := range minutes {
 		obs := make([]float64, nFeat*2+1)
 		obs[0] = 1.0
 		data[i] = obs

@@ -1,3 +1,4 @@
+// Package forecast performs a single linear model fit and predict for a univariate timeseries
 package forecast
 
 import (
@@ -359,7 +360,10 @@ func (f *Forecast) runInference(x *feature.Set) ([]float64, error) {
 
 	yhat := mat.Row(nil, 0, &resMx)
 	if f.opt.UseLog {
-		util.SliceMap(yhat, func(y float64) (float64, error) { return math.Expm1(y), nil })
+		_, err := util.SliceMap(yhat, func(y float64) (float64, error) { return math.Expm1(y), nil })
+		if err != nil {
+			return nil, err
+		}
 	}
 	return yhat, nil
 }

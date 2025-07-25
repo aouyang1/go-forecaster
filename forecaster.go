@@ -1,3 +1,8 @@
+// Package forecaster is the high level forecasting package for fitting and predicting
+// other time points given a single time series. This will generate a model for both the
+// forecast values as well as the uncertainty value. Uncertainty here represents the lower
+// and upper bounds to be expected of a time series. This has only univariate time series
+// support.
 package forecaster
 
 import (

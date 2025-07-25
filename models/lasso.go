@@ -135,7 +135,7 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 		betaDiff := 0.0
 
 		// loop through all features and minimize loss function
-		for j := 0; j < n; j++ {
+		for j := range n {
 			betaCurr := beta[j]
 			if i != 0 && betaCurr == 0 {
 				continue
@@ -218,7 +218,7 @@ func (l *LassoRegression) precompute(n, m int, x, y mat.Matrix) {
 	// precompute the per feature dot product
 	l.xdot = make([]float64, n)
 	l.gamma = make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		xi := mat.Col(nil, i, x)
 		if len(xi) < m {
 			xi = append(xi, make([]float64, m-len(xi))...)
@@ -419,18 +419,6 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 	}
 	m, n := x.Dims()
 
-	lassoOpts := make([]*LassoOptions, 0, len(l.opt.Lambdas))
-	for _, lambda := range l.opt.Lambdas {
-		singleOpt := &LassoOptions{
-			Lambda:       lambda,
-			Iterations:   l.opt.Iterations,
-			Tolerance:    l.opt.Tolerance,
-			FitIntercept: false, // taken care of ahead of time
-		}
-
-		lassoOpts = append(lassoOpts, singleOpt)
-	}
-
 	l.precompute(n, m, x, y)
 
 	sem := make(chan struct{}, l.opt.Parallelization)
@@ -483,7 +471,7 @@ func (l *LassoAutoRegression) precompute(n, m int, x, y mat.Matrix) {
 
 	// precompute the per feature dot product
 	l.xdot = make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		xi := mat.Col(nil, i, x)
 		if len(xi) < m {
 			xi = append(xi, make([]float64, m-len(xi))...)

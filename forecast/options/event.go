@@ -62,7 +62,7 @@ func (e *Event) padTime(t []time.Time, start, end time.Time, freq time.Duration)
 		startIdx = numElem
 
 		prefix := make([]time.Time, numElem)
-		for i := 0; i < numElem; i++ {
+		for i := range numElem {
 			prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
 		}
 		t = append(prefix, t...)
@@ -75,7 +75,7 @@ func (e *Event) padTime(t []time.Time, start, end time.Time, freq time.Duration)
 		numElem := int(diff/freq) + 1
 
 		suffix := make([]time.Time, numElem)
-		for i := 0; i < numElem; i++ {
+		for i := range numElem {
 			suffix[i] = end.Add(time.Duration(i+1) * freq)
 		}
 		t = append(t, suffix...)
@@ -158,13 +158,19 @@ func (e EventOptions) TablePrint(w io.Writer, prefix, indent string, indentGrowt
 	noCfg := " None"
 	if len(e.Events) > 0 {
 		noCfg = ""
-		fmt.Fprintf(tbl, "%s%sName\tStart\tEnd\t\n", prefix, util.IndentExpand(indent, indentGrowth+1))
+		if _, err := fmt.Fprintf(tbl, "%s%sName\tStart\tEnd\t\n", prefix, util.IndentExpand(indent, indentGrowth+1)); err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(w, "%s%sEvents:%s\n", prefix, util.IndentExpand(indent, indentGrowth), noCfg)
+	if _, err := fmt.Fprintf(w, "%s%sEvents:%s\n", prefix, util.IndentExpand(indent, indentGrowth), noCfg); err != nil {
+		return err
+	}
 	for _, ev := range e.Events {
-		fmt.Fprintf(tbl, "%s%s%s\t%s\t%s\t\n",
+		if _, err := fmt.Fprintf(tbl, "%s%s%s\t%s\t%s\t\n",
 			prefix, util.IndentExpand(indent, indentGrowth+1),
-			ev.Name, ev.Start, ev.End)
+			ev.Name, ev.Start, ev.End); err != nil {
+			return err
+		}
 	}
 	return tbl.Flush()
 }

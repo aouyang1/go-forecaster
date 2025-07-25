@@ -697,7 +697,7 @@ func setupWithOutliers() ([]time.Time, []float64, *Options) {
 	return t, y, opt
 }
 
-func ExampleForecasterWithOutliers() {
+func Example_forecasterWithOutliers() {
 	t, y, opt := setupWithOutliers()
 
 	defer recoverForecastPanic(nil)
@@ -725,7 +725,7 @@ func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 	return t, y
 }
 
-func ExampleForecasterAutoChangepoint() {
+func Example_forecasterAutoChangepoint() {
 	t, y := generateExampleSeries()
 
 	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
@@ -780,7 +780,7 @@ func ExampleForecasterAutoChangepoint() {
 	// Output:
 }
 
-func ExampleForecasterWithTrend() {
+func Example_forecasterWithTrend() {
 	t, y := generateExampleSeriesWithTrend()
 
 	changepoints := []options.Changepoint{
@@ -906,7 +906,7 @@ func setupWithPulses() ([]time.Time, []float64, *Options) {
 	return t, y, opt
 }
 
-func ExampleForecasterWithPulses() {
+func Example_forecasterWithPulses() {
 	t, y, opt := setupWithPulses()
 
 	defer recoverForecastPanic(nil)

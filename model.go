@@ -27,44 +27,78 @@ func (m Model) JSONPrettyPrint(w io.Writer) error {
 }
 
 func (m Model) TablePrint(w io.Writer) error {
-	fmt.Fprintln(w, "Series:")
-	if m.Options != nil {
-		fmt.Fprintln(w, "  Options:")
-		if m.Options.SeriesOptions != nil {
-			if m.Options.SeriesOptions.OutlierOptions == nil {
-				fmt.Fprintln(w, "    Outlier Options: None")
-			} else {
-				fmt.Fprintln(w, "    Outlier Options:")
-				fmt.Fprintf(w, "      Number of Passes: %d    Tukey Factor: %.3f    Lower Percentile: %.2f%%    Upper Percentile: %.2f%%\n",
-					m.Options.SeriesOptions.OutlierOptions.NumPasses,
-					m.Options.SeriesOptions.OutlierOptions.TukeyFactor,
-					m.Options.SeriesOptions.OutlierOptions.LowerPercentile*100.0,
-					m.Options.SeriesOptions.OutlierOptions.UpperPercentile*100.0,
-				)
-			}
-		}
+	if _, err := fmt.Fprintln(w, "Series:"); err != nil {
+		return err
+	}
+	if err := m.tablePrintSeriesOptions(w); err != nil {
+		return err
 	}
 
 	if err := m.Series.TablePrint(w, "  ", "  "); err != nil {
 		return err
 	}
-	fmt.Fprintln(w, "")
+	if _, err := fmt.Fprintln(w, ""); err != nil {
+		return err
+	}
 
-	fmt.Fprintln(w, "Uncertainty:")
-	if m.Options != nil {
-		fmt.Fprintln(w, "  Options:")
-		if m.Options.UncertaintyOptions != nil {
-			fmt.Fprintf(w, "    Residual Window: %d samples    Residual Z-Score: %.3f\n",
-				m.Options.UncertaintyOptions.ResidualWindow,
-				m.Options.UncertaintyOptions.ResidualZscore,
-			)
-		}
+	if _, err := fmt.Fprintln(w, "Uncertainty:"); err != nil {
+		return err
+	}
+	if err := m.tablePrintUncertaintyOptions(w); err != nil {
+		return err
 	}
 
 	if err := m.Uncertainty.TablePrint(w, "  ", "  "); err != nil {
 		return err
 	}
 
-	fmt.Fprintln(w, "")
+	_, err := fmt.Fprintln(w, "")
+	return err
+}
+
+func (m Model) tablePrintSeriesOptions(w io.Writer) error {
+	if m.Options == nil {
+		return nil
+	}
+	if _, err := fmt.Fprintln(w, "  Options:"); err != nil {
+		return err
+	}
+	if m.Options.SeriesOptions == nil {
+		return nil
+	}
+	if m.Options.SeriesOptions.OutlierOptions == nil {
+		if _, err := fmt.Fprintln(w, "    Outlier Options: None"); err != nil {
+			return err
+		}
+	} else {
+		if _, err := fmt.Fprintln(w, "    Outlier Options:"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "      Number of Passes: %d    Tukey Factor: %.3f    Lower Percentile: %.2f%%    Upper Percentile: %.2f%%\n",
+			m.Options.SeriesOptions.OutlierOptions.NumPasses,
+			m.Options.SeriesOptions.OutlierOptions.TukeyFactor,
+			m.Options.SeriesOptions.OutlierOptions.LowerPercentile*100.0,
+			m.Options.SeriesOptions.OutlierOptions.UpperPercentile*100.0,
+		); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (m Model) tablePrintUncertaintyOptions(w io.Writer) error {
+	if m.Options == nil {
+		return nil
+	}
+	if _, err := fmt.Fprintln(w, "  Options:"); err != nil {
+		return err
+	}
+	if m.Options.UncertaintyOptions == nil {
+		return nil
+	}
+	_, err := fmt.Fprintf(w, "    Residual Window: %d samples    Residual Z-Score: %.3f\n",
+		m.Options.UncertaintyOptions.ResidualWindow,
+		m.Options.UncertaintyOptions.ResidualZscore,
+	)
+	return err
 }

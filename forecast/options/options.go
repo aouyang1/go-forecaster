@@ -1,3 +1,4 @@
+// Package options contains all forecast options for a linear fit of a univariate time series
 package options
 
 import (

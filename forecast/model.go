@@ -25,46 +25,77 @@ type Model struct {
 }
 
 func (m Model) TablePrint(w io.Writer, prefix, indent string) error {
-	fmt.Fprintf(w, "%s%sForecast:\n", prefix, util.IndentExpand(indent, 0))
-
-	fmt.Fprintf(w, "%s%sTraining End Time: %s\n", prefix, util.IndentExpand(indent, 1), m.TrainEndTime)
-
-	if m.Options != nil {
-		fmt.Fprintf(w, "%s%sRegularization: %.3f\n", prefix, util.IndentExpand(indent, 1), m.Options.Regularization)
-
-		if err := m.Options.SeasonalityOptions.TablePrint(w, prefix, indent, 1); err != nil {
-			return err
-		}
-
-		if err := m.Options.ChangepointOptions.TablePrint(w, prefix, indent, 1); err != nil {
-			return err
-		}
-
-		if !m.Options.WeekendOptions.Enabled {
-			fmt.Fprintf(w, "%s%sWeekends: None\n", prefix, util.IndentExpand(indent, 1))
-		} else {
-			fmt.Fprintf(w, "%s%sWeekends:\n", prefix, util.IndentExpand(indent, 1))
-			fmt.Fprintf(w, "%s%sBefore: %s, After: %s\n",
-				prefix, util.IndentExpand(indent, 2),
-				-m.Options.WeekendOptions.DurBefore, m.Options.WeekendOptions.DurAfter)
-		}
-
-		if err := m.Options.EventOptions.TablePrint(w, prefix, indent, 1); err != nil {
-			return err
-		}
+	if _, err := fmt.Fprintf(w, "%s%sForecast:\n", prefix, util.IndentExpand(indent, 0)); err != nil {
+		return err
 	}
 
-	if m.Scores != nil {
-		fmt.Fprintf(w, "%s%sScores:\n", prefix, util.IndentExpand(indent, 0))
-		fmt.Fprintf(w, "%s%sMAPE: %.3f    MSE: %.3f    R2: %.3f\n",
-			prefix, util.IndentExpand(indent, 1),
-			m.Scores.MAPE,
-			m.Scores.MSE,
-			m.Scores.R2,
-		)
+	if _, err := fmt.Fprintf(w, "%s%sTraining End Time: %s\n", prefix, util.IndentExpand(indent, 1), m.TrainEndTime); err != nil {
+		return err
+	}
+
+	if err := m.tablePrintOptions(w, prefix, indent); err != nil {
+		return err
+	}
+
+	if err := m.tablePrintScores(w, prefix, indent); err != nil {
+		return err
 	}
 
 	return m.Weights.tablePrint(w, prefix, indent, 0)
+}
+
+func (m Model) tablePrintOptions(w io.Writer, prefix, indent string) error {
+	if m.Options == nil {
+		return nil
+	}
+	if _, err := fmt.Fprintf(w, "%s%sRegularization: %.3f\n", prefix, util.IndentExpand(indent, 1), m.Options.Regularization); err != nil {
+		return err
+	}
+
+	if err := m.Options.SeasonalityOptions.TablePrint(w, prefix, indent, 1); err != nil {
+		return err
+	}
+
+	if err := m.Options.ChangepointOptions.TablePrint(w, prefix, indent, 1); err != nil {
+		return err
+	}
+
+	if !m.Options.WeekendOptions.Enabled {
+		if _, err := fmt.Fprintf(w, "%s%sWeekends: None\n", prefix, util.IndentExpand(indent, 1)); err != nil {
+			return err
+		}
+	} else {
+		if _, err := fmt.Fprintf(w, "%s%sWeekends:\n", prefix, util.IndentExpand(indent, 1)); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "%s%sBefore: %s, After: %s\n",
+			prefix, util.IndentExpand(indent, 2),
+			-m.Options.WeekendOptions.DurBefore, m.Options.WeekendOptions.DurAfter); err != nil {
+			return err
+		}
+	}
+
+	if err := m.Options.EventOptions.TablePrint(w, prefix, indent, 1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m Model) tablePrintScores(w io.Writer, prefix, indent string) error {
+	if m.Scores == nil {
+		return nil
+	}
+
+	if _, err := fmt.Fprintf(w, "%s%sScores:\n", prefix, util.IndentExpand(indent, 0)); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(w, "%s%sMAPE: %.3f    MSE: %.3f    R2: %.3f\n",
+		prefix, util.IndentExpand(indent, 1),
+		m.Scores.MAPE,
+		m.Scores.MSE,
+		m.Scores.R2,
+	)
+	return err
 }
 
 // Weights stores the coefficients for the forecast model
@@ -95,9 +126,13 @@ func (w *Weights) Coefficients() []float64 {
 }
 
 func (w Weights) tablePrint(wr io.Writer, prefix, indent string, indentGrowth int) error {
-	fmt.Fprintf(wr, "%s%sWeights:\n", prefix, util.IndentExpand(indent, indentGrowth))
+	if _, err := fmt.Fprintf(wr, "%s%sWeights:\n", prefix, util.IndentExpand(indent, indentGrowth)); err != nil {
+		return err
+	}
 	tbl := tabwriter.NewWriter(wr, 0, 0, 1, ' ', tabwriter.AlignRight)
-	fmt.Fprintf(tbl, "%s%sType\tLabels\tValue\t\n", prefix, util.IndentExpand(indent, indentGrowth+1))
+	if _, err := fmt.Fprintf(tbl, "%s%sType\tLabels\tValue\t\n", prefix, util.IndentExpand(indent, indentGrowth+1)); err != nil {
+		return err
+	}
 	for _, fw := range w.Coef {
 		labelOut, err := json.Marshal(fw.Labels)
 		if err != nil {
@@ -107,9 +142,11 @@ func (w Weights) tablePrint(wr io.Writer, prefix, indent string, indentGrowth in
 		if fw.Value == 0 {
 			val = "..."
 		}
-		fmt.Fprintf(tbl, "%s%s%s\t%s\t%s\t\n",
+		if _, err := fmt.Fprintf(tbl, "%s%s%s\t%s\t%s\t\n",
 			prefix, util.IndentExpand(indent, 1),
-			fw.Type, string(labelOut), val)
+			fw.Type, string(labelOut), val); err != nil {
+			return err
+		}
 	}
 	return tbl.Flush()
 }

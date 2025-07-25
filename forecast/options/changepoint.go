@@ -41,13 +41,19 @@ func (c ChangepointOptions) TablePrint(w io.Writer, prefix, indent string, inden
 	noCfg := " None"
 	if len(c.Changepoints) > 0 {
 		noCfg = ""
-		fmt.Fprintf(tbl, "%s%sName\tDatetime\t\n", prefix, util.IndentExpand(indent, indentGrowth+1))
+		if _, err := fmt.Fprintf(tbl, "%s%sName\tDatetime\t\n", prefix, util.IndentExpand(indent, indentGrowth+1)); err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(w, "%s%sChangepoints:%s\n", prefix, util.IndentExpand(indent, indentGrowth), noCfg)
+	if _, err := fmt.Fprintf(w, "%s%sChangepoints:%s\n", prefix, util.IndentExpand(indent, indentGrowth), noCfg); err != nil {
+		return err
+	}
 	for _, chpt := range c.Changepoints {
-		fmt.Fprintf(tbl, "%s%s%s\t%s\t\n",
+		if _, err := fmt.Fprintf(tbl, "%s%s%s\t%s\t\n",
 			prefix, util.IndentExpand(indent, indentGrowth+1),
-			chpt.Name, chpt.T)
+			chpt.Name, chpt.T); err != nil {
+			return err
+		}
 	}
 	return tbl.Flush()
 }
@@ -85,7 +91,7 @@ func (c *ChangepointOptions) GenerateAutoChangepoints(t []time.Time) []Changepoi
 	changepointWinNs := int64(window.Nanoseconds()) / int64(n)
 	chpts := make([]Changepoint, 0, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		chpntTime := minTime.Add(time.Duration(changepointWinNs * int64(i)))
 		chpts = append(
 			chpts,
@@ -155,7 +161,7 @@ func newChangepointFeatures(chpts []Changepoint, t []time.Time, enableGrowth boo
 func (c *changepointFeatures) generate(chpt Changepoint, t []time.Time, delta float64, enableGrowth bool) {
 	bias := 1.0
 	var slope float64
-	for i := 0; i < len(t); i++ {
+	for i := range len(t) {
 		if t[i].Equal(chpt.T) || t[i].After(chpt.T) {
 			c.bias[i] = bias
 

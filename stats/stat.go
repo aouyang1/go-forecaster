@@ -1,15 +1,9 @@
+// Package stats is a collection of helpful statistical methods
 package stats
 
 import (
-	"errors"
 	"math"
 	"sort"
-)
-
-var (
-	ErrMinimumFeatures    = errors.New("need at least 2 features to compute VIF")
-	ErrFeatureLenMismatch = errors.New("some feature length is not consistent")
-	ErrFeatureLen         = errors.New("must have at least 2 points per feature")
 )
 
 // DetectOutliers uses the Tukey Method to return a slice of indexes that are classified as outliers
@@ -31,7 +25,7 @@ func DetectOutliers(y []float64, lowerPerc, upperPerc, tukeyFactor float64) []in
 	upper += innerRange * tukeyFactor
 
 	var outlierIdx []int
-	for i := 0; i < len(y); i++ {
+	for i := range len(y) {
 		if y[i] > upper || y[i] < lower {
 			outlierIdx = append(outlierIdx, i)
 		}

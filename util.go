@@ -35,7 +35,7 @@ func LineTSeries(title string, seriesName []string, t []time.Time, y [][]float64
 	lineData := make([][]opts.LineData, len(y))
 
 	filteredT := make([]time.Time, 0, len(t))
-	for i := 0; i < len(y); i++ {
+	for i := range len(y) {
 		lineData[i] = make([]opts.LineData, 0, len(y[i]))
 		for j := 0; j < len(y[i]); j++ {
 			if i == 0 {
@@ -142,7 +142,7 @@ func LineForecaster(trainingData *timedataset.TimeDataset, fitRes, forecastRes *
 }
 
 // handleNaN converts nans to a string "-" to satisfy echarts requirement
-func handleNaN(val float64) interface{} {
+func handleNaN(val float64) any {
 	if math.IsNaN(val) {
 		return "-"
 	}

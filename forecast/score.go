@@ -47,7 +47,7 @@ func NewScores(predicted, actual []float64) (*Scores, error) {
 // A score of 0 means a perfect match with no errors.
 func mse(predicted, actual []float64) (float64, error) {
 	mse := 0.0
-	for i := 0; i < len(actual); i++ {
+	for i := range len(actual) {
 		if math.IsNaN(actual[i]) || math.IsNaN(predicted[i]) {
 			continue
 		}
@@ -61,7 +61,7 @@ func mse(predicted, actual []float64) (float64, error) {
 // A score of 0 means a perfect match with no errors.
 func mape(predicted, actual []float64) (float64, error) {
 	mape := 0.0
-	for i := 0; i < len(actual); i++ {
+	for i := range len(actual) {
 		if math.IsNaN(actual[i]) || math.IsNaN(predicted[i]) || actual[i] == 0 {
 			continue
 		}
@@ -76,7 +76,7 @@ func mape(predicted, actual []float64) (float64, error) {
 func rsquared(predicted, actual []float64) (float64, error) {
 	predictCopy := make([]float64, 0, len(predicted))
 	actualCopy := make([]float64, 0, len(actual))
-	for i := 0; i < len(predicted); i++ {
+	for i := range len(predicted) {
 		if math.IsNaN(actual[i]) || math.IsNaN(predicted[i]) {
 			continue
 		}
