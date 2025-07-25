@@ -1,3 +1,4 @@
+// Package feature represents a feature type modelled in the forecast
 package feature
 
 type FeatureType string

@@ -11,7 +11,7 @@ import (
 	"github.com/aouyang1/go-forecaster/forecast/util"
 )
 
-// Seasonality options configures the number of seasonality components to fit for.
+// SeasonalityOptions configures the number of seasonality components to fit for.
 type SeasonalityOptions struct {
 	SeasonalityConfigs []SeasonalityConfig `json:"seasonality_configs"`
 }
@@ -21,13 +21,19 @@ func (s SeasonalityOptions) TablePrint(w io.Writer, prefix, indent string, inden
 	noCfg := " None"
 	if len(s.SeasonalityConfigs) > 0 {
 		noCfg = ""
-		fmt.Fprintf(tbl, "%s%sName\tPeriod\tOrders\t\n", prefix, util.IndentExpand(indent, indentGrowth+1))
+		if _, err := fmt.Fprintf(tbl, "%s%sName\tPeriod\tOrders\t\n", prefix, util.IndentExpand(indent, indentGrowth+1)); err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(w, "%s%sSeasonality:%s\n", prefix, util.IndentExpand(indent, indentGrowth), noCfg)
+	if _, err := fmt.Fprintf(w, "%s%sSeasonality:%s\n", prefix, util.IndentExpand(indent, indentGrowth), noCfg); err != nil {
+		return err
+	}
 	for _, seasCfg := range s.SeasonalityConfigs {
-		fmt.Fprintf(tbl, "%s%s%s\t%s\t%d\t\n",
+		if _, err := fmt.Fprintf(tbl, "%s%s%s\t%s\t%d\t\n",
 			prefix, util.IndentExpand(indent, indentGrowth+1),
-			seasCfg.Name, seasCfg.Period, seasCfg.Orders)
+			seasCfg.Name, seasCfg.Period, seasCfg.Orders); err != nil {
+			return err
+		}
 	}
 	return tbl.Flush()
 }

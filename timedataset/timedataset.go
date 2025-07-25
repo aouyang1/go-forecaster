@@ -1,3 +1,4 @@
+// Package timedataset represents a univariate timeseries with equal time and value samples
 package timedataset
 
 import (
@@ -34,7 +35,7 @@ func NewUnivariateDataset(t []time.Time, y []float64) (*TimeDataset, error) {
 	}
 
 	var lastT time.Time
-	for i := 0; i < len(t); i++ {
+	for i := range len(t) {
 		currT := t[i]
 		if currT.Before(lastT) || currT.Equal(lastT) {
 			return nil, fmt.Errorf("non-monotonic at %d, %w", i, ErrNonMontonic)

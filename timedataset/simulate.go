@@ -11,7 +11,7 @@ import (
 func GenerateT(n int, interval time.Duration, nowFunc func() time.Time) []time.Time {
 	t := make([]time.Time, 0, n)
 	ct := time.Unix(nowFunc().Unix()/60*60, 0).Add(-time.Duration(n) * interval).UTC()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		t = append(t, ct.Add(interval*time.Duration(i)))
 	}
 	return t
@@ -26,7 +26,7 @@ func (s Series) Add(src Series) Series {
 
 func (s Series) SetConst(t []time.Time, val float64, start, end time.Time) Series {
 	n := len(s)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if (t[i].After(start) || t[i].Equal(start)) && t[i].Before(end) {
 			s[i] = val
 		}
@@ -36,7 +36,7 @@ func (s Series) SetConst(t []time.Time, val float64, start, end time.Time) Serie
 
 func (s Series) MaskWithWeekend(t []time.Time) Series {
 	n := len(s)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		switch t[i].Weekday() {
 		case time.Saturday, time.Sunday:
 			continue
@@ -49,7 +49,7 @@ func (s Series) MaskWithWeekend(t []time.Time) Series {
 
 func (s Series) MaskWithTimeRange(start, end time.Time, t []time.Time) Series {
 	n := len(s)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if t[i].Before(start) || t[i].After(end) {
 			s[i] = 0.0
 		}
@@ -59,7 +59,7 @@ func (s Series) MaskWithTimeRange(start, end time.Time, t []time.Time) Series {
 
 func GenerateConstY(n int, val float64) Series {
 	y := make([]float64, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		y = append(y, val)
 	}
 	return Series(y)
@@ -68,7 +68,7 @@ func GenerateConstY(n int, val float64) Series {
 func GenerateWaveY(t []time.Time, amp, periodSec, order, timeOffset float64) Series {
 	n := len(t)
 	y := make([]float64, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		val := amp * math.Sin(2.0*math.Pi*order/periodSec*(float64(t[i].Unix())+timeOffset))
 		y = append(y, val)
 	}
@@ -78,7 +78,7 @@ func GenerateWaveY(t []time.Time, amp, periodSec, order, timeOffset float64) Ser
 func GenerateNoise(t []time.Time, noiseScale, amp, periodSec, order, timeOffset float64) Series {
 	n := len(t)
 	y := make([]float64, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		scale := (noiseScale + amp*math.Sin(2.0*math.Pi*order/periodSec*(float64(t[i].Unix())+timeOffset)))
 		y = append(y, rand.NormFloat64()*scale)
 	}
@@ -88,7 +88,7 @@ func GenerateNoise(t []time.Time, noiseScale, amp, periodSec, order, timeOffset 
 func GenerateChange(t []time.Time, chpt time.Time, bias, slope float64) Series {
 	n := len(t)
 	y := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if t[i].After(chpt) || t[i].Equal(chpt) {
 			jump := bias + slope*t[i].Sub(chpt).Minutes()
 			y[i] = jump
@@ -101,7 +101,7 @@ func GeneratePulseY(t []time.Time, amp, periodSec, order, timeOffset, duty float
 	n := len(t)
 	y := make([]float64, 0, n)
 	cycleCutoff := 1.0 - duty/2.0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		cyclePos := math.Cos(2.0 * math.Pi * order / periodSec * (float64(t[i].Unix()) + timeOffset))
 		val := 0.0
 		if cyclePos >= cycleCutoff {

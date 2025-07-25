@@ -1,3 +1,5 @@
+// Package models is a collection of linear regression fitting implementations to be used in the
+// forecaster
 package models
 
 import (

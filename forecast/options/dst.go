@@ -22,7 +22,7 @@ func (d DSTOptions) AdjustTime(t []time.Time) []time.Time {
 	offsets := loadLocationOffsets(d.TimezoneLocations)
 
 	newT := make([]time.Time, len(t))
-	for i := 0; i < len(t); i++ {
+	for i := range len(t) {
 		newT[i] = adjustTime(t[i], offsets)
 	}
 	return newT
