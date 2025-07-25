@@ -34,53 +34,65 @@ func (m Model) TablePrint(w io.Writer, prefix, indent string) error {
 	}
 
 	if m.Options != nil {
-		if _, err := fmt.Fprintf(w, "%s%sRegularization: %.3f\n", prefix, util.IndentExpand(indent, 1), m.Options.Regularization); err != nil {
-			return err
-		}
-
-		if err := m.Options.SeasonalityOptions.TablePrint(w, prefix, indent, 1); err != nil {
-			return err
-		}
-
-		if err := m.Options.ChangepointOptions.TablePrint(w, prefix, indent, 1); err != nil {
-			return err
-		}
-
-		if !m.Options.WeekendOptions.Enabled {
-			if _, err := fmt.Fprintf(w, "%s%sWeekends: None\n", prefix, util.IndentExpand(indent, 1)); err != nil {
-				return err
-			}
-		} else {
-			if _, err := fmt.Fprintf(w, "%s%sWeekends:\n", prefix, util.IndentExpand(indent, 1)); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprintf(w, "%s%sBefore: %s, After: %s\n",
-				prefix, util.IndentExpand(indent, 2),
-				-m.Options.WeekendOptions.DurBefore, m.Options.WeekendOptions.DurAfter); err != nil {
-				return err
-			}
-		}
-
-		if err := m.Options.EventOptions.TablePrint(w, prefix, indent, 1); err != nil {
+		if err := m.tablePrintOptions(w, prefix, indent); err != nil {
 			return err
 		}
 	}
 
 	if m.Scores != nil {
-		if _, err := fmt.Fprintf(w, "%s%sScores:\n", prefix, util.IndentExpand(indent, 0)); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(w, "%s%sMAPE: %.3f    MSE: %.3f    R2: %.3f\n",
-			prefix, util.IndentExpand(indent, 1),
-			m.Scores.MAPE,
-			m.Scores.MSE,
-			m.Scores.R2,
-		); err != nil {
+		if err := m.tablePrintScores(w, prefix, indent); err != nil {
 			return err
 		}
 	}
 
 	return m.Weights.tablePrint(w, prefix, indent, 0)
+}
+
+func (m Model) tablePrintOptions(w io.Writer, prefix, indent string) error {
+	if _, err := fmt.Fprintf(w, "%s%sRegularization: %.3f\n", prefix, util.IndentExpand(indent, 1), m.Options.Regularization); err != nil {
+		return err
+	}
+
+	if err := m.Options.SeasonalityOptions.TablePrint(w, prefix, indent, 1); err != nil {
+		return err
+	}
+
+	if err := m.Options.ChangepointOptions.TablePrint(w, prefix, indent, 1); err != nil {
+		return err
+	}
+
+	if !m.Options.WeekendOptions.Enabled {
+		if _, err := fmt.Fprintf(w, "%s%sWeekends: None\n", prefix, util.IndentExpand(indent, 1)); err != nil {
+			return err
+		}
+	} else {
+		if _, err := fmt.Fprintf(w, "%s%sWeekends:\n", prefix, util.IndentExpand(indent, 1)); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "%s%sBefore: %s, After: %s\n",
+			prefix, util.IndentExpand(indent, 2),
+			-m.Options.WeekendOptions.DurBefore, m.Options.WeekendOptions.DurAfter); err != nil {
+			return err
+		}
+	}
+
+	if err := m.Options.EventOptions.TablePrint(w, prefix, indent, 1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m Model) tablePrintScores(w io.Writer, prefix, indent string) error {
+	if _, err := fmt.Fprintf(w, "%s%sScores:\n", prefix, util.IndentExpand(indent, 0)); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(w, "%s%sMAPE: %.3f    MSE: %.3f    R2: %.3f\n",
+		prefix, util.IndentExpand(indent, 1),
+		m.Scores.MAPE,
+		m.Scores.MSE,
+		m.Scores.R2,
+	)
+	return err
 }
 
 // Weights stores the coefficients for the forecast model
