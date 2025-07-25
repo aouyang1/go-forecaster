@@ -33,22 +33,21 @@ func (m Model) TablePrint(w io.Writer, prefix, indent string) error {
 		return err
 	}
 
-	if m.Options != nil {
-		if err := m.tablePrintOptions(w, prefix, indent); err != nil {
-			return err
-		}
+	if err := m.tablePrintOptions(w, prefix, indent); err != nil {
+		return err
 	}
 
-	if m.Scores != nil {
-		if err := m.tablePrintScores(w, prefix, indent); err != nil {
-			return err
-		}
+	if err := m.tablePrintScores(w, prefix, indent); err != nil {
+		return err
 	}
 
 	return m.Weights.tablePrint(w, prefix, indent, 0)
 }
 
 func (m Model) tablePrintOptions(w io.Writer, prefix, indent string) error {
+	if m.Options == nil {
+		return nil
+	}
 	if _, err := fmt.Fprintf(w, "%s%sRegularization: %.3f\n", prefix, util.IndentExpand(indent, 1), m.Options.Regularization); err != nil {
 		return err
 	}
@@ -83,6 +82,10 @@ func (m Model) tablePrintOptions(w io.Writer, prefix, indent string) error {
 }
 
 func (m Model) tablePrintScores(w io.Writer, prefix, indent string) error {
+	if m.Scores == nil {
+		return nil
+	}
+
 	if _, err := fmt.Fprintf(w, "%s%sScores:\n", prefix, util.IndentExpand(indent, 0)); err != nil {
 		return err
 	}
