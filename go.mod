@@ -1,6 +1,6 @@
 module github.com/aouyang1/go-forecaster
 
-go 1.22.4
+go 1.24.1
 
 require (
 	github.com/go-echarts/go-echarts/v2 v2.4.1

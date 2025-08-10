@@ -118,7 +118,7 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 	// after outlier removal
 	f.residual = make([]float64, len(t))
 	var j int
-	for i := 0; i < len(t); i++ {
+	for i := range len(t) {
 		if t[i].Equal(td.T[j]) {
 			f.residual[i] = residual[j]
 			j += 1
@@ -141,7 +141,7 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 	// after outlier removal
 	f.uncertainty = make([]float64, len(t))
 	var k int
-	for i := 0; i < len(t); i++ {
+	for i := range len(t) {
 		if t[i].Equal(td.T[k+start]) && k < len(uncertaintySeries) {
 			f.uncertainty[i] = uncertaintySeries[k]
 			k += 1
@@ -200,7 +200,7 @@ func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64, seriesFor
 			break
 		}
 
-		for i := 0; i < len(t); i++ {
+		for i := range len(t) {
 			if _, exists := outlierSet[i]; exists {
 				y[i] = math.NaN()
 				continue
@@ -222,23 +222,19 @@ func (f *Forecaster) generateUncertaintySeries(residual []float64) ([]float64, e
 
 	// limit residual window to some factor of the resulting residual output
 	resWindow := f.opt.UncertaintyOptions.ResidualWindow
-	if len(residual)/MinResidualWindowFactor < resWindow {
-		resWindow = len(residual) / MinResidualWindowFactor
-	}
-	if resWindow < MinResidualWindow {
-		resWindow = MinResidualWindow
-	}
+	resWindow = min(len(residual)/MinResidualWindowFactor, resWindow)
+	resWindow = max(MinResidualWindow, resWindow)
 	f.opt.UncertaintyOptions.ResidualWindow = resWindow
 
 	stddevSeries := make([]float64, len(residual)-resWindow+1)
 	numWindows := len(residual) - resWindow + 1
 
-	for i := 0; i < numWindows; i++ {
+	for i := range numWindows {
 		resWindow := residual[i : i+resWindow]
 
 		// move all nans to the front so we only compute standard deviation off of non-nan values
 		var ptr int
-		for j := 0; j < len(resWindow); j++ {
+		for j := range len(resWindow) {
 			if math.IsNaN(resWindow[j]) {
 				val := resWindow[ptr]
 				resWindow[ptr] = resWindow[j]
@@ -277,7 +273,7 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	}
 
 	// cap uncertainty predictions to be greater than or equal to 0
-	for i := 0; i < len(uncertaintyRes); i++ {
+	for i := range len(uncertaintyRes) {
 		if uncertaintyRes[i] < 0.0 {
 			uncertaintyRes[i] = 0.0
 		}
@@ -402,7 +398,7 @@ func (f *Forecaster) SeriesModelEq() (string, error) {
 	return f.seriesForecast.ModelEq()
 }
 
-// ResidualModelEq returns a string representation of the fit uncertainty model represented as
+// UncertaintyModelEq returns a string representation of the fit uncertainty model represented as
 // y ~ b + m1x1 + m2x2 ...
 func (f *Forecaster) UncertaintyModelEq() (string, error) {
 	return f.uncertaintyForecast.ModelEq()
@@ -433,7 +429,7 @@ func (f *Forecaster) MakeFuturePeriods(periods int, freq time.Duration) ([]time.
 		}
 	}
 	horizon := make([]time.Time, 0, periods)
-	for i := 0; i < periods; i++ {
+	for i := range periods {
 		nextT := lastTime.Add(time.Duration(i+1) * freq)
 		horizon = append(horizon, nextT)
 	}
@@ -538,7 +534,7 @@ func (f *Forecaster) clip(series []float64) {
 		return
 	}
 
-	for i := 0; i < len(series); i++ {
+	for i := range len(series) {
 		if clipMin && series[i] < minVal {
 			series[i] = minVal
 			continue

@@ -1,3 +1,4 @@
+// mat is an extension of the mat package in gonum
 package mat
 
 import (
