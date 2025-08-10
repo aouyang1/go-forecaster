@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"sync"
 
 	"gonum.org/v1/gonum/floats"
@@ -129,7 +130,7 @@ func (l *LassoRegression) Fit(x, y mat.Matrix) error {
 	// the next beta iteration
 	betaXDelta := make([]float64, m)
 
-	for i := 0; i < l.opt.Iterations; i++ {
+	for i := range l.opt.Iterations {
 		maxCoef := 0.0
 		maxUpdate := 0.0
 		betaDiff := 0.0
@@ -354,7 +355,7 @@ func (l *LassoAutoOptions) Validate() (*LassoAutoOptions, error) {
 		return nil, ErrNoLambdas
 	}
 
-	for _, lambda := range l.Lambdas {
+	for lambda := range slices.Values(l.Lambdas) {
 		if lambda < 0.0 {
 			return nil, ErrNegativeLambda
 		}
@@ -423,7 +424,7 @@ func (l *LassoAutoRegression) Fit(x, y mat.Matrix) error {
 
 	sem := make(chan struct{}, l.opt.Parallelization)
 	var wg sync.WaitGroup
-	for _, lambda := range l.opt.Lambdas {
+	for lambda := range slices.Values(l.opt.Lambdas) {
 		sem <- struct{}{}
 		wg.Add(1)
 
@@ -502,7 +503,7 @@ func (l *LassoAutoRegression) runLasso(lambda float64, x, y mat.Matrix, wg *sync
 	}
 
 	gamma := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		gamma[i] = lambda / l.xdot[i]
 	}
 	reg, err := NewLassoRegression(opt)
