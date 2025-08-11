@@ -1,6 +1,6 @@
-// Package models is a collection of linear regression fitting implementations to be used in the
+// Package linearmodel is a collection of linear regression fitting implementations to be used in the
 // forecaster
-package models
+package linearmodel
 
 import (
 	"gonum.org/v1/gonum/mat"

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
-	"github.com/aouyang1/go-forecaster/models"
+	"github.com/aouyang1/go-forecaster/linearmodel"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,15 +67,15 @@ func TestWindowFunc(t *testing.T) {
 func TestNewLassoAutoAptions(t *testing.T) {
 	testData := map[string]struct {
 		opt      *Options
-		expected *models.LassoAutoOptions
+		expected *linearmodel.LassoAutoOptions
 	}{
 		"defaults": {
 			opt: &Options{},
-			expected: &models.LassoAutoOptions{
+			expected: &linearmodel.LassoAutoOptions{
 				Lambdas:         []float64{1.0},
 				FitIntercept:    false,
-				Iterations:      models.DefaultIterations,
-				Tolerance:       models.DefaultTolerance,
+				Iterations:      linearmodel.DefaultIterations,
+				Tolerance:       linearmodel.DefaultTolerance,
 				Parallelization: 0,
 			},
 		},
@@ -86,7 +86,7 @@ func TestNewLassoAutoAptions(t *testing.T) {
 				Tolerance:       1e-1,
 				Parallelization: 2,
 			},
-			expected: &models.LassoAutoOptions{
+			expected: &linearmodel.LassoAutoOptions{
 				Lambdas:         []float64{0.0, 1.0},
 				FitIntercept:    false,
 				Iterations:      3,
