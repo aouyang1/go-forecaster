@@ -1,4 +1,4 @@
-// Package linear_model is a collection of linear regression fitting implementations to be used in the
+// Package linearmodel is a collection of linear regression fitting implementations to be used in the
 // forecaster
 package linearmodel
 
