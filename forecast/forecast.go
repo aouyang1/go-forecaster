@@ -10,7 +10,7 @@ import (
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast/options"
 	"github.com/aouyang1/go-forecaster/forecast/util"
-	"github.com/aouyang1/go-forecaster/models"
+	"github.com/aouyang1/go-forecaster/linearmodel"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
@@ -181,7 +181,7 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 
 	// run coordinate descent
 	lassoOpt := f.opt.NewLassoAutoOptions()
-	model, err := models.NewLassoAutoRegression(lassoOpt)
+	model, err := linearmodel.NewLassoAutoRegression(lassoOpt)
 	if err != nil {
 		return err
 	}
@@ -371,17 +371,17 @@ func (f *Forecast) runInference(x *feature.Set) ([]float64, error) {
 // Score computes the coefficient of determination of the prediction
 func (f *Forecast) Score(x []time.Time, y []float64) (float64, error) {
 	if x == nil {
-		return 0.0, fmt.Errorf("no time slice for inference, %w", models.ErrNoDesignMatrix)
+		return 0.0, fmt.Errorf("no time slice for inference, %w", linearmodel.ErrNoDesignMatrix)
 	}
 	if y == nil {
-		return 0.0, fmt.Errorf("no expected values for inference, %w", models.ErrNoTargetMatrix)
+		return 0.0, fmt.Errorf("no expected values for inference, %w", linearmodel.ErrNoTargetMatrix)
 	}
 
 	m := len(x)
 
 	ym := len(y)
 	if m != ym {
-		return 0.0, fmt.Errorf("design matrix has %d rows and target has %d rows, %w", m, ym, models.ErrTargetLenMismatch)
+		return 0.0, fmt.Errorf("design matrix has %d rows and target has %d rows, %w", m, ym, linearmodel.ErrTargetLenMismatch)
 	}
 
 	res, _, err := f.Predict(x)

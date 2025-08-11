@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/aouyang1/go-forecaster/feature"
-	"github.com/aouyang1/go-forecaster/models"
+	"github.com/aouyang1/go-forecaster/linearmodel"
 	"gonum.org/v1/gonum/floats"
 )
 
@@ -56,8 +56,8 @@ func NewDefaultOptions() *Options {
 	}
 }
 
-func (o *Options) NewLassoAutoOptions() *models.LassoAutoOptions {
-	lassoOpt := models.NewDefaultLassoAutoOptions()
+func (o *Options) NewLassoAutoOptions() *linearmodel.LassoAutoOptions {
+	lassoOpt := linearmodel.NewDefaultLassoAutoOptions()
 	if len(o.Regularization) > 0 {
 		lassoOpt.Lambdas = o.Regularization
 	} else {
@@ -68,12 +68,12 @@ func (o *Options) NewLassoAutoOptions() *models.LassoAutoOptions {
 
 	lassoOpt.Iterations = o.Iterations
 	if o.Iterations == 0 {
-		lassoOpt.Iterations = models.DefaultIterations
+		lassoOpt.Iterations = linearmodel.DefaultIterations
 	}
 
 	lassoOpt.Tolerance = o.Tolerance
 	if o.Tolerance == 0 {
-		lassoOpt.Tolerance = models.DefaultTolerance
+		lassoOpt.Tolerance = linearmodel.DefaultTolerance
 	}
 
 	lassoOpt.Parallelization = o.Parallelization
