@@ -272,10 +272,10 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 		return nil, fmt.Errorf("unable to predict uncertainty forecasts, %w", err)
 	}
 
-	// cap uncertainty predictions to be greater than or equal to 0
+	// cap uncertainty predictions to be greater than or equal to minimum uncertainty value defaulting to 0.0
 	for i := range len(uncertaintyRes) {
-		if uncertaintyRes[i] < 0.0 {
-			uncertaintyRes[i] = 0.0
+		if uncertaintyRes[i] < f.opt.MinUncertaintyValue {
+			uncertaintyRes[i] = f.opt.MinUncertaintyValue
 		}
 	}
 

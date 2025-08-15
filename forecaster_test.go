@@ -692,6 +692,7 @@ func setupWithOutliers() ([]time.Time, []float64, *Options) {
 			ResidualWindow: 100,
 			ResidualZscore: 4.0,
 		},
+		MinUncertaintyValue: 13.0,
 	}
 
 	return t, y, opt
