@@ -137,19 +137,16 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFu
 
 		evT, startIdx, endIdx := ev.padTime(t, start, end, freq)
 
-		feat := feature.NewEvent(strings.ReplaceAll(ev.Name, " ", "_"))
-		if _, exists := eFeat.Get(feat); exists {
-			slog.Warn("event feature already exists", "event_name", ev.Name)
-			continue
-		}
-
 		eventMask := generateEventMaskWithFunc(evT, func(tPnt time.Time) bool {
 			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && tPnt.Before(ev.End)
 		}, winFunc)
 
 		// truncate result to start/end
 		eventMask = eventMask[startIdx:endIdx]
-		eFeat.Set(feat, eventMask)
+		if err := RegisterEventSeries(strings.ReplaceAll(ev.Name, " ", "_"), eFeat, eventMask); err != nil {
+			slog.Warn("unable to register event series", "error", err.Error())
+			continue
+		}
 	}
 }
 

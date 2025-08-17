@@ -35,11 +35,11 @@ func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) 
 func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol float64, msg string) {
 	var significantFeatures []forecast.FeatureWeight
 	for _, fw := range actual {
-		if fw.Value >= tol {
+		if math.Abs(fw.Value) >= tol {
 			significantFeatures = append(significantFeatures, fw)
 		}
 	}
-	require.Equal(t, len(expected), len(significantFeatures), msg+" number of significant series coefficients")
+	require.Equal(t, len(expected), len(significantFeatures), msg+" number of significant series coefficients, %v", significantFeatures)
 	for i := 0; i < len(significantFeatures); i++ {
 		assert.Equal(t, expected[i].Type, significantFeatures[i].Type, msg+" feature weight type")
 		assert.Equal(t, expected[i].Labels, significantFeatures[i].Labels, msg+" feature weight labels")
@@ -345,6 +345,15 @@ func TestForecaster(t *testing.T) {
 								Labels: map[string]string{
 									"name":              "epoch_daily",
 									"order":             "1",
+									"fourier_component": "cos",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: -0.001,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
 									"fourier_component": "sin",
 								},
 								Type:  feature.FeatureTypeSeasonality,
@@ -540,6 +549,97 @@ func TestForecaster(t *testing.T) {
 								},
 								Type:  feature.FeatureTypeSeasonality,
 								Value: 2.182,
+							},
+						},
+					},
+				},
+			},
+		},
+		"weekend events with daily seasonality": {
+			t: timedataset.GenerateT(7*24*60, time.Minute, nowFunc),
+			y: timedataset.GenerateConstY(7*24*60, 50.0).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(7*24*60, time.Minute, nowFunc), 15.0, 24*60*60, 1.0, 0.0)).
+				Add(timedataset.GenerateConstY(7*24*60, -20.0).
+					MaskWithWeekend(timedataset.GenerateT(7*24*60, time.Minute, nowFunc)),
+				),
+			tol: 0,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+						WeekendOptions: options.WeekendOptions{
+							Enabled: true,
+						},
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: options.SeasonalityOptions{
+							SeasonalityConfigs: []options.SeasonalityConfig{
+								options.NewDailySeasonalityConfig(2),
+							},
+						},
+						WeekendOptions: options.WeekendOptions{
+							Enabled: true,
+						},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.056,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 50.0,
+							},
+							{
+								Labels: map[string]string{
+									"name": "weekend",
+								},
+								Type:  feature.FeatureTypeEvent,
+								Value: -20,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 15.0,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 1.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 0.0,
 							},
 						},
 					},
@@ -963,13 +1063,13 @@ func BenchmarkPredictFromModel(b *testing.B) {
 		input = append(input, ct.Add(time.Duration(i)*time.Minute))
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		f, err := NewFromModel(m)
-		if err != nil {
-			panic(err)
-		}
+	f, err = NewFromModel(m)
+	if err != nil {
+		panic(err)
+	}
 
+	b.ResetTimer()
+	for b.Loop() {
 		benchPredictRes, err = f.Predict(input)
 		if err != nil {
 			panic(err)

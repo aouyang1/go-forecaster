@@ -65,6 +65,7 @@ func GenerateConstY(n int, val float64) Series {
 	return Series(y)
 }
 
+// GenerateWaveY produces a sine wave with a given amplitude, period in seconds, order, and time offset in seconds
 func GenerateWaveY(t []time.Time, amp, periodSec, order, timeOffset float64) Series {
 	n := len(t)
 	y := make([]float64, 0, n)
