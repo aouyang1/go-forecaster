@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"strconv"
 	"time"
 
@@ -19,8 +20,6 @@ const (
 
 	LabelSeasDaily  = "daily"
 	LabelSeasWeekly = "weekly"
-
-	LabelEventWeekend = "weekend"
 )
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
@@ -41,10 +40,11 @@ type Options struct {
 
 	SeasonalityOptions SeasonalityOptions `json:"seasonality_options"`
 
-	DSTOptions     DSTOptions     `json:"dst_options"`
-	WeekendOptions WeekendOptions `json:"weekend_options"`
-	EventOptions   EventOptions   `json:"event_options"`
-	MaskWindow     string         `json:"mask_window"`
+	DSTOptions         DSTOptions         `json:"dst_options"`
+	WeekendOptions     WeekendOptions     `json:"weekend_options"`
+	EventSeriesOptions EventSeriesOptions `json:"-"`
+	EventOptions       EventOptions       `json:"event_options"`
+	MaskWindow         string             `json:"mask_window"`
 }
 
 // NewDefaultOptions returns a set of default forecast options
@@ -115,7 +115,21 @@ func (o *Options) GenerateEventFeatures(t []time.Time) *feature.Set {
 
 	eFeat := feature.NewSet()
 
-	o.WeekendOptions.generateEventMask(t, eFeat, winFunc)
+	eventSeriesOpts := o.EventSeriesOptions
+	if o.WeekendOptions.Enabled {
+		eventSeriesOpts = append(eventSeriesOpts, &o.WeekendOptions)
+	}
+
+	for eventSeriesOpt := range slices.Values(eventSeriesOpts) {
+		mask, err := eventSeriesOpt.GenerateMask(t, winFunc)
+		if err != nil {
+			slog.Warn("unable to generate mask", "name", eventSeriesOpt.Name())
+		}
+		if err := RegisterEventSeries(eventSeriesOpt.Name(), eFeat, mask); err != nil {
+			slog.Warn("unable to register event series mask", "name", eventSeriesOpt.Name(), "error", err.Error())
+		}
+	}
+
 	o.EventOptions.generateEventMask(t, eFeat, winFunc)
 	return eFeat
 }

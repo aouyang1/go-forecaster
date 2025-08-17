@@ -4,14 +4,17 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/timedataset"
 )
 
-// MaxWeekendDurBuffer sets a limit of 1 day before or after the weekend begins at 00:00 Saturday
-// or 00:00 Monday, respectively. Timezone is based on weekend option timezone override or dataset
-// timezone
-const MaxWeekendDurBuffer = 24 * time.Hour
+const (
+	// MaxWeekendDurBuffer sets a limit of 1 day before or after the weekend begins at 00:00 Saturday
+	// or 00:00 Monday, respectively. Timezone is based on weekend option timezone override or dataset
+	// timezone
+	MaxWeekendDurBuffer = 24 * time.Hour
+
+	LabelEventWeekend = "weekend"
+)
 
 // WeekendOptions lets us model weekends separately from weekdays.
 type WeekendOptions struct {
@@ -19,6 +22,10 @@ type WeekendOptions struct {
 	TimezoneOverride string        `json:"timezone_override"`
 	DurBefore        time.Duration `json:"duration_before"`
 	DurAfter         time.Duration `json:"duration_after"`
+}
+
+func (w *WeekendOptions) Name() string {
+	return LabelEventWeekend
 }
 
 func (w *WeekendOptions) Validate() {
@@ -35,7 +42,7 @@ func (w *WeekendOptions) Validate() {
 	}
 }
 
-func (w WeekendOptions) isWeekend(tPnt time.Time) bool {
+func (w *WeekendOptions) isWeekend(tPnt time.Time) bool {
 	if w.DurBefore == 0 && w.DurAfter == 0 {
 		wkday := tPnt.Weekday()
 		return wkday == time.Saturday || wkday == time.Sunday
@@ -54,10 +61,7 @@ func (w WeekendOptions) isWeekend(tPnt time.Time) bool {
 	return wkdayBeforeValid && wkdayAfterValid
 }
 
-func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
-	if !w.Enabled || len(t) < 2 {
-		return
-	}
+func (w *WeekendOptions) GenerateMask(t []time.Time, winFunc func([]float64) []float64) ([]float64, error) {
 	if w.TimezoneOverride != "" {
 		locOverride, err := time.LoadLocation(w.TimezoneOverride)
 		if err != nil {
@@ -76,7 +80,7 @@ func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, win
 	ts := timedataset.TimeSlice(t)
 	freq, err := ts.EstimateFreq()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	start := ts.StartTime()
@@ -105,7 +109,5 @@ func (w WeekendOptions) generateEventMask(t []time.Time, eFeat *feature.Set, win
 
 	// truncate result to start/end
 	weekendMask = weekendMask[startIdx:endIdx]
-
-	feat := feature.NewEvent(LabelEventWeekend)
-	eFeat.Set(feat, weekendMask)
+	return weekendMask, nil
 }
