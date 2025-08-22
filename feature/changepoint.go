@@ -1,9 +1,9 @@
 package feature
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 type ChangepointComp string
@@ -18,17 +18,20 @@ const (
 type Changepoint struct {
 	Name            string          `json:"name"`
 	ChangepointComp ChangepointComp `json:"changepoint_component"`
+
+	str string `json:"-"`
 }
 
 // NewChangepoint creates a new changepoint instance given a name and changepoint component
 // type
 func NewChangepoint(name string, comp ChangepointComp) *Changepoint {
-	return &Changepoint{name, comp}
+	strRep := "chpnt_" + name + "_" + string(comp)
+	return &Changepoint{name, comp, strRep}
 }
 
 // String returns the string representation of the changepoint feature
 func (c Changepoint) String() string {
-	return fmt.Sprintf("chpnt_%s_%s", c.Name, c.ChangepointComp)
+	return c.str
 }
 
 // Get returns the value of an arbitrary label annd returns the value along with whether
@@ -68,5 +71,6 @@ func (c *Changepoint) UnmarshalJSON(data []byte) error {
 	}
 	c.Name = labelStr.Name
 	c.ChangepointComp = labelStr.ChangepointComp
+	c.str = "chpnt_" + c.Name + "_" + string(c.ChangepointComp)
 	return nil
 }

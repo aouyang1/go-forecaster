@@ -10,7 +10,7 @@ import (
 // Set represents a mapping to each feature data keyed by the string representation
 // of the feature.
 type Set struct {
-	m   int
+	m   int // length of the dataset by key
 	set map[string][]float64
 
 	labels []Feature

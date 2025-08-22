@@ -1,9 +1,9 @@
 package feature
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 const (
@@ -13,15 +13,18 @@ const (
 
 type Growth struct {
 	Name string `json:"name"`
+
+	str string `json:"-"`
 }
 
 func NewGrowth(name string) *Growth {
-	return &Growth{name}
+	strRep := "growth_" + name
+	return &Growth{name, strRep}
 }
 
 // String returns the string representation of the changepoint feature
 func (g Growth) String() string {
-	return fmt.Sprintf("growth_%s", g.Name)
+	return g.str
 }
 
 // Get returns the value of an arbitrary label annd returns the value along with whether
@@ -56,6 +59,7 @@ func (g *Growth) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	g.Name = labelStr.Name
+	g.str = "growth_" + g.Name
 	return nil
 }
 

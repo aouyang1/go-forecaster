@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goccy/go-json"
 	"gonum.org/v1/gonum/mat"
 
 	"github.com/aouyang1/go-forecaster/feature"
@@ -15,6 +16,7 @@ import (
 	"github.com/aouyang1/go-forecaster/forecast/options"
 	"github.com/aouyang1/go-forecaster/forecast/util"
 	"github.com/aouyang1/go-forecaster/timedataset"
+	"github.com/pkg/profile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1040,16 +1042,22 @@ func TestMatrixMulWithNaN(t *testing.T) {
 
 var benchPredictRes *Results
 
-func BenchmarkPredictFromModel(b *testing.B) {
+func BenchmarkTrainToModel(b *testing.B) {
 	t, y, opt := setupWithOutliers()
 
-	f, err := New(opt)
-	if err != nil {
-		panic(err)
-	}
+	var f *Forecaster
+	var err error
 
-	if err := f.Fit(t, y); err != nil {
-		panic(err)
+	b.ResetTimer()
+	for b.Loop() {
+		f, err = New(opt)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := f.Fit(t, y); err != nil {
+			panic(err)
+		}
 	}
 
 	m, err := f.Model()
@@ -1057,18 +1065,38 @@ func BenchmarkPredictFromModel(b *testing.B) {
 		panic(err)
 	}
 
-	input := make([]time.Time, 0, 2)
-	ct := time.Now()
-	for i := 0; i < cap(input); i++ {
-		input = append(input, ct.Add(time.Duration(i)*time.Minute))
-	}
-
-	f, err = NewFromModel(m)
+	bytes, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		panic(err)
 	}
 
+	if err := os.WriteFile("benchmark_model.json", bytes, 0644); err != nil {
+		panic(err)
+	}
+}
+
+func BenchmarkPredictFromModel(b *testing.B) {
+	bytes, err := os.ReadFile("benchmark_model.json")
+	if err != nil {
+		panic(err)
+	}
+
+	var model Model
+	if err := json.Unmarshal(bytes, &model); err != nil {
+		panic(err)
+	}
+	f, err := NewFromModel(model)
+	if err != nil {
+		panic(err)
+	}
+
+	input := make([]time.Time, 0, 2)
+	ct := time.Now()
+	for i := range cap(input) {
+		input = append(input, ct.Add(time.Duration(i)*time.Minute))
+	}
 	b.ResetTimer()
+	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	for b.Loop() {
 		benchPredictRes, err = f.Predict(input)
 		if err != nil {

@@ -61,7 +61,7 @@ func (w *WeekendOptions) isWeekend(tPnt time.Time) bool {
 	return wkdayBeforeValid && wkdayAfterValid
 }
 
-func (w *WeekendOptions) GenerateMask(t []time.Time, winFunc func([]float64) []float64) ([]float64, error) {
+func (w *WeekendOptions) GenerateMask(t []time.Time, windowName string) ([]float64, error) {
 	if w.TimezoneOverride != "" {
 		locOverride, err := time.LoadLocation(w.TimezoneOverride)
 		if err != nil {
@@ -77,34 +77,40 @@ func (w *WeekendOptions) GenerateMask(t []time.Time, winFunc func([]float64) []f
 
 	w.Validate()
 
-	ts := timedataset.TimeSlice(t)
-	freq, err := ts.EstimateFreq()
-	if err != nil {
-		return nil, err
-	}
-
-	start := ts.StartTime()
-	end := ts.EndTime()
-	window := 2 * 24 * time.Hour
-
-	// pad beginning
-	numElem := int((window+w.DurBefore)/freq) + 1
-	startIdx := numElem
-	prefix := make([]time.Time, numElem)
-	for i := 0; i < numElem; i++ {
-		prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
-	}
-	t = append(prefix, t...)
-
-	// pad end
-	numElem = int((window+w.DurAfter)/freq) + 1
+	startIdx := 0
 	endIdx := len(t)
-	suffix := make([]time.Time, numElem)
-	for i := 0; i < numElem; i++ {
-		suffix[i] = end.Add(time.Duration(i+1) * freq)
-	}
-	t = append(t, suffix...)
+	// only perform padding on non rectangular windows as the weights are different at various points in time
+	if windowName != "" && windowName != WindowRectangular {
+		ts := timedataset.TimeSlice(t)
+		freq, err := ts.EstimateFreq()
+		if err != nil {
+			return nil, err
+		}
 
+		start := ts.StartTime()
+		end := ts.EndTime()
+		window := 2 * 24 * time.Hour
+
+		// pad beginning
+		numElem := int((window+w.DurBefore)/freq) + 1
+		startIdx = numElem
+		prefix := make([]time.Time, numElem)
+		for i := 0; i < numElem; i++ {
+			prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
+		}
+		t = append(prefix, t...)
+
+		// pad end
+		numElem = int((window+w.DurAfter)/freq) + 1
+		endIdx = len(t)
+		suffix := make([]time.Time, numElem)
+		for i := 0; i < numElem; i++ {
+			suffix[i] = end.Add(time.Duration(i+1) * freq)
+		}
+		t = append(t, suffix...)
+	}
+
+	winFunc := WindowFunc(windowName)
 	weekendMask := generateEventMaskWithFunc(t, w.isWeekend, winFunc)
 
 	// truncate result to start/end

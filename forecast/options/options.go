@@ -111,8 +111,6 @@ func (o *Options) GenerateEventFeatures(t []time.Time) *feature.Set {
 		o = NewDefaultOptions()
 	}
 
-	winFunc := WindowFunc(o.MaskWindow)
-
 	eFeat := feature.NewSet()
 
 	eventSeriesOpts := o.EventSeriesOptions
@@ -121,7 +119,7 @@ func (o *Options) GenerateEventFeatures(t []time.Time) *feature.Set {
 	}
 
 	for eventSeriesOpt := range slices.Values(eventSeriesOpts) {
-		mask, err := eventSeriesOpt.GenerateMask(t, winFunc)
+		mask, err := eventSeriesOpt.GenerateMask(t, o.MaskWindow)
 		if err != nil {
 			slog.Warn("unable to generate mask", "name", eventSeriesOpt.Name())
 		}
@@ -130,7 +128,7 @@ func (o *Options) GenerateEventFeatures(t []time.Time) *feature.Set {
 		}
 	}
 
-	o.EventOptions.generateEventMask(t, eFeat, winFunc)
+	o.EventOptions.generateEventMask(t, eFeat, o.MaskWindow)
 	return eFeat
 }
 

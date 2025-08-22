@@ -1,25 +1,28 @@
 package feature
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 // Event feature representing a point in time that we expect a jump or trend change in
 // the training time series. The component is either of type bias (jump) or slope (trend).
 type Event struct {
 	Name string `json:"name"`
+
+	str string `json:"-"`
 }
 
 // NewEvent creates a new event instance given a name
 func NewEvent(name string) *Event {
-	return &Event{name}
+	strRep := "event_" + name
+	return &Event{name, strRep}
 }
 
 // String returns the string representation of the event feature
 func (e Event) String() string {
-	return fmt.Sprintf("event_%s", e.Name)
+	return e.str
 }
 
 // Get returns the value of an arbitrary label annd returns the value along with whether
@@ -54,5 +57,6 @@ func (e *Event) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	e.Name = labelStr.Name
+	e.str = "event_" + e.Name
 	return nil
 }

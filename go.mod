@@ -4,6 +4,7 @@ go 1.24.1
 
 require (
 	github.com/go-echarts/go-echarts/v2 v2.4.1
+	github.com/goccy/go-json v0.10.5
 	github.com/pkg/profile v1.7.0
 	github.com/rickar/cal/v2 v2.1.20
 	github.com/stretchr/testify v1.9.0

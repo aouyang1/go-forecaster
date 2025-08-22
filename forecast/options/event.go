@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -104,7 +105,7 @@ func Holiday(hol *cal.Holiday, start, end time.Time, durBefore, durAfter time.Du
 
 		if (observed.After(start) || observed.Equal(start)) && (observed.Before(end) || observed.Equal(end)) {
 			events = append(events, Event{
-				Name:  strings.ReplaceAll(fmt.Sprintf("%s_%d", hol.Name, i), " ", "_"),
+				Name:  strings.ReplaceAll(hol.Name, " ", "_") + "_" + strconv.Itoa(i),
 				Start: observed.Add(-durBefore),
 				End:   observed.Add(24 * time.Hour).Add(durAfter),
 			})
@@ -117,10 +118,12 @@ type EventOptions struct {
 	Events []Event `json:"events"`
 }
 
-func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFunc func([]float64) []float64) {
+func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, window string) {
 	if len(t) < 2 {
 		return
 	}
+
+	winFunc := WindowFunc(window)
 
 	ts := timedataset.TimeSlice(t)
 	freq, err := ts.EstimateFreq()
@@ -135,7 +138,12 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, winFu
 			continue
 		}
 
-		evT, startIdx, endIdx := ev.padTime(t, start, end, freq)
+		evT := t
+		startIdx := 0
+		endIdx := len(t)
+		if window != "" && window != WindowRectangular {
+			evT, startIdx, endIdx = ev.padTime(t, start, end, freq)
+		}
 
 		eventMask := generateEventMaskWithFunc(evT, func(tPnt time.Time) bool {
 			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && tPnt.Before(ev.End)

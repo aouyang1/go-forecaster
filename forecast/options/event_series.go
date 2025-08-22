@@ -11,7 +11,7 @@ type EventSeriesOptions []EventSeries
 
 type EventSeries interface {
 	Name() string
-	GenerateMask(t []time.Time, winFunc func([]float64) []float64) ([]float64, error)
+	GenerateMask(t []time.Time, window string) ([]float64, error)
 }
 
 func RegisterEventSeries(name string, eFeat *feature.Set, mask []float64) error {
