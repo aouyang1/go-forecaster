@@ -1,16 +1,16 @@
 package feature
 
 import (
-	"encoding/json"
 	"testing"
 
+	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSeasonalityString(t *testing.T) {
 	feat := NewSeasonality("hod", FourierCompCos, 2)
-	expected := "seas_hod_02_cos"
+	expected := "seas_hod_2_cos"
 	assert.Equal(t, expected, feat.String())
 }
 

@@ -1,9 +1,10 @@
 package forecaster
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/goccy/go-json"
 
 	"github.com/aouyang1/go-forecaster/forecast"
 )

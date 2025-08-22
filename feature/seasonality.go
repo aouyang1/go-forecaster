@@ -1,10 +1,10 @@
 package feature
 
 import (
-	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 type FourierComp string
@@ -20,17 +20,20 @@ type Seasonality struct {
 	Name        string      `json:"name"`
 	FourierComp FourierComp `json:"fourier_component"`
 	Order       int         `json:"order"`
+
+	str string `json:"-"`
 }
 
 // NewSeasonality creates a new seasonality feature instance givenn a name, sin/cos component,
 // and Fourier order
 func NewSeasonality(name string, fcomp FourierComp, order int) *Seasonality {
-	return &Seasonality{name, fcomp, order}
+	strRep := "seas_" + name + "_" + strconv.Itoa(order) + "_" + string(fcomp)
+	return &Seasonality{name, fcomp, order, strRep}
 }
 
 // String returns the string representation of the seasonality feature
 func (s Seasonality) String() string {
-	return fmt.Sprintf("seas_%s_%02d_%s", s.Name, s.Order, s.FourierComp)
+	return s.str
 }
 
 // Get returns the value of an arbitrary label and returns the value along with whether
@@ -79,5 +82,6 @@ func (s *Seasonality) UnmarshalJSON(data []byte) error {
 	s.Name = labelStr.Name
 	s.FourierComp = labelStr.FourierComp
 	s.Order = order
+	s.str = "seas_" + s.Name + "_" + strconv.Itoa(s.Order) + "_" + string(s.FourierComp)
 	return nil
 }

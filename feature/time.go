@@ -1,24 +1,27 @@
 package feature
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 // Time feature representing a time based feature e.g. hour of day.
 type Time struct {
 	Name string `json:"name"`
+
+	str string `json:"-"`
 }
 
 // NewTime creataes aa new time instance given a name
 func NewTime(name string) *Time {
-	return &Time{name}
+	strRep := "tfeat_" + name
+	return &Time{name, strRep}
 }
 
 // String returns the string representationf of the time feature
 func (t Time) String() string {
-	return fmt.Sprintf("tfeat_%s", t.Name)
+	return t.str
 }
 
 // Get returns the value of an arbitrary label annd returns the value along with whether
@@ -53,5 +56,6 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	t.Name = labelStr.Name
+	t.str = "tfeat_" + t.Name
 	return nil
 }

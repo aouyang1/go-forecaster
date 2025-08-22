@@ -1,12 +1,13 @@
 package forecast
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"text/tabwriter"
 	"time"
+
+	"github.com/goccy/go-json"
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast/options"
