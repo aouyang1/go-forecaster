@@ -33,3 +33,4 @@ examples/*.html
 .DS_Store
 coverage.txt
 *.pprof
+*.json

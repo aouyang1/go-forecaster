@@ -6,11 +6,11 @@
         "changepoint_options": {
           "changepoints": [
             {
-              "time": "2025-08-08T20:57:00Z",
+              "time": "2025-08-08T14:00:00Z",
               "name": "anomaly1"
             },
             {
-              "time": "2025-08-18T16:09:00Z",
+              "time": "2025-08-18T09:12:00Z",
               "name": "anomaly2"
             }
           ],
@@ -57,8 +57,8 @@
           "events": [
             {
               "Name": "custom_event",
-              "Start": "2025-08-01T20:57:00Z",
-              "End": "2025-08-03T14:57:00Z"
+              "Start": "2025-08-01T14:00:00Z",
+              "End": "2025-08-03T08:00:00Z"
             }
           ]
         },
@@ -119,8 +119,8 @@
           "events": [
             {
               "Name": "custom_event",
-              "Start": "2025-08-01T20:57:00Z",
-              "End": "2025-08-03T14:57:00Z"
+              "Start": "2025-08-01T14:00:00Z",
+              "End": "2025-08-03T08:00:00Z"
             }
           ]
         },
@@ -134,17 +134,17 @@
     "min_uncertainty_value": 13
   },
   "series_model": {
-    "train_end_time": "2025-08-22T20:56:00Z",
+    "train_end_time": "2025-08-22T13:59:00Z",
     "options": {
       "use_log": false,
       "changepoint_options": {
         "changepoints": [
           {
-            "time": "2025-08-08T20:57:00Z",
+            "time": "2025-08-08T14:00:00Z",
             "name": "anomaly1"
           },
           {
-            "time": "2025-08-18T16:09:00Z",
+            "time": "2025-08-18T09:12:00Z",
             "name": "anomaly2"
           }
         ],
@@ -191,17 +191,17 @@
         "events": [
           {
             "Name": "custom_event",
-            "Start": "2025-08-01T20:57:00Z",
-            "End": "2025-08-03T14:57:00Z"
+            "Start": "2025-08-01T14:00:00Z",
+            "End": "2025-08-03T08:00:00Z"
           }
         ]
       },
       "mask_window": ""
     },
     "scores": {
-      "mean_squared_error": 13.964211571585517,
-      "mean_average_percent_error": 0.0315320120936888,
-      "r_squared": 0.9791054715077129
+      "mean_squared_error": 13.74106912838345,
+      "mean_average_percent_error": 0.031113509895850436,
+      "r_squared": 0.9792638837105585
     },
     "weights": {
       "coefficients": [
@@ -210,7 +210,7 @@
             "name": "intercept"
           },
           "type": "growth",
-          "value": 97.16150905328477
+          "value": 97.10265159796397
         },
         {
           "labels": {
@@ -218,7 +218,7 @@
             "name": "anomaly1"
           },
           "type": "changepoint",
-          "value": 9.885001437678287
+          "value": 9.8459096710878
         },
         {
           "labels": {
@@ -226,21 +226,21 @@
             "name": "anomaly2"
           },
           "type": "changepoint",
-          "value": -70.0149885163384
+          "value": -69.96435965094834
         },
         {
           "labels": {
             "name": "custom_event"
           },
           "type": "event",
-          "value": 3.4934072115016033
+          "value": 2.996047482723137
         },
         {
           "labels": {
             "name": "weekend"
           },
           "type": "event",
-          "value": 4.195798753811463
+          "value": 4.523840704632894
         },
         {
           "labels": {
@@ -249,7 +249,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.008140995536960058
+          "value": 0.2861700636893017
         },
         {
           "labels": {
@@ -258,7 +258,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.19320518915917345
+          "value": 0.0839859509734204
         },
         {
           "labels": {
@@ -267,7 +267,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.09270575067688352
+          "value": 0.12833970252739063
         },
         {
           "labels": {
@@ -276,7 +276,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.33856068198817557
+          "value": -0.10875587320360744
         },
         {
           "labels": {
@@ -285,7 +285,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.21778354764765087
+          "value": -0.09379382981611421
         },
         {
           "labels": {
@@ -294,7 +294,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.022129459807303582
+          "value": 0.22578329075348127
         },
         {
           "labels": {
@@ -303,7 +303,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.2739425188419907
+          "value": -0.45504944177855433
         },
         {
           "labels": {
@@ -312,7 +312,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.6020921450888024
+          "value": 0.6401070572372785
         },
         {
           "labels": {
@@ -321,7 +321,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.38953463788984166
+          "value": -0.334976840024437
         },
         {
           "labels": {
@@ -330,7 +330,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.28297869083753224
+          "value": -0.20810999226850893
         },
         {
           "labels": {
@@ -339,7 +339,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.008410177485157629
+          "value": 0.23515565274203917
         },
         {
           "labels": {
@@ -348,7 +348,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.19235222251769846
+          "value": -0.052757591188836904
         },
         {
           "labels": {
@@ -357,7 +357,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.028275384639749095
+          "value": 0.13247760513932283
         },
         {
           "labels": {
@@ -366,16 +366,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.0072001078812922465
-        },
-        {
-          "labels": {
-            "fourier_component": "cos",
-            "name": "custom_event_daily",
-            "order": "5"
-          },
-          "type": "seasonality",
-          "value": 0.3387473256742809
+          "value": -0.14516801420332492
         },
         {
           "labels": {
@@ -384,7 +375,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.08102721376328298
+          "value": -0.32713960102541195
         },
         {
           "labels": {
@@ -393,7 +384,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": 0.1477008700688959
+          "value": -0.04765318402087363
         },
         {
           "labels": {
@@ -402,7 +393,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.1452427838333454
+          "value": -0.11398817366552871
         },
         {
           "labels": {
@@ -411,7 +402,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": 20.367417682099344
+          "value": 20.403475301033257
         },
         {
           "labels": {
@@ -420,7 +411,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": -11.784259309035964
+          "value": -11.591254549143088
         },
         {
           "labels": {
@@ -429,7 +420,16 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.11034969224382471
+          "value": 0.06726782041497739
+        },
+        {
+          "labels": {
+            "fourier_component": "sin",
+            "name": "custom_event_daily",
+            "order": "8"
+          },
+          "type": "seasonality",
+          "value": 0.0853586955411248
         },
         {
           "labels": {
@@ -438,7 +438,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.008318775444723304
+          "value": 0.102116080870329
         },
         {
           "labels": {
@@ -447,7 +447,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.05817669826558887
+          "value": 0.06697518211420317
         },
         {
           "labels": {
@@ -456,7 +456,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.7243011439861676
+          "value": 1.191801524272202
         },
         {
           "labels": {
@@ -465,7 +465,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.3800694190062079
+          "value": -0.020928111792549078
         },
         {
           "labels": {
@@ -474,7 +474,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.4335646709931694
+          "value": 0.44278524429620797
         },
         {
           "labels": {
@@ -483,7 +483,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.08505815021885048
+          "value": -0.14162168479454582
         },
         {
           "labels": {
@@ -492,7 +492,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.8360694157932891
+          "value": 0.6239533836040423
         },
         {
           "labels": {
@@ -501,7 +501,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 4.810334948889564
+          "value": 4.793431487833384
         },
         {
           "labels": {
@@ -510,7 +510,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.5900199735385496
+          "value": -1.105798748312288
         },
         {
           "labels": {
@@ -519,7 +519,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.5658430879721941
+          "value": 0.8338888817695082
         },
         {
           "labels": {
@@ -528,16 +528,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.27550195212280526
-        },
-        {
-          "labels": {
-            "fourier_component": "cos",
-            "name": "custom_event_weekly",
-            "order": "3"
-          },
-          "type": "seasonality",
-          "value": -0.11785011044750593
+          "value": -0.6407207519065969
         },
         {
           "labels": {
@@ -546,7 +537,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.27210383782584857
+          "value": 0.1905105238618466
         },
         {
           "labels": {
@@ -555,7 +546,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.06369508727732405
+          "value": -0.18411179718065046
         },
         {
           "labels": {
@@ -564,7 +555,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.2991450397852254
+          "value": -0.23330882327258753
         },
         {
           "labels": {
@@ -573,16 +564,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": -0.004192282767214163
-        },
-        {
-          "labels": {
-            "fourier_component": "sin",
-            "name": "custom_event_weekly",
-            "order": "5"
-          },
-          "type": "seasonality",
-          "value": 0.3841751538180164
+          "value": 0.3461840175672091
         },
         {
           "labels": {
@@ -591,16 +573,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.02804363244418729
-        },
-        {
-          "labels": {
-            "fourier_component": "sin",
-            "name": "custom_event_weekly",
-            "order": "6"
-          },
-          "type": "seasonality",
-          "value": -0.17953326985081042
+          "value": -0.1586461533662853
         },
         {
           "labels": {
@@ -609,16 +582,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.19359503692061736
-        },
-        {
-          "labels": {
-            "fourier_component": "sin",
-            "name": "custom_event_weekly",
-            "order": "8"
-          },
-          "type": "seasonality",
-          "value": -0.31612358710979344
+          "value": -0.2512976457453177
         },
         {
           "labels": {
@@ -627,7 +591,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.16064264379741408
+          "value": 0.24591500586976978
         },
         {
           "labels": {
@@ -636,7 +600,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.20283426025247092
+          "value": -0.03740244843977734
         },
         {
           "labels": {
@@ -645,7 +609,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.08029572747267248
+          "value": -0.021070200960227936
         },
         {
           "labels": {
@@ -654,7 +618,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.016450037376948754
+          "value": 0.023464192691618535
         },
         {
           "labels": {
@@ -663,7 +627,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.011364235275179295
+          "value": 0.018585739575003448
         },
         {
           "labels": {
@@ -672,7 +636,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.028753087935558946
+          "value": -0.04717804588589417
         },
         {
           "labels": {
@@ -681,7 +645,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.03836947706721237
+          "value": -0.009061005068750369
         },
         {
           "labels": {
@@ -690,7 +654,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.016235550868256357
+          "value": 0.007240640147975751
         },
         {
           "labels": {
@@ -699,7 +663,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 6.006522023926851
+          "value": 6.098949686754777
         },
         {
           "labels": {
@@ -708,7 +672,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 9.197899030578503
+          "value": 8.986997381295716
         },
         {
           "labels": {
@@ -717,7 +681,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.11798005333416955
+          "value": 0.020619448219308605
         },
         {
           "labels": {
@@ -726,7 +690,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.04704276599896166
+          "value": -0.01735907083065297
         },
         {
           "labels": {
@@ -735,7 +699,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.07423958943241821
+          "value": -0.011331459616736234
         },
         {
           "labels": {
@@ -744,7 +708,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -10.487681455333588
+          "value": -10.516803480454987
         },
         {
           "labels": {
@@ -753,7 +717,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.027150530415248748
+          "value": 0.04162526454866715
         },
         {
           "labels": {
@@ -762,7 +726,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.03102418731208421
+          "value": -0.0230156247785477
         },
         {
           "labels": {
@@ -771,7 +735,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.028021299068562534
+          "value": -0.003565909846450025
         },
         {
           "labels": {
@@ -780,7 +744,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": -0.07232501842713317
+          "value": -0.042728016317319976
         },
         {
           "labels": {
@@ -789,7 +753,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.04398513250229792
+          "value": -0.028623055262538888
         },
         {
           "labels": {
@@ -798,7 +762,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.014617326365609798
+          "value": 0.013347508909096617
         },
         {
           "labels": {
@@ -807,7 +771,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": -0.04341715854218819
+          "value": 0.0020550685397187356
         },
         {
           "labels": {
@@ -816,7 +780,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": 0.07718360877185572
+          "value": -0.018572799652408125
         },
         {
           "labels": {
@@ -825,7 +789,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": -0.007783048660357836
+          "value": 0.0022953843867292547
         },
         {
           "labels": {
@@ -834,7 +798,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.029113948204574934
+          "value": -0.04699487775539912
         },
         {
           "labels": {
@@ -843,7 +807,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.05124998201804688
+          "value": 0.008504014149698697
         },
         {
           "labels": {
@@ -852,7 +816,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.02002987291723476
+          "value": 0.024993178713650702
         },
         {
           "labels": {
@@ -861,7 +825,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.0019538138945206585
+          "value": -0.03604952455281532
         },
         {
           "labels": {
@@ -870,7 +834,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.006859536906812184
+          "value": 0.07169556402676701
         },
         {
           "labels": {
@@ -879,7 +843,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.0029476135450112457
+          "value": -0.007583145193551842
         },
         {
           "labels": {
@@ -888,7 +852,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.00991941255325501
+          "value": -0.00865569411850851
         },
         {
           "labels": {
@@ -897,7 +861,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.020922244412716867
+          "value": -0.0013396230411573335
         },
         {
           "labels": {
@@ -906,7 +870,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.017005095331528067
+          "value": 0.056829575170389016
         },
         {
           "labels": {
@@ -915,7 +879,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 1.8972391741618475
+          "value": 1.9972706998342487
         },
         {
           "labels": {
@@ -924,7 +888,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.9800441884983927
+          "value": -0.9804569105309617
         },
         {
           "labels": {
@@ -933,7 +897,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.8047409443223889
+          "value": -0.8760654226853918
         },
         {
           "labels": {
@@ -942,7 +906,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 1.0706996879803887
+          "value": 1.1896807224350783
         },
         {
           "labels": {
@@ -951,7 +915,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.1117619978054573
+          "value": 0.13410723400454064
         },
         {
           "labels": {
@@ -960,7 +924,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.4343187814546522
+          "value": -0.4720807969419411
         },
         {
           "labels": {
@@ -969,7 +933,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.0760236691013216
+          "value": -0.12911092863085596
         },
         {
           "labels": {
@@ -978,7 +942,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.3910541210417827
+          "value": -0.4126385660372903
         },
         {
           "labels": {
@@ -987,7 +951,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.4908749565362803
+          "value": 0.6574196289215628
         },
         {
           "labels": {
@@ -996,7 +960,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.7435703216075035
+          "value": 0.6967398977694067
         },
         {
           "labels": {
@@ -1005,7 +969,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.8342131213892151
+          "value": -1.0425442779325782
         },
         {
           "labels": {
@@ -1014,7 +978,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.4755921258140455
+          "value": -0.3281468684204381
         },
         {
           "labels": {
@@ -1023,7 +987,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": -0.3922460452125586
+          "value": -0.40551641185329607
         },
         {
           "labels": {
@@ -1032,7 +996,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.16807905227582215
+          "value": 0.29646879575312457
         },
         {
           "labels": {
@@ -1041,25 +1005,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.17039254841849857
-        },
-        {
-          "labels": {
-            "fourier_component": "sin",
-            "name": "epoch_weekly",
-            "order": "9"
-          },
-          "type": "seasonality",
-          "value": -0.14151690124297797
-        },
-        {
-          "labels": {
-            "fourier_component": "cos",
-            "name": "weekend_daily",
-            "order": "10"
-          },
-          "type": "seasonality",
-          "value": -0.09621187657366198
+          "value": 0.05653625890364972
         },
         {
           "labels": {
@@ -1068,7 +1014,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.08240881484880991
+          "value": -0.01926455429813725
         },
         {
           "labels": {
@@ -1077,7 +1023,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.07266229236592453
+          "value": -0.06925875166357016
         },
         {
           "labels": {
@@ -1086,7 +1032,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.06886802557360652
+          "value": 0.08837685910918976
         },
         {
           "labels": {
@@ -1095,7 +1041,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.039736385847105794
+          "value": 0.029844081487509163
         },
         {
           "labels": {
@@ -1104,7 +1050,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.04195601811249887
+          "value": -0.0492502620476349
         },
         {
           "labels": {
@@ -1113,7 +1059,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -2.6681371896454356
+          "value": -2.88155085333328
         },
         {
           "labels": {
@@ -1122,7 +1068,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.21916778665523512
+          "value": 0.5299315439472617
         },
         {
           "labels": {
@@ -1131,7 +1077,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.22094814424244105
+          "value": -0.24655337883008316
         },
         {
           "labels": {
@@ -1140,7 +1086,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.03311616989979522
+          "value": -0.039760449848506636
         },
         {
           "labels": {
@@ -1149,7 +1095,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.07853949094502513
+          "value": -0.13567192318799337
         },
         {
           "labels": {
@@ -1158,7 +1104,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 7.238570656372922
+          "value": 7.279952367451939
         },
         {
           "labels": {
@@ -1167,7 +1113,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.12091688180399236
+          "value": 0.024625104503850193
         },
         {
           "labels": {
@@ -1176,7 +1122,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.061680815390157455
+          "value": 0.08065092169415816
         },
         {
           "labels": {
@@ -1185,7 +1131,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": -0.1424711387197999
+          "value": -0.012603650190064604
         },
         {
           "labels": {
@@ -1194,7 +1140,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.0378590084471325
+          "value": 0.11256537897483362
         },
         {
           "labels": {
@@ -1203,25 +1149,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.015165252446001152
-        },
-        {
-          "labels": {
-            "fourier_component": "sin",
-            "name": "weekend_daily",
-            "order": "6"
-          },
-          "type": "seasonality",
-          "value": 0.0985530845015707
-        },
-        {
-          "labels": {
-            "fourier_component": "cos",
-            "name": "weekend_daily",
-            "order": "7"
-          },
-          "type": "seasonality",
-          "value": 0.03711381156501224
+          "value": -0.03401340872365467
         },
         {
           "labels": {
@@ -1230,7 +1158,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": -0.05216999798331278
+          "value": -0.04391567779767459
         },
         {
           "labels": {
@@ -1239,7 +1167,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.07454365021353015
+          "value": -0.028346333254711923
         },
         {
           "labels": {
@@ -1248,7 +1176,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.0332204112484806
+          "value": -0.0018578524850197968
         },
         {
           "labels": {
@@ -1257,7 +1185,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.02589233940341615
+          "value": -0.015642387367866956
         },
         {
           "labels": {
@@ -1266,13 +1194,13 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.08814084853200714
+          "value": -0.017796325137152368
         }
       ]
     }
   },
   "uncertainty_model": {
-    "train_end_time": "2025-08-22T20:07:00Z",
+    "train_end_time": "2025-08-22T13:10:00Z",
     "options": {
       "use_log": false,
       "changepoint_options": {
@@ -1320,17 +1248,17 @@
         "events": [
           {
             "Name": "custom_event",
-            "Start": "2025-08-01T20:57:00Z",
-            "End": "2025-08-03T14:57:00Z"
+            "Start": "2025-08-01T14:00:00Z",
+            "End": "2025-08-03T08:00:00Z"
           }
         ]
       },
       "mask_window": ""
     },
     "scores": {
-      "mean_squared_error": 6.210341536306356,
-      "mean_average_percent_error": 0.1606134545351831,
-      "r_squared": 0.8643666458414938
+      "mean_squared_error": 4.817667345010062,
+      "mean_average_percent_error": 0.1375654935994912,
+      "r_squared": 0.8883515384555472
     },
     "weights": {
       "coefficients": [
@@ -1339,21 +1267,21 @@
             "name": "intercept"
           },
           "type": "growth",
-          "value": 13.506366472919758
+          "value": 14.042771311879841
         },
         {
           "labels": {
             "name": "custom_event"
           },
           "type": "event",
-          "value": 0.47064847301203394
+          "value": 0.5638773376421574
         },
         {
           "labels": {
             "name": "weekend"
           },
           "type": "event",
-          "value": 0.19235053222678136
+          "value": -0.07516292487901662
         },
         {
           "labels": {
@@ -1362,7 +1290,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.1944223199460769
+          "value": -0.03878920997618503
         },
         {
           "labels": {
@@ -1371,7 +1299,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.05612374039171536
+          "value": 0.0747136305398464
         },
         {
           "labels": {
@@ -1380,7 +1308,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.060812518739584466
+          "value": 0.15504531172255856
         },
         {
           "labels": {
@@ -1389,7 +1317,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.09482757589570888
+          "value": -0.041815100710530184
         },
         {
           "labels": {
@@ -1398,7 +1326,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.0357579501548917
+          "value": 0.037848211356241994
         },
         {
           "labels": {
@@ -1407,7 +1335,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.051403663690078684
+          "value": -0.04085551039728812
         },
         {
           "labels": {
@@ -1416,7 +1344,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.197671230877533
+          "value": -0.8979053446673818
         },
         {
           "labels": {
@@ -1425,7 +1353,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 0.4980871348306716
+          "value": -0.21038491381141497
         },
         {
           "labels": {
@@ -1434,7 +1362,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.5671852206874496
+          "value": 0.2547353565218016
         },
         {
           "labels": {
@@ -1443,7 +1371,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.38250965680542404
+          "value": -0.22500015682096355
         },
         {
           "labels": {
@@ -1452,7 +1380,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.90489013058762
+          "value": -0.46836173130235054
         },
         {
           "labels": {
@@ -1461,7 +1389,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.03455239982064551
+          "value": 0.3237266741218995
         },
         {
           "labels": {
@@ -1470,7 +1398,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.24599349854701316
+          "value": -0.2272260817500938
         },
         {
           "labels": {
@@ -1479,7 +1407,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.14824471456964505
+          "value": -0.31379037253631836
         },
         {
           "labels": {
@@ -1488,7 +1416,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.024476762467537785
+          "value": -0.023903649621951923
         },
         {
           "labels": {
@@ -1497,7 +1425,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": -0.16206966182577345
+          "value": 1.0063883409023502
         },
         {
           "labels": {
@@ -1506,7 +1434,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.30022981310430996
+          "value": 0.09654606275576112
         },
         {
           "labels": {
@@ -1515,7 +1443,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": 0.14721226296634823
+          "value": -0.34776209362293253
         },
         {
           "labels": {
@@ -1524,7 +1452,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": -0.06067748333601464
+          "value": 0.008678698433532386
         },
         {
           "labels": {
@@ -1533,7 +1461,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": -0.12741851115608127
+          "value": 0.2533511933685172
         },
         {
           "labels": {
@@ -1542,7 +1470,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": -0.274708076033657
+          "value": -0.008195640957027754
         },
         {
           "labels": {
@@ -1551,7 +1479,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": -0.404569616716883
+          "value": -0.3919591458176546
         },
         {
           "labels": {
@@ -1560,7 +1488,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.02605915845632665
+          "value": 0.18821426103706732
         },
         {
           "labels": {
@@ -1569,7 +1497,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.06850696854966172
+          "value": -0.1143632448959618
         },
         {
           "labels": {
@@ -1578,7 +1506,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.44988799330940143
+          "value": -0.09608587251174144
         },
         {
           "labels": {
@@ -1587,7 +1515,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.002031820244997694
+          "value": -0.9075286397676774
         },
         {
           "labels": {
@@ -1596,7 +1524,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.21826952161635627
+          "value": 0.17917230048125637
         },
         {
           "labels": {
@@ -1605,7 +1533,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.07398140936129403
+          "value": -0.017647123751437354
         },
         {
           "labels": {
@@ -1614,7 +1542,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.08591494582925355
+          "value": -0.02818045785532305
         },
         {
           "labels": {
@@ -1623,7 +1551,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.0792622529249593
+          "value": 0.15977648801481611
         },
         {
           "labels": {
@@ -1632,7 +1560,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 0.3435304406596667
+          "value": -0.34466594537528156
         },
         {
           "labels": {
@@ -1641,7 +1569,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 0.21397901009403858
+          "value": -0.07305890141255758
         },
         {
           "labels": {
@@ -1650,7 +1578,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.21402655115166846
+          "value": 0.052550885663801276
         },
         {
           "labels": {
@@ -1659,7 +1587,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.20392469670298632
+          "value": -0.036972882306412574
         },
         {
           "labels": {
@@ -1668,7 +1596,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.03430669936072357
+          "value": 0.017601034133752903
         },
         {
           "labels": {
@@ -1677,7 +1605,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.23498194361939287
+          "value": 0.005967339590314992
         },
         {
           "labels": {
@@ -1686,7 +1614,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.08279424205595029
+          "value": -0.02600986320437655
         },
         {
           "labels": {
@@ -1695,7 +1623,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.08336163916631986
+          "value": 0.031026755951858973
         },
         {
           "labels": {
@@ -1704,7 +1632,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.018381619490850522
+          "value": -0.03489674805604662
         },
         {
           "labels": {
@@ -1713,7 +1641,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": -0.07742906115037299
+          "value": -0.03866636364195346
         },
         {
           "labels": {
@@ -1722,7 +1650,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.061758320973631604
+          "value": 0.05177516569430546
         },
         {
           "labels": {
@@ -1731,7 +1659,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": 0.08830215279025878
+          "value": -0.029494963054533523
         },
         {
           "labels": {
@@ -1740,7 +1668,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.0170371598567031
+          "value": -0.164254882036963
         },
         {
           "labels": {
@@ -1749,7 +1677,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.25919146712129215
+          "value": 0.04107958255808938
         },
         {
           "labels": {
@@ -1758,7 +1686,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.020611980421598744
+          "value": 0.006823334697766076
         },
         {
           "labels": {
@@ -1767,7 +1695,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.0943413385104479
+          "value": -0.10147954303318218
         },
         {
           "labels": {
@@ -1776,7 +1704,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.6092029688476142
+          "value": 0.6641539985524239
         },
         {
           "labels": {
@@ -1785,7 +1713,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.022300747148172876
+          "value": 0.10612174069575962
         },
         {
           "labels": {
@@ -1794,7 +1722,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.03411343524313188
+          "value": -0.006848784194961041
         },
         {
           "labels": {
@@ -1803,7 +1731,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.029779126909322533
+          "value": 0.04918746826465113
         },
         {
           "labels": {
@@ -1812,7 +1740,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.0014941339632715217
+          "value": 0.032788210106540094
         },
         {
           "labels": {
@@ -1821,7 +1749,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.034917124808329876
+          "value": 0.004416188843769641
         },
         {
           "labels": {
@@ -1830,7 +1758,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 0.1290298737895237
+          "value": 0.002515672239868802
         },
         {
           "labels": {
@@ -1839,7 +1767,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.2153165901787766
+          "value": -0.15293077126228266
         },
         {
           "labels": {
@@ -1848,7 +1776,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.06925182324842392
+          "value": -0.025583948380383276
         },
         {
           "labels": {
@@ -1857,7 +1785,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.012530842403931444
+          "value": 0.03610680919490925
         },
         {
           "labels": {
@@ -1866,7 +1794,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.018069178073842507
+          "value": 0.0023848457711054295
         },
         {
           "labels": {
@@ -1875,7 +1803,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.06265293041371017
+          "value": 0.08300278948265355
         },
         {
           "labels": {
@@ -1884,7 +1812,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.06945247841750618
+          "value": -0.055273417895167036
         },
         {
           "labels": {
@@ -1893,7 +1821,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.06905194867429132
+          "value": 0.02888420732339257
         },
         {
           "labels": {
@@ -1902,7 +1830,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.049705793909125
+          "value": 0.08735347684488176
         },
         {
           "labels": {
@@ -1911,7 +1839,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 8.601492098541872
+          "value": 8.454775660656917
         },
         {
           "labels": {
@@ -1920,7 +1848,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": 0.08030831727389469
+          "value": 0.08324688900649421
         },
         {
           "labels": {
@@ -1929,7 +1857,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.018390416430369
+          "value": 0.06717171865103318
         },
         {
           "labels": {
@@ -1938,7 +1866,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": 0.09484701796745773
+          "value": -0.07467694499304467
         },
         {
           "labels": {
@@ -1947,7 +1875,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": 0.016417356784315947
+          "value": -0.0044685951955958534
         },
         {
           "labels": {
@@ -1956,7 +1884,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.04620551951991597
+          "value": -0.080507905228245
         },
         {
           "labels": {
@@ -1965,7 +1893,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.03036364523117137
+          "value": -0.08113632496466829
         },
         {
           "labels": {
@@ -1974,7 +1902,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.06471861849991016
+          "value": 0.044136355020395854
         },
         {
           "labels": {
@@ -1983,7 +1911,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.034245973372237795
+          "value": 0.04654614949650024
         },
         {
           "labels": {
@@ -1992,7 +1920,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.09349108539256855
+          "value": 0.05066170826803154
         },
         {
           "labels": {
@@ -2001,7 +1929,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.04581149152763874
+          "value": 0.0055136048769165065
         },
         {
           "labels": {
@@ -2010,7 +1938,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.0055372623032333285
+          "value": -0.06354075879075124
         },
         {
           "labels": {
@@ -2019,7 +1947,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": 0.09929083403528235
+          "value": 0.08109431291257753
         },
         {
           "labels": {
@@ -2028,7 +1956,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.16967528284477656
+          "value": 0.261827449993434
         },
         {
           "labels": {
@@ -2037,7 +1965,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.2619014571651301
+          "value": -0.09061138388098788
         },
         {
           "labels": {
@@ -2046,7 +1974,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 0.34847777544235525
+          "value": 0.07714228358376397
         },
         {
           "labels": {
@@ -2055,7 +1983,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 0.5162088905130855
+          "value": -0.16438166963955286
         },
         {
           "labels": {
@@ -2064,7 +1992,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.27001918154953664
+          "value": 0.16103149180548626
         },
         {
           "labels": {
@@ -2073,7 +2001,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": -0.2911682518572672
+          "value": 0.053534518514782914
         },
         {
           "labels": {
@@ -2082,7 +2010,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.3723254217457185
+          "value": 0.12816942096926368
         },
         {
           "labels": {
@@ -2091,7 +2019,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": -0.046112833306643036
+          "value": -0.21096197247912077
         },
         {
           "labels": {
@@ -2100,7 +2028,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": -0.0684015495775279
+          "value": 0.1542006395960284
         },
         {
           "labels": {
@@ -2109,7 +2037,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.23058348931849226
+          "value": -0.14170311823924764
         },
         {
           "labels": {
@@ -2118,7 +2046,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.013955853612972725
+          "value": 0.1739100233689728
         },
         {
           "labels": {
@@ -2127,7 +2055,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.04998051573243593
+          "value": -0.18282869726393527
         },
         {
           "labels": {
@@ -2136,7 +2064,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.04542041782696714
+          "value": 0.10317107906511688
         },
         {
           "labels": {
@@ -2145,7 +2073,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": 0.07440813634525123
+          "value": -0.03829736961112627
         },
         {
           "labels": {
@@ -2154,7 +2082,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": -0.25072688894831574
+          "value": -0.030288658437708924
         },
         {
           "labels": {
@@ -2163,7 +2091,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.016066428774016758
+          "value": -0.05235623182340079
         },
         {
           "labels": {
@@ -2172,7 +2100,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.11901003014769011
+          "value": -0.1485725800245034
         },
         {
           "labels": {
@@ -2181,7 +2109,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.014657775838505771
+          "value": 0.10621515865852338
         },
         {
           "labels": {
@@ -2190,7 +2118,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": 0.09921260096392066
+          "value": -0.04825267740388961
         },
         {
           "labels": {
@@ -2199,7 +2127,7 @@
             "order": "10"
           },
           "type": "seasonality",
-          "value": -0.05860881916563093
+          "value": -0.03262064303584275
         },
         {
           "labels": {
@@ -2208,7 +2136,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.03602812926413833
+          "value": -0.07532017051304969
         },
         {
           "labels": {
@@ -2217,7 +2145,7 @@
             "order": "11"
           },
           "type": "seasonality",
-          "value": -0.05991243292441339
+          "value": -0.07868555344243701
         },
         {
           "labels": {
@@ -2226,7 +2154,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": 0.022101796078177673
+          "value": -0.025203085292975217
         },
         {
           "labels": {
@@ -2235,7 +2163,7 @@
             "order": "12"
           },
           "type": "seasonality",
-          "value": -0.08550512347965566
+          "value": 0.03549543986373213
         },
         {
           "labels": {
@@ -2244,7 +2172,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": -0.13549513298106325
+          "value": 0.3902398831403824
         },
         {
           "labels": {
@@ -2253,7 +2181,7 @@
             "order": "1"
           },
           "type": "seasonality",
-          "value": 0.04577226454569207
+          "value": 0.04461666816528403
         },
         {
           "labels": {
@@ -2262,7 +2190,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.1502719742315458
+          "value": -0.05291516162485783
         },
         {
           "labels": {
@@ -2271,7 +2199,7 @@
             "order": "2"
           },
           "type": "seasonality",
-          "value": 0.1273126149449636
+          "value": 0.2546664666824859
         },
         {
           "labels": {
@@ -2280,7 +2208,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.3440180829534008
+          "value": 0.4439746340658524
         },
         {
           "labels": {
@@ -2289,7 +2217,7 @@
             "order": "3"
           },
           "type": "seasonality",
-          "value": 0.004501920857938284
+          "value": -0.16050045203307042
         },
         {
           "labels": {
@@ -2298,7 +2226,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.22275917634323303
+          "value": 0.015452420723651345
         },
         {
           "labels": {
@@ -2307,7 +2235,7 @@
             "order": "4"
           },
           "type": "seasonality",
-          "value": 0.36691268159727686
+          "value": -0.015193049140232246
         },
         {
           "labels": {
@@ -2316,7 +2244,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": -0.14183519579464074
+          "value": -0.02841257403616814
         },
         {
           "labels": {
@@ -2325,7 +2253,7 @@
             "order": "5"
           },
           "type": "seasonality",
-          "value": 0.7812183410533543
+          "value": 0.6571164346590508
         },
         {
           "labels": {
@@ -2334,7 +2262,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": -0.18064141365765846
+          "value": -0.02951884176363241
         },
         {
           "labels": {
@@ -2343,7 +2271,7 @@
             "order": "6"
           },
           "type": "seasonality",
-          "value": 0.1590179745742026
+          "value": -0.17094928675542995
         },
         {
           "labels": {
@@ -2352,7 +2280,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": 0.051001213967390824
+          "value": -0.02928205436864515
         },
         {
           "labels": {
@@ -2361,7 +2289,7 @@
             "order": "7"
           },
           "type": "seasonality",
-          "value": -0.014493137661854096
+          "value": -0.16015856915204266
         },
         {
           "labels": {
@@ -2370,7 +2298,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": -0.11305787578199938
+          "value": 0.017674358011892446
         },
         {
           "labels": {
@@ -2379,7 +2307,7 @@
             "order": "8"
           },
           "type": "seasonality",
-          "value": 0.1887740899167283
+          "value": 0.07835518597835349
         },
         {
           "labels": {
@@ -2388,7 +2316,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": -0.22234258263280474
+          "value": -0.14080729678535558
         },
         {
           "labels": {
@@ -2397,7 +2325,7 @@
             "order": "9"
           },
           "type": "seasonality",
-          "value": 0.011329139687032247
+          "value": 0.03135053567080224
         }
       ]
     }
