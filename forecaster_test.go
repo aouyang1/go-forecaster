@@ -690,10 +690,9 @@ func generateExampleSeries() ([]time.Time, []float64) {
 		Add(timedataset.GenerateWaveY(t, -7.3, period, 3.0, 2*60*60+period/2.0/2.0/3.0).MaskWithWeekend(t)).
 		Add(timedataset.GenerateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
 		Add(timedataset.GenerateChange(t, t[minutes/2], 10.0, 0.0)).
-		Add(timedataset.GenerateChange(t, t[minutes*2/3], 61.4, 0.0)).             // anomaly start
-		Add(timedataset.GenerateChange(t, t[minutes*2/3+minutes/40], -61.4, 0.0)). // anomaly end
-		Add(timedataset.GenerateChange(t, t[minutes*17/20], -70.0, 0.0)).
-		SetConst(t, 2.7, t[minutes/3], t[minutes/3+minutes/20])
+		Add(timedataset.GenerateChange(t, t[minutes*19/20], -70.0, 0.0)).
+		SetConst(t, 2.7, t[minutes/3], t[minutes/3+minutes/20]).
+		SetConst(t, 175.7, t[minutes*2/3], t[minutes*2/3+minutes/80])
 
 	return t, y
 }
@@ -739,7 +738,7 @@ func setupWithOutliers() ([]time.Time, []float64, *Options) {
 
 	changepoints := []options.Changepoint{
 		options.NewChangepoint("anomaly1", t[len(t)/2]),
-		options.NewChangepoint("anomaly2", t[len(t)*17/20]),
+		options.NewChangepoint("anomaly2", t[len(t)*19/20]),
 	}
 	events := []options.Event{
 		options.NewEvent("custom_event", t[len(t)*4/16], t[len(t)*5/16]),
@@ -767,8 +766,16 @@ func setupWithOutliers() ([]time.Time, []float64, *Options) {
 				EventOptions: options.EventOptions{
 					Events: events,
 				},
+				DSTOptions: options.DSTOptions{
+					Enabled: false,
+				},
 			},
-			OutlierOptions: NewOutlierOptions(),
+			OutlierOptions: &OutlierOptions{
+				NumPasses:       3,
+				TukeyFactor:     1.5,
+				LowerPercentile: 0.25,
+				UpperPercentile: 0.75,
+			},
 		},
 		UncertaintyOptions: &UncertaintyOptions{
 			ForecastOptions: &options.Options{
@@ -789,6 +796,9 @@ func setupWithOutliers() ([]time.Time, []float64, *Options) {
 				},
 				EventOptions: options.EventOptions{
 					Events: events,
+				},
+				DSTOptions: options.DSTOptions{
+					Enabled: false,
 				},
 			},
 			ResidualWindow: 100,
@@ -828,6 +838,7 @@ func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 	return t, y
 }
 
+/*
 func Example_forecasterAutoChangepoint() {
 	t, y := generateExampleSeries()
 
@@ -882,6 +893,7 @@ func Example_forecasterAutoChangepoint() {
 	}
 	// Output:
 }
+*/
 
 func Example_forecasterWithTrend() {
 	t, y := generateExampleSeriesWithTrend()

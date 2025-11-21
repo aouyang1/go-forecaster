@@ -17,14 +17,14 @@ func testModel(t *testing.T, model Model, x, y mat.Matrix, intercept float64, co
 	err := model.Fit(x, y)
 	require.Nil(t, err)
 
-	assert.InDelta(t, intercept, model.Intercept(), tol)
+	assert.InDelta(t, intercept, model.Intercept(), tol, "intercept")
 
 	c := model.Coef()
-	assert.InDeltaSlice(t, coef, c, tol)
+	assert.InDeltaSlice(t, coef, c, tol, "coefficients")
 
 	r2, err := model.Score(x, y)
 	require.Nil(t, err)
-	assert.InDelta(t, 1.0, r2, tol)
+	assert.InDelta(t, 1.0, r2, tol, "score")
 }
 
 func generateBenchData(minutes, nFeat int) (mat.Matrix, mat.Matrix, error) {

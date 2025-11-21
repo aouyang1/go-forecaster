@@ -160,6 +160,17 @@ func (o *Options) GenerateFourierFeatures(feat *feature.Set) (*feature.Set, erro
 			x.Update(eventSeasFeat)
 		}
 
+		// generate seasonality features for changepoints
+		for _, c := range o.ChangepointOptions.Changepoints {
+			changepointSeasFeat, err := generateChangepointSeasonality(feat, seasFeatures, c.Name, seasCfg.Name)
+			if err != nil {
+				slog.Warn("unable to generate changepoint seasonality", "feature_name", c.Name, "seasonality", seasCfg.Name, "error", err.Error())
+				continue
+			}
+
+			x.Update(changepointSeasFeat)
+		}
+
 		// weekend seasonality
 		if seasCfg.Name == LabelSeasDaily && o.WeekendOptions.Enabled {
 			// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
@@ -216,10 +227,23 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sLabel string) (*feature.Set, error) {
 	mask, exists := feat.Get(feature.NewEvent(eCol))
 	if !exists {
-		return nil, fmt.Errorf("event mask not found, skipping event name, %s", eCol)
+		return nil, fmt.Errorf("feature event mask not found, skipping event feature name, %s", eCol)
 	}
 
-	eventSeasonalityFeatures := feature.NewSet()
+	return generateMaskedSeasonality(sFeat, eCol, mask, sLabel), nil
+}
+
+func generateChangepointSeasonality(feat, sFeat *feature.Set, cCol, sLabel string) (*feature.Set, error) {
+	mask, exists := feat.Get(feature.NewChangepoint(cCol, feature.ChangepointCompBias))
+	if !exists {
+		return nil, fmt.Errorf("feature changepoint mask not found, skipping changepoint feature name, %s", cCol)
+	}
+
+	return generateMaskedSeasonality(sFeat, cCol, mask, sLabel), nil
+}
+
+func generateMaskedSeasonality(sFeat *feature.Set, col string, mask []float64, sLabel string) *feature.Set {
+	maskedSeasonalityFeatures := feature.NewSet()
 	for _, label := range sFeat.Labels() {
 		featData, exists := sFeat.Get(label)
 		if !exists {
@@ -233,8 +257,8 @@ func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sLabel string) (*f
 
 		orderStr, _ := label.Get("order")
 		order, _ := strconv.Atoi(orderStr)
-		featCol := feature.NewSeasonality(eCol+"_"+sLabel, fcomp, order)
-		eventSeasonalityFeatures.Set(featCol, maskedData)
+		featCol := feature.NewSeasonality(col+"_"+sLabel, fcomp, order)
+		maskedSeasonalityFeatures.Set(featCol, maskedData)
 	}
-	return eventSeasonalityFeatures, nil
+	return maskedSeasonalityFeatures
 }
