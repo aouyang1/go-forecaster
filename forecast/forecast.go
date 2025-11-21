@@ -80,13 +80,25 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 
 	t = f.opt.DSTOptions.AdjustTime(t)
 
-	tFeat, eFeat := f.opt.GenerateTimeFeatures(t)
+	feat := feature.NewSet()
 
-	feat, err := f.opt.GenerateFourierFeatures(tFeat)
+	tFeat, eFeat := f.opt.GenerateTimeFeatures(t)
+	feat.Update(eFeat)
+
+	// generate changepoint features
+	if !f.trained {
+		f.opt.ChangepointOptions.GenerateAutoChangepoints(t)
+	}
+	chptFeat := f.opt.ChangepointOptions.GenerateFeatures(t, f.trainEndTime)
+	tFeat.Update(chptFeat)
+	feat.Update(chptFeat)
+
+	seasFeat, err := f.opt.GenerateFourierFeatures(tFeat)
 	if err != nil {
 		return nil, err
 	}
-	feat.Update(eFeat)
+
+	feat.Update(seasFeat)
 	interceptLabel := feature.Intercept()
 	interceptData, exists := tFeat.Get(interceptLabel)
 	if exists {
@@ -101,13 +113,6 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 			}
 		}
 	}
-
-	// generate changepoint features
-	if !f.trained {
-		f.opt.ChangepointOptions.GenerateAutoChangepoints(t)
-	}
-	chptFeat := f.opt.ChangepointOptions.GenerateFeatures(t, f.trainEndTime)
-	feat.Update(chptFeat)
 
 	feat.RemoveZeroOnlyFeatures()
 
