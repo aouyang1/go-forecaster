@@ -227,7 +227,7 @@ func generateFourierComponent(timeFeature []float64, order int, period float64) 
 func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sLabel string) (*feature.Set, error) {
 	mask, exists := feat.Get(feature.NewEvent(eCol))
 	if !exists {
-		return nil, fmt.Errorf("feature event not found, skipping event feature name, %s", eCol)
+		return nil, fmt.Errorf("feature event mask not found, skipping event feature name, %s", eCol)
 	}
 
 	return generateMaskedSeasonality(sFeat, eCol, mask, sLabel), nil
@@ -236,7 +236,7 @@ func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sLabel string) (*f
 func generateChangepointSeasonality(feat, sFeat *feature.Set, cCol, sLabel string) (*feature.Set, error) {
 	mask, exists := feat.Get(feature.NewChangepoint(cCol, feature.ChangepointCompBias))
 	if !exists {
-		return nil, fmt.Errorf("feature changepoint not found, skipping changepoint feature name, %s", cCol)
+		return nil, fmt.Errorf("feature changepoint mask not found, skipping changepoint feature name, %s", cCol)
 	}
 
 	return generateMaskedSeasonality(sFeat, cCol, mask, sLabel), nil
