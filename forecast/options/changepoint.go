@@ -104,13 +104,23 @@ func (c *ChangepointOptions) GenerateAutoChangepoints(t []time.Time) []Changepoi
 	return chpts
 }
 
-func (c ChangepointOptions) GenerateFeatures(t []time.Time, trainingEndTime time.Time) *feature.Set {
+func (c ChangepointOptions) GenerateFeatures(t []time.Time, trainingEndTime time.Time, trained bool) *feature.Set {
+	if len(t) < 1 {
+		return nil
+	}
 	chpts := c.Changepoints
 	filteredChpts := make([]Changepoint, 0, len(chpts))
 	for _, chpt := range chpts {
 		// skip over changepoints that are after the training end time since they'll
 		// not have been modeled producing zeroes in the feature set
 		if chpt.T.After(trainingEndTime) {
+			continue
+		}
+		// skip over changepoints that are before the input time as they will create dependent features
+		// e.g. constant bias and seasonality orders
+		// this only applied during training as during inference we do want changepoints that were before the
+		// earliest time point
+		if !trained && (chpt.T.Before(t[0]) || chpt.T.Equal(t[0])) {
 			continue
 		}
 		filteredChpts = append(filteredChpts, chpt)

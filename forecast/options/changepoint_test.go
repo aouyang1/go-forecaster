@@ -131,6 +131,7 @@ func TestGenerateFeatures(t *testing.T) {
 	testData := map[string]struct {
 		opt             *ChangepointOptions
 		trainingEndTime time.Time
+		trained         bool
 		expected        *feature.Set
 	}{
 		"no changepoints": {
@@ -146,6 +147,36 @@ func TestGenerateFeatures(t *testing.T) {
 			},
 			trainingEndTime: endTime,
 			expected:        feature.NewSet(),
+		},
+		"changepoint before start": {
+			opt: &ChangepointOptions{
+				Changepoints: []Changepoint{
+					{Name: "chpt1", T: endTime.Add(-2 * 7 * 24 * time.Hour)},
+				},
+			},
+			trainingEndTime: endTime,
+			expected:        feature.NewSet(),
+		},
+		"changepoint before start but trained": {
+			opt: &ChangepointOptions{
+				Changepoints: []Changepoint{
+					{Name: "chpt1", T: endTime.Add(-2 * 7 * 24 * time.Hour)},
+				},
+			},
+			trainingEndTime: endTime,
+			trained:         true,
+			expected: feature.NewSet().Set(
+				feature.NewChangepoint("chpt1", feature.ChangepointCompBias),
+				[]float64{
+					1, 1, 1, 1, // Thursday
+					1, 1, 1, 1, // Friday
+					1, 1, 1, 1, // Saturday
+					1, 1, 1, 1, // Sunday
+					1, 1, 1, 1, // Monday
+					1, 1, 1, 1, // Tuesday
+					1, 1, 1, 1, // Wednesday
+				},
+			),
 		},
 		"valid single changepoint": {
 			opt: &ChangepointOptions{
@@ -220,7 +251,7 @@ func TestGenerateFeatures(t *testing.T) {
 	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			res := td.opt.GenerateFeatures(tSeries, td.trainingEndTime)
+			res := td.opt.GenerateFeatures(tSeries, td.trainingEndTime, td.trained)
 			compareFeatureSet(t, td.expected, res, 1e-4)
 		})
 	}

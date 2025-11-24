@@ -89,7 +89,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	if !f.trained {
 		f.opt.ChangepointOptions.GenerateAutoChangepoints(t)
 	}
-	chptFeat := f.opt.ChangepointOptions.GenerateFeatures(t, f.trainEndTime)
+	chptFeat := f.opt.ChangepointOptions.GenerateFeatures(t, f.trainEndTime, f.trained)
 	tFeat.Update(chptFeat)
 	feat.Update(chptFeat)
 
