@@ -757,6 +757,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 
 	testData := map[string]struct {
 		opt      *Options
+		trained  bool
 		expected *feature.Set
 		err      error
 	}{
@@ -1110,7 +1111,7 @@ func TestGenerateFourierFeatures(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tFeat, _ := td.opt.GenerateTimeFeatures(tSeries)
 
-			chptFeat := td.opt.ChangepointOptions.GenerateFeatures(tSeries, tSeries[len(tSeries)-1])
+			chptFeat := td.opt.ChangepointOptions.GenerateFeatures(tSeries, tSeries[len(tSeries)-1], td.trained)
 			tFeat.Update(chptFeat)
 
 			res, err := td.opt.GenerateFourierFeatures(tFeat)
