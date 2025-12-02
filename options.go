@@ -14,6 +14,9 @@ type OutlierOptions struct {
 	UpperPercentile float64 `json:"upper_percentile"`
 	LowerPercentile float64 `json:"lower_percentile"`
 	TukeyFactor     float64 `json:"tukey_factor"`
+
+	// Events are explicitly set time ranges that are excluded from training
+	Events []options.Event `json:"events"`
 }
 
 // NewOutlierOptions generates a default set of outlier options

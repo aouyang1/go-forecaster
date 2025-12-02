@@ -14,7 +14,6 @@ import (
 
 	"github.com/aouyang1/go-forecaster/forecast"
 	"github.com/aouyang1/go-forecaster/linearmodel"
-	"github.com/aouyang1/go-forecaster/stats"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"gonum.org/v1/gonum/floats"
@@ -169,6 +168,9 @@ func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64, seriesFor
 	numPasses := 0
 	if outlierOpts != nil {
 		numPasses = outlierOpts.NumPasses
+
+		// remove manually configured outlier events
+		removeOutlierEvents(t, y, outlierOpts.Events)
 	}
 
 	var residual []float64
@@ -179,32 +181,8 @@ func (f *Forecaster) fitSeriesWithOutliers(t []time.Time, y []float64, seriesFor
 
 		residual = seriesForecast.Residuals()
 
-		// break out if no outlier options provided
-		if f.opt.SeriesOptions.OutlierOptions == nil {
+		if autoRemoveOutliers(t, y, residual, outlierOpts) == 0 {
 			break
-		}
-
-		outlierIdxs := stats.DetectOutliers(
-			residual,
-			outlierOpts.LowerPercentile,
-			outlierOpts.UpperPercentile,
-			outlierOpts.TukeyFactor,
-		)
-		outlierSet := make(map[int]struct{})
-		for _, idx := range outlierIdxs {
-			outlierSet[idx] = struct{}{}
-		}
-
-		// no more outliers detected with outlier options so break early
-		if len(outlierIdxs) == 0 {
-			break
-		}
-
-		for i := range len(t) {
-			if _, exists := outlierSet[i]; exists {
-				y[i] = math.NaN()
-				continue
-			}
 		}
 	}
 	return residual, nil

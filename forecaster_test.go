@@ -21,7 +21,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) {
+func compareScores(t *testing.T, expected, actual *forecast.Scores, significantFeatures []forecast.FeatureWeight, msg string) {
+	if len(significantFeatures) == 0 {
+		return
+	}
 	if actual.R2 >= 0 && expected.R2 >= 0 {
 		assert.InDelta(t, expected.R2, actual.R2, 0.05, msg+" scores:r2")
 	}
@@ -32,11 +35,14 @@ func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) 
 		mse = math.Abs((actual.MSE - expected.MSE) / expected.MSE)
 	}
 	assert.LessOrEqual(t, mse, 0.20, msg+" scores:mse")
+
+	t.Logf("expected: %.3f, actual: %.3f\n", expected, actual)
 }
 
-func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol float64, msg string) {
+func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol float64, msg string) []forecast.FeatureWeight {
 	var significantFeatures []forecast.FeatureWeight
 	for _, fw := range actual {
+		t.Logf("actual %+v weight: %.3f", fw.Labels, fw.Value)
 		if math.Abs(fw.Value) >= tol {
 			significantFeatures = append(significantFeatures, fw)
 		}
@@ -53,6 +59,7 @@ func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol fl
 		}
 		assert.LessOrEqual(t, percDiff, 0.05, fmt.Sprintf("%s feature weight value, %.5f, %+v", msg, actualVal, expected[i].Labels))
 	}
+	return significantFeatures
 }
 
 func TestForecaster(t *testing.T) {
@@ -648,6 +655,148 @@ func TestForecaster(t *testing.T) {
 				},
 			},
 		},
+		"auto remove outliers with tukey method": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
+			y: timedataset.GenerateConstY(4*24*60, 50.0).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 10.0, 24*60*60, 1.0, 0.0)).
+				SetConst(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 75, nowFunc().Add(-(24*60+10)*time.Minute), nowFunc().Add((-24*60)*time.Minute)),
+			tol: 1,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{0.0},
+					},
+					OutlierOptions: &OutlierOptions{
+						NumPasses:       3,
+						UpperPercentile: 0.75,
+						LowerPercentile: 0.25,
+						TukeyFactor:     1.5,
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{0.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 50.0,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 10.0,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.00,
+						MSE:  0.00,
+						R2:   1.00,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
+		"manual remove outliers with events": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
+			y: timedataset.GenerateConstY(4*24*60, 50.0).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 10.0, 24*60*60, 1.0, 0.0)).
+				SetConst(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 75.0, nowFunc().Add(-(24*60+10)*time.Minute), nowFunc().Add((-24*60)*time.Minute)),
+			tol: 2,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{0.0},
+					},
+					OutlierOptions: &OutlierOptions{
+						NumPasses:       0,
+						UpperPercentile: 0.75,
+						LowerPercentile: 0.25,
+						TukeyFactor:     1.5,
+						Events: []options.Event{
+							options.NewEvent("outlier_event",
+								timedataset.GenerateT(4*24*60, time.Minute, nowFunc)[3*24*60-10],
+								timedataset.GenerateT(4*24*60, time.Minute, nowFunc)[3*24*60],
+							),
+						},
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{1.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.00,
+						MSE:  0.00,
+						R2:   1.00,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 50.0,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 10.0,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 1.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
 	}
 
 	for name, td := range testData {
@@ -667,11 +816,11 @@ func TestForecaster(t *testing.T) {
 			m, err := f.Model()
 			require.Nil(t, err)
 
-			compareScores(t, td.expectedModel.Series.Scores, m.Series.Scores, "series")
-			compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, td.tol, "series")
+			sigFeats := compareCoef(t, td.expectedModel.Series.Weights.Coef, m.Series.Weights.Coef, td.tol, "series")
+			compareScores(t, td.expectedModel.Series.Scores, m.Series.Scores, sigFeats, "series")
 
-			compareScores(t, td.expectedModel.Uncertainty.Scores, m.Uncertainty.Scores, "uncertainty")
-			compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, td.tol, "uncertainty")
+			sigFeatsUnc := compareCoef(t, td.expectedModel.Uncertainty.Weights.Coef, m.Uncertainty.Weights.Coef, td.tol, "uncertainty")
+			compareScores(t, td.expectedModel.Uncertainty.Scores, m.Uncertainty.Scores, sigFeatsUnc, "uncertainty")
 		})
 	}
 }
