@@ -31,7 +31,7 @@ func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) 
 	if expected.MSE > 0 {
 		mse = math.Abs((actual.MSE - expected.MSE) / expected.MSE)
 	}
-	assert.LessOrEqual(t, mse, 0.30, msg+" scores:mse")
+	assert.LessOrEqual(t, mse, 0.20, msg+" scores:mse")
 
 	t.Logf("expected: %.3f, actual: %.3f\n", expected, actual)
 }
