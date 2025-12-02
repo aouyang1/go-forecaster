@@ -2,8 +2,11 @@ package forecaster
 
 import (
 	"math"
+	"slices"
 	"time"
 
+	"github.com/aouyang1/go-forecaster/forecast/options"
+	"github.com/aouyang1/go-forecaster/stats"
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
@@ -147,4 +150,66 @@ func handleNaN(val float64) any {
 		return "-"
 	}
 	return val
+}
+
+// removeOutlierEvents does an inplace setting of the training data to NaN if the time range
+// is within or equal to the events' start/end times
+func removeOutlierEvents(t []time.Time, y []float64, events []options.Event) {
+	if len(events) == 0 {
+		return
+	}
+	for i, ts := range t {
+		if math.IsNaN(y[i]) {
+			continue
+		}
+		for event := range slices.Values(events) {
+			if math.IsNaN(y[i]) {
+				// already removed from prior event due to overlapping events
+				continue
+			}
+
+			if ts.After(event.Start) && ts.Before(event.End) {
+				y[i] = math.NaN()
+				continue
+			}
+			if ts.Equal(event.Start) || ts.Equal(event.End) {
+				y[i] = math.NaN()
+				continue
+			}
+		}
+	}
+}
+
+// autoRemoveOutliers uses the Tukey method for detecting outliers and setting those data points
+// to NaN. We detect outliers from residuals of the fit instead of the original data itself.
+// We return number of outlier detected so that when none are found, the caller can early
+// break out
+func autoRemoveOutliers(t []time.Time, y, residual []float64, opts *OutlierOptions) int {
+	if opts == nil || opts.NumPasses == 0 {
+		return 0
+	}
+
+	outlierIdxs := stats.DetectOutliers(
+		residual,
+		opts.LowerPercentile,
+		opts.UpperPercentile,
+		opts.TukeyFactor,
+	)
+	outlierSet := make(map[int]struct{})
+	for _, idx := range outlierIdxs {
+		outlierSet[idx] = struct{}{}
+	}
+
+	// no more outliers detected with outlier options so break early
+	if len(outlierIdxs) == 0 {
+		return 0
+	}
+
+	for i := range len(t) {
+		if _, exists := outlierSet[i]; exists {
+			y[i] = math.NaN()
+			continue
+		}
+	}
+	return len(outlierIdxs)
 }

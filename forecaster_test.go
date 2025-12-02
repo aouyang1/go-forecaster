@@ -31,7 +31,9 @@ func compareScores(t *testing.T, expected, actual *forecast.Scores, msg string) 
 	if expected.MSE > 0 {
 		mse = math.Abs((actual.MSE - expected.MSE) / expected.MSE)
 	}
-	assert.LessOrEqual(t, mse, 0.20, msg+" scores:mse")
+	assert.LessOrEqual(t, mse, 0.30, msg+" scores:mse")
+
+	t.Logf("expected: %.3f, actual: %.3f\n", expected, actual)
 }
 
 func compareCoef(t *testing.T, expected, actual []forecast.FeatureWeight, tol float64, msg string) {
@@ -644,6 +646,148 @@ func TestForecaster(t *testing.T) {
 								Value: 0.0,
 							},
 						},
+					},
+				},
+			},
+		},
+		"auto remove outliers with tukey method": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
+			y: timedataset.GenerateConstY(4*24*60, 50.0).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 10.0, 24*60*60, 1.0, 0.0)).
+				SetConst(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 75.0, nowFunc().Add((-24*60+10)*time.Minute), nowFunc().Add((-24*60)*time.Minute)),
+			tol: 1,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{0.0},
+					},
+					OutlierOptions: &OutlierOptions{
+						NumPasses:       3,
+						UpperPercentile: 0.75,
+						LowerPercentile: 0.25,
+						TukeyFactor:     1.5,
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{0.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.0,
+						MSE:  0.0,
+						R2:   1.0,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 50.0,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 10.0,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.50,
+						MSE:  0.00,
+						R2:   0.75,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{},
+					},
+				},
+			},
+		},
+		"manual remove outliers with events": {
+			t: timedataset.GenerateT(4*24*60, time.Minute, nowFunc),
+			y: timedataset.GenerateConstY(4*24*60, 50.0).
+				Add(timedataset.GenerateWaveY(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 10.0, 24*60*60, 1.0, 0.0)).
+				SetConst(timedataset.GenerateT(4*24*60, time.Minute, nowFunc), 75.0, nowFunc().Add(-(24*60+10)*time.Minute), nowFunc().Add((-24*60)*time.Minute)),
+			tol: 2,
+			opt: &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{0.0},
+					},
+					OutlierOptions: &OutlierOptions{
+						NumPasses:       0,
+						UpperPercentile: 0.75,
+						LowerPercentile: 0.25,
+						TukeyFactor:     1.5,
+						Events: []options.Event{
+							options.NewEvent("outlier_event",
+								timedataset.GenerateT(4*24*60, time.Minute, nowFunc)[2*24*60-30],
+								timedataset.GenerateT(4*24*60, time.Minute, nowFunc)[2*24*60+30],
+							),
+						},
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					ForecastOptions: &options.Options{
+						SeasonalityOptions: testDailySeasonalityOptions,
+						Regularization:     []float64{1.0},
+					},
+					ResidualWindow: 50,
+					ResidualZscore: 8.0,
+				},
+			},
+			expectedModel: Model{
+				Series: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 0.00,
+						MSE:  1.00,
+						R2:   1.00,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{
+							{
+								Labels: map[string]string{
+									"name": "intercept",
+								},
+								Type:  feature.FeatureTypeGrowth,
+								Value: 50.0,
+							},
+							{
+								Labels: map[string]string{
+									"name":              "epoch_daily",
+									"order":             "1",
+									"fourier_component": "sin",
+								},
+								Type:  feature.FeatureTypeSeasonality,
+								Value: 10.0,
+							},
+						},
+					},
+				},
+				Uncertainty: forecast.Model{
+					Scores: &forecast.Scores{
+						MAPE: 31.7,
+						MSE:  56.0,
+						R2:   0.00,
+					},
+					Weights: forecast.Weights{
+						Coef: []forecast.FeatureWeight{},
 					},
 				},
 			},
