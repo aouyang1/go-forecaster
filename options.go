@@ -45,6 +45,7 @@ type UncertaintyOptions struct {
 	ForecastOptions *options.Options `json:"forecast_options"`
 	ResidualWindow  int              `json:"residual_window"`
 	ResidualZscore  float64          `json:"residual_zscore"`
+	Percentage      float64          `json:"percentage"`
 }
 
 func NewUncertaintyOptions() *UncertaintyOptions {

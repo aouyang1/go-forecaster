@@ -66,11 +66,14 @@ func New(opt *Options) (*Forecaster, error) {
 	}
 	f.seriesForecast = seriesForecast
 
-	uncertaintyForecast, err := forecast.New(f.opt.UncertaintyOptions.ForecastOptions)
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize uncertainty forecast, %w", err)
+	// if we specify overriding uncertainty to be a percentage of the forecast then we do not have to fit the uncertainty
+	if f.opt.UncertaintyOptions.Percentage == 0 {
+		uncertaintyForecast, err := forecast.New(f.opt.UncertaintyOptions.ForecastOptions)
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize uncertainty forecast, %w", err)
+		}
+		f.uncertaintyForecast = uncertaintyForecast
 	}
-	f.uncertaintyForecast = uncertaintyForecast
 	return f, nil
 }
 
@@ -88,9 +91,13 @@ func NewFromModel(model Model) (*Forecaster, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to load from series model, %w", err)
 	}
-	uncertaintyForecast, err := forecast.NewFromModel(model.Uncertainty)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load from uncertainty model, %w", err)
+
+	var uncertaintyForecast *forecast.Forecast
+	if model.Options.UncertaintyOptions.Percentage == 0 {
+		uncertaintyForecast, err = forecast.NewFromModel(model.Uncertainty)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load from uncertainty model, %w", err)
+		}
 	}
 	f := &Forecaster{
 		opt:                 opt,
@@ -126,36 +133,45 @@ func (f *Forecaster) Fit(t []time.Time, y []float64) error {
 		}
 	}
 
-	uncertaintySeries, err := f.generateUncertaintySeries(residual)
-	if err != nil {
-		return fmt.Errorf("unable to generate uncertainty series, %w", err)
-	}
-
-	// shifting time by half the residual window since computing the uncertainty series is similar to a
-	// finite impulse response filtering having a group delay of window/2.
-	start := f.opt.UncertaintyOptions.ResidualWindow / 2
-	end := len(t) - f.opt.UncertaintyOptions.ResidualWindow/2 - f.opt.UncertaintyOptions.ResidualWindow%2 + 1
-
-	// create uncertainty to align with original time window since td.T may have changed
-	// after outlier removal
-	f.uncertainty = make([]float64, len(t))
-	var k int
-	for i := range len(t) {
-		if t[i].Equal(td.T[k+start]) && k < len(uncertaintySeries) {
-			f.uncertainty[i] = uncertaintySeries[k]
-			k += 1
-		} else {
-			f.uncertainty[i] = math.NaN()
+	// don't fit uncertainty if we override with setting uncertainty to a percentage of forecast
+	if f.opt.UncertaintyOptions.Percentage == 0 {
+		uncertaintySeries, err := f.generateUncertaintySeries(residual)
+		if err != nil {
+			return fmt.Errorf("unable to generate uncertainty series, %w", err)
 		}
-	}
 
-	if err := f.fitUncertainty(td.T[start:end], uncertaintySeries, f.uncertaintyForecast); err != nil {
-		return err
+		// shifting time by half the residual window since computing the uncertainty series is similar to a
+		// finite impulse response filtering having a group delay of window/2.
+		start := f.opt.UncertaintyOptions.ResidualWindow / 2
+		end := len(t) - f.opt.UncertaintyOptions.ResidualWindow/2 - f.opt.UncertaintyOptions.ResidualWindow%2 + 1
+
+		// create uncertainty to align with original time window since td.T may have changed
+		// after outlier removal
+		f.uncertainty = make([]float64, len(t))
+		var k int
+		for i := range len(t) {
+			if t[i].Equal(td.T[k+start]) && k < len(uncertaintySeries) {
+				f.uncertainty[i] = uncertaintySeries[k]
+				k += 1
+			} else {
+				f.uncertainty[i] = math.NaN()
+			}
+		}
+
+		if err := f.fitUncertainty(td.T[start:end], uncertaintySeries, f.uncertaintyForecast); err != nil {
+			return err
+		}
 	}
 
 	f.fitResults, err = f.Predict(t)
 	if err != nil {
 		return fmt.Errorf("unable to get predicted values from training set, %w", err)
+	}
+
+	// due to no fitting we will post-calculate the uncertainty from the forecast result
+	if f.opt.UncertaintyOptions.Percentage > 0 {
+		f.uncertainty = make([]float64, len(t))
+		floats.ScaleTo(f.uncertainty, f.opt.UncertaintyOptions.Percentage, f.fitResults.Forecast)
 	}
 
 	return nil
@@ -245,9 +261,23 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to predict series forecasts, %w", err)
 	}
-	uncertaintyRes, uncertaintyComp, err := f.uncertaintyForecast.Predict(t)
-	if err != nil {
-		return nil, fmt.Errorf("unable to predict uncertainty forecasts, %w", err)
+
+	r := &Results{
+		T:                t,
+		Forecast:         seriesRes,
+		SeriesComponents: seriesComp,
+	}
+
+	var uncertaintyRes []float64
+	var uncertaintyComp forecast.Components
+	if f.opt.UncertaintyOptions.Percentage == 0 {
+		uncertaintyRes, uncertaintyComp, err = f.uncertaintyForecast.Predict(t)
+		if err != nil {
+			return nil, fmt.Errorf("unable to predict uncertainty forecasts, %w", err)
+		}
+	} else {
+		uncertaintyRes = make([]float64, len(seriesRes))
+		floats.ScaleTo(uncertaintyRes, f.opt.UncertaintyOptions.Percentage, seriesRes)
 	}
 
 	// cap uncertainty predictions to be greater than or equal to minimum uncertainty value defaulting to 0.0
@@ -257,12 +287,7 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 		}
 	}
 
-	r := &Results{
-		T:                     t,
-		Forecast:              seriesRes,
-		SeriesComponents:      seriesComp,
-		UncertaintyComponents: uncertaintyComp,
-	}
+	r.UncertaintyComponents = uncertaintyComp
 	upper := make([]float64, len(seriesRes))
 	lower := make([]float64, len(seriesRes))
 
@@ -343,11 +368,17 @@ func (f *Forecaster) SeriesCoefficients() (map[string]float64, error) {
 
 // UncertaintyIntercept returns the intercept of the uncertainty fit
 func (f *Forecaster) UncertaintyIntercept() (float64, error) {
+	if f.opt.UncertaintyOptions.Percentage > 0 {
+		return 0.0, nil // No uncertainty model when using percentage
+	}
 	return f.uncertaintyForecast.Intercept()
 }
 
 // UncertaintyCoefficients returns all uncertainty coefficient weights associated with the component label string
 func (f *Forecaster) UncertaintyCoefficients() (map[string]float64, error) {
+	if f.opt.UncertaintyOptions.Percentage > 0 {
+		return make(map[string]float64), nil // No uncertainty model when using percentage
+	}
 	return f.uncertaintyForecast.Coefficients()
 }
 
@@ -358,10 +389,19 @@ func (f *Forecaster) Model() (Model, error) {
 	if err != nil {
 		return Model{}, fmt.Errorf("unable to fetch series model, %w", err)
 	}
-	uncertaintyModel, err := f.uncertaintyForecast.Model()
-	if err != nil {
-		return Model{}, fmt.Errorf("unable to fetch uncertainty moodel, %w", err)
+
+	var uncertaintyModel forecast.Model
+	// Only get uncertainty model if not using percentage-based uncertainty
+	if f.opt.UncertaintyOptions.Percentage == 0 {
+		uncertaintyModel, err = f.uncertaintyForecast.Model()
+		if err != nil {
+			return Model{}, fmt.Errorf("unable to fetch uncertainty moodel, %w", err)
+		}
+	} else {
+		// Create an empty uncertainty model for percentage-based uncertainty
+		uncertaintyModel = forecast.Model{}
 	}
+
 	m := Model{
 		Options:     f.opt,
 		Series:      seriesModel,
@@ -379,6 +419,9 @@ func (f *Forecaster) SeriesModelEq() (string, error) {
 // UncertaintyModelEq returns a string representation of the fit uncertainty model represented as
 // y ~ b + m1x1 + m2x2 ...
 func (f *Forecaster) UncertaintyModelEq() (string, error) {
+	if f.opt.UncertaintyOptions.Percentage > 0 {
+		return "", nil // No uncertainty model when using percentage
+	}
 	return f.uncertaintyForecast.ModelEq()
 }
 
