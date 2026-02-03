@@ -970,6 +970,19 @@ func Example_forecasterWithOutliers() {
 	// Output:
 }
 
+func Example_forecasterWithOutliersConstantUncertainty() {
+	t, y, opt := setupWithOutliers()
+	opt.UncertaintyOptions.Percentage = 0.10
+	opt.MinUncertaintyValue = 0.0
+
+	defer recoverForecastPanic(nil)
+
+	if err := runForecastExample(opt, t, y, "examples/forecaster_constant_uncertainty.html"); err != nil {
+		panic(err)
+	}
+	// Output:
+}
+
 func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 4 * 24 * 60
@@ -1181,6 +1194,69 @@ func Example_forecasterWithPulses() {
 	// Output:
 }
 
+func TestFixedPercentageUncertainty(t *testing.T) {
+	nowFunc := func() time.Time {
+		return time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC)
+	}
+
+	testData := map[string]struct {
+		percentage     float64
+		seriesValues   []float64
+		expectedUpper  []float64
+		expectedLower  []float64
+		minUncertainty float64
+	}{
+		"10% of constant series": {
+			percentage:     0.1,
+			seriesValues:   []float64{100.0, 100.0, 100.0, 100.0, 100.0},
+			expectedUpper:  []float64{110.0, 110.0, 110.0, 110.0, 110.0},
+			expectedLower:  []float64{90.0, 90.0, 90.0, 90.0, 90.0},
+			minUncertainty: 0.0,
+		},
+		"5% with min uncertainty": {
+			percentage:     0.05,
+			seriesValues:   []float64{100.0, 100.0, 100.0, 100.0, 100.0},
+			expectedUpper:  []float64{106.0, 106.0, 106.0, 106.0, 106.0},
+			expectedLower:  []float64{94.0, 94.0, 94.0, 94.0, 94.0},
+			minUncertainty: 6.0,
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			opt := &Options{
+				SeriesOptions: &SeriesOptions{
+					ForecastOptions: &options.Options{
+						Regularization: []float64{0.0},
+					},
+				},
+				UncertaintyOptions: &UncertaintyOptions{
+					Percentage: td.percentage,
+				},
+				MinUncertaintyValue: td.minUncertainty,
+			}
+
+			f, err := New(opt)
+			require.Nil(t, err)
+
+			timestamps := timedataset.GenerateT(len(td.seriesValues), time.Minute, nowFunc)
+			err = f.Fit(timestamps, td.seriesValues)
+			require.Nil(t, err)
+
+			// Test prediction to verify percentage uncertainty
+			futureNow := func() time.Time {
+				return nowFunc().Add(time.Duration(len(td.seriesValues)) * time.Minute)
+			}
+			futureTimes := timedataset.GenerateT(5, time.Minute, futureNow)
+			results, err := f.Predict(futureTimes)
+			require.Nil(t, err)
+
+			assert.InDeltaSlice(t, td.expectedLower, results.Lower, 1e-5, "lower")
+			assert.InDeltaSlice(t, td.expectedUpper, results.Upper, 1e-5, "upper")
+		})
+	}
+}
+
 func TestMatrixMulWithNaN(t *testing.T) {
 	// Initialize two matrices, a and b.
 	a := mat.NewDense(1, 2, []float64{
@@ -1231,7 +1307,7 @@ func BenchmarkTrainToModel(b *testing.B) {
 		panic(err)
 	}
 
-	if err := os.WriteFile("benchmark_model.json", bytes, 0644); err != nil {
+	if err := os.WriteFile("benchmark_model.json", bytes, 0o644); err != nil {
 		panic(err)
 	}
 }

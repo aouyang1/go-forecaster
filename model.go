@@ -97,9 +97,16 @@ func (m Model) tablePrintUncertaintyOptions(w io.Writer) error {
 	if m.Options.UncertaintyOptions == nil {
 		return nil
 	}
-	_, err := fmt.Fprintf(w, "    Residual Window: %d samples    Residual Z-Score: %.3f\n",
-		m.Options.UncertaintyOptions.ResidualWindow,
-		m.Options.UncertaintyOptions.ResidualZscore,
-	)
+	var err error
+	if m.Options.UncertaintyOptions.Percentage == 0 {
+		_, err = fmt.Fprintf(w, "    Residual Window: %d samples    Residual Z-Score: %.3f\n",
+			m.Options.UncertaintyOptions.ResidualWindow,
+			m.Options.UncertaintyOptions.ResidualZscore,
+		)
+	} else {
+		_, err = fmt.Fprintf(w, "    Fixed Percentage: %.2f%%\n",
+			m.Options.UncertaintyOptions.Percentage*100.0,
+		)
+	}
 	return err
 }
