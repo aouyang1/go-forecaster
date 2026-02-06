@@ -9,6 +9,7 @@ import (
 const (
 	GrowthIntercept = "intercept"
 	GrowthLinear    = "linear"
+	GrowthQuadratic = "quadratic"
 )
 
 type Growth struct {
@@ -65,4 +66,12 @@ func (g *Growth) UnmarshalJSON(data []byte) error {
 
 func Intercept() *Growth {
 	return NewGrowth(GrowthIntercept)
+}
+
+func Linear() *Growth {
+	return NewGrowth(GrowthLinear)
+}
+
+func Quadratic() *Growth {
+	return NewGrowth(GrowthQuadratic)
 }

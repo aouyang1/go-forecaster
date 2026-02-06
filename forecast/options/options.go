@@ -24,6 +24,11 @@ const (
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
 
+// GrowthOptions configures growth features for the forecast
+type GrowthOptions struct {
+	Type string `json:"type"` // "linear" or "quadratic"
+}
+
 // Options configures a forecast by specifying changepoints, seasonality order
 // and an optional regularization parameter where higher values removes more features
 // that contribute the least to the fit.
@@ -45,6 +50,7 @@ type Options struct {
 	EventSeriesOptions EventSeriesOptions `json:"-"`
 	EventOptions       EventOptions       `json:"event_options"`
 	MaskWindow         string             `json:"mask_window"`
+	GrowthOptions      *GrowthOptions     `json:"growth_options"`
 }
 
 // NewDefaultOptions returns a set of default forecast options
@@ -80,17 +86,12 @@ func (o *Options) NewLassoAutoOptions() *linearmodel.LassoAutoOptions {
 	return lassoOpt
 }
 
-func (o *Options) GenerateTimeFeatures(t []time.Time) (*feature.Set, *feature.Set) {
+func (o *Options) GenerateTimeFeatures(t []time.Time, trainStartTime, trainEndTime time.Time) (*feature.Set, *feature.Set) {
 	if o == nil {
 		o = NewDefaultOptions()
 	}
 
 	tFeat := feature.NewSet()
-
-	interceptFeat := feature.Intercept()
-	ones := make([]float64, len(t))
-	floats.AddConst(1.0, ones)
-	tFeat.Set(interceptFeat, ones)
 
 	epoch := make([]float64, len(t))
 	for i, tPnt := range t {
@@ -100,10 +101,49 @@ func (o *Options) GenerateTimeFeatures(t []time.Time) (*feature.Set, *feature.Se
 	feat := feature.NewTime(LabelTimeEpoch)
 	tFeat.Set(feat, epoch)
 
+	o.generateGrowthFeatures(epoch, trainStartTime, trainEndTime, tFeat)
+
 	eFeat := o.GenerateEventFeatures(t)
 	tFeat.Update(eFeat)
 
 	return tFeat, eFeat
+}
+
+func (o *Options) generateGrowthFeatures(epoch []float64, trainStartTime, trainEndTime time.Time, tFeat *feature.Set) {
+	interceptFeat := feature.Intercept()
+	ones := make([]float64, len(epoch))
+	floats.AddConst(1.0, ones)
+	tFeat.Set(interceptFeat, ones)
+
+	if o.GrowthOptions == nil {
+		return
+	}
+
+	// Add growth features if specified
+
+	// ensure that first feature is at 0
+	epochTrainStart := float64(trainStartTime.UnixNano()) / 1e9
+
+	// ensure last feature is at 1.0
+	scale := float64(trainEndTime.Sub(trainStartTime).Nanoseconds()) / 1e9
+
+	switch o.GrowthOptions.Type {
+	case feature.GrowthLinear:
+		linearGrowth := make([]float64, len(epoch))
+		for i, epochT := range epoch {
+			linearGrowth[i] = (float64(epochT) - epochTrainStart) / scale
+		}
+		linearFeat := feature.Linear()
+		tFeat.Set(linearFeat, linearGrowth)
+
+	case feature.GrowthQuadratic:
+		quadraticGrowth := make([]float64, len(epoch))
+		for i, epochT := range epoch {
+			quadraticGrowth[i] = math.Pow((float64(epochT)-epochTrainStart)/scale, 2.0)
+		}
+		quadraticFeat := feature.Quadratic()
+		tFeat.Set(quadraticFeat, quadraticGrowth)
+	}
 }
 
 func (o *Options) GenerateEventFeatures(t []time.Time) *feature.Set {

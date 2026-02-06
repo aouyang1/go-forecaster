@@ -671,7 +671,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			features, _ := td.opt.GenerateTimeFeatures(td.t)
+			startTrainTime := timedataset.TimeSlice(td.t).StartTime()
+			endTrainTime := timedataset.TimeSlice(td.t).EndTime()
+			features, _ := td.opt.GenerateTimeFeatures(td.t, startTrainTime, endTrainTime)
 			compareFeatureSet(t, td.expected, features, 1e-4)
 		})
 	}
@@ -1109,7 +1111,9 @@ func TestGenerateFourierFeatures(t *testing.T) {
 	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			tFeat, _ := td.opt.GenerateTimeFeatures(tSeries)
+			startTrainTime := timedataset.TimeSlice(tSeries).StartTime()
+			endTrainTime := timedataset.TimeSlice(tSeries).EndTime()
+			tFeat, _ := td.opt.GenerateTimeFeatures(tSeries, startTrainTime, endTrainTime)
 
 			chptFeat := td.opt.ChangepointOptions.GenerateFeatures(tSeries, tSeries[len(tSeries)-1], td.trained)
 			tFeat.Update(chptFeat)
