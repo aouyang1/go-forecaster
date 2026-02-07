@@ -39,6 +39,7 @@ type Forecast struct {
 	scores *Scores // score calculations after training
 
 	// model coefficients
+	trainStartTime  time.Time
 	trainEndTime    time.Time
 	residual        []float64
 	trainComponents Components
@@ -65,6 +66,7 @@ func NewFromModel(model Model) (*Forecast, error) {
 	}
 	f := &Forecast{
 		opt:            model.Options,
+		trainStartTime: model.TrainStartTime,
 		trainEndTime:   model.TrainEndTime,
 		featureWeights: model.Weights.Coef,
 		scores:         model.Scores,
@@ -82,7 +84,7 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 
 	feat := feature.NewSet()
 
-	tFeat, eFeat := f.opt.GenerateTimeFeatures(t)
+	tFeat, eFeat := f.opt.GenerateTimeFeatures(t, f.trainStartTime, f.trainEndTime)
 	feat.Update(eFeat)
 
 	// generate changepoint features
@@ -93,16 +95,33 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	tFeat.Update(chptFeat)
 	feat.Update(chptFeat)
 
+	// generate fourier features
 	seasFeat, err := f.opt.GenerateFourierFeatures(tFeat)
 	if err != nil {
 		return nil, err
 	}
 
 	feat.Update(seasFeat)
+
+	// add growth terms including intercept to features
 	interceptLabel := feature.Intercept()
 	interceptData, exists := tFeat.Get(interceptLabel)
 	if exists {
 		feat.Set(interceptLabel, interceptData)
+	}
+	switch f.opt.GrowthType {
+	case feature.GrowthLinear:
+		growthFeat := feature.Linear()
+		growthData, exists := tFeat.Get(growthFeat)
+		if exists {
+			feat.Set(growthFeat, growthData)
+		}
+	case feature.GrowthQuadratic:
+		growthFeat := feature.Quadratic()
+		growthData, exists := tFeat.Get(growthFeat)
+		if exists {
+			feat.Set(growthFeat, growthData)
+		}
 	}
 
 	// do not include weekly fourier features if time range is less than 1 week
@@ -164,6 +183,7 @@ func (f *Forecast) Fit(t []time.Time, y []float64) error {
 		return ErrInsufficientTrainingData
 	}
 
+	f.trainStartTime = timedataset.TimeSlice(trainingT).StartTime()
 	f.trainEndTime = timedataset.TimeSlice(trainingT).EndTime()
 	// generate features
 	x, err := f.generateFeatures(trainingT)

@@ -2,6 +2,7 @@ package feature
 
 import (
 	"strings"
+	"time"
 
 	"github.com/goccy/go-json"
 )
@@ -73,4 +74,26 @@ func (c *Changepoint) UnmarshalJSON(data []byte) error {
 	c.ChangepointComp = labelStr.ChangepointComp
 	c.str = "chpnt_" + c.Name + "_" + string(c.ChangepointComp)
 	return nil
+}
+
+func (c *Changepoint) Generate(t []time.Time, chptT time.Time, delta float64) []float64 {
+	data := make([]float64, len(t))
+
+	bias := 1.0
+	var slope float64
+	for i := range len(t) {
+		if t[i].Equal(chptT) || t[i].After(chptT) {
+			switch c.ChangepointComp {
+			case ChangepointCompBias:
+				data[i] = bias
+			case ChangepointCompSlope:
+				if delta == 0 {
+					return nil
+				}
+				slope = t[i].Sub(chptT).Seconds() / delta
+				data[i] = slope
+			}
+		}
+	}
+	return data
 }

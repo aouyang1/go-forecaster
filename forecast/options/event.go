@@ -12,7 +12,6 @@ import (
 
 	"github.com/aouyang1/go-forecaster/feature"
 	"github.com/aouyang1/go-forecaster/forecast/util"
-	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/rickar/cal/v2"
 	"github.com/rickar/cal/v2/us"
 )
@@ -50,38 +49,6 @@ func (e *Event) Valid() error {
 		return ErrNoEventName
 	}
 	return nil
-}
-
-// padTime padding is done for the sake of applying a relevant window to the mask. this
-// is only necessary is using anything beyond a rect window function
-func (e *Event) padTime(t []time.Time, start, end time.Time, freq time.Duration) ([]time.Time, int, int) {
-	// pad beginning
-	var startIdx int
-	if e.Start.Before(start) {
-		diff := start.Sub(e.Start)
-		numElem := int(diff/freq) + 1
-		startIdx = numElem
-
-		prefix := make([]time.Time, numElem)
-		for i := range numElem {
-			prefix[i] = start.Add(-time.Duration(numElem-i) * freq)
-		}
-		t = append(prefix, t...)
-	}
-
-	// pad end
-	endIdx := len(t)
-	if e.End.After(end) {
-		diff := e.End.Sub(end)
-		numElem := int(diff/freq) + 1
-
-		suffix := make([]time.Time, numElem)
-		for i := range numElem {
-			suffix[i] = end.Add(time.Duration(i+1) * freq)
-		}
-		t = append(t, suffix...)
-	}
-	return t, startIdx, endIdx
 }
 
 func Christmas(start, end time.Time, durBefore, durAfter time.Duration) []Event {
@@ -123,38 +90,30 @@ func (e EventOptions) generateEventMask(t []time.Time, eFeat *feature.Set, windo
 		return
 	}
 
-	winFunc := WindowFunc(window)
-
-	ts := timedataset.TimeSlice(t)
-	freq, err := ts.EstimateFreq()
-	if err != nil {
-		panic(err)
-	}
-	start := ts.StartTime()
-	end := ts.EndTime()
 	for _, ev := range e.Events {
 		if err := ev.Valid(); err != nil {
 			slog.Warn("not separately modelling invalid event", "name", ev.Name, "error", err.Error())
 			continue
 		}
 
-		evT := t
-		startIdx := 0
-		endIdx := len(t)
-		if window != "" && window != WindowRectangular {
-			evT, startIdx, endIdx = ev.padTime(t, start, end, freq)
+		evStd := feature.EventStandard{
+			Start: ev.Start,
+			End:   ev.End,
 		}
 
-		eventMask := generateEventMaskWithFunc(evT, func(tPnt time.Time) bool {
-			return (tPnt.After(ev.Start) || tPnt.Equal(ev.Start)) && tPnt.Before(ev.End)
-		}, winFunc)
-
-		// truncate result to start/end
-		eventMask = eventMask[startIdx:endIdx]
-		if err := RegisterEventSeries(strings.ReplaceAll(ev.Name, " ", "_"), eFeat, eventMask); err != nil {
-			slog.Warn("unable to register event series", "error", err.Error())
+		name := strings.ReplaceAll(ev.Name, " ", "_")
+		feat := feature.NewEvent(name)
+		if _, exists := eFeat.Get(feat); exists {
+			slog.Warn("event feature already exists", "name", name)
 			continue
 		}
+		data, err := feat.Generate(t, window, evStd)
+		if err != nil {
+			slog.Warn("unable to generate event feature", "error", err.Error())
+			continue
+		}
+
+		eFeat.Set(feat, data)
 	}
 }
 
@@ -178,35 +137,4 @@ func (e EventOptions) TablePrint(w io.Writer, prefix, indent string, indentGrowt
 		}
 	}
 	return tbl.Flush()
-}
-
-func generateEventMaskWithFunc(t []time.Time, maskCond func(tPnt time.Time) bool, windowFunc func(seq []float64) []float64) []float64 {
-	mask := make([]float64, len(t))
-	var maskSpans [][2]int
-	var inMask bool
-	var maskSpan [2]int
-	for i, tPnt := range t {
-		if maskCond(tPnt) {
-			if !inMask {
-				inMask = true
-				maskSpan[0] = i
-			}
-			mask[i] = 1.0
-			continue
-		}
-		if inMask {
-			inMask = false
-			maskSpan[1] = i
-			maskSpans = append(maskSpans, maskSpan)
-		}
-	}
-	if inMask {
-		maskSpan[1] = len(t)
-		maskSpans = append(maskSpans, maskSpan)
-	}
-
-	for _, maskSpan := range maskSpans {
-		windowFunc(mask[maskSpan[0]:maskSpan[1]])
-	}
-	return mask
 }

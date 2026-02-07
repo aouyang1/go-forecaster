@@ -1,6 +1,7 @@
 package feature
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -84,4 +85,19 @@ func (s *Seasonality) UnmarshalJSON(data []byte) error {
 	s.Order = order
 	s.str = "seas_" + s.Name + "_" + strconv.Itoa(s.Order) + "_" + string(s.FourierComp)
 	return nil
+}
+
+func (s *Seasonality) Generate(t []float64, order int, period float64) []float64 {
+	omega := 2.0 * math.Pi * float64(order) / period
+	feat := make([]float64, len(t))
+	for i, tFeat := range t {
+		rad := omega * tFeat
+		switch s.FourierComp {
+		case FourierCompSin:
+			feat[i] = math.Sin(rad)
+		case FourierCompCos:
+			feat[i] = math.Cos(rad)
+		}
+	}
+	return feat
 }

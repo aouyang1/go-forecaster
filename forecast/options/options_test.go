@@ -10,7 +10,6 @@ import (
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gonum.org/v1/gonum/dsp/window"
 	"gonum.org/v1/gonum/floats"
 )
 
@@ -25,42 +24,6 @@ func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
 		require.True(t, exists)
 		require.Equal(t, len(expVals), len(gotVals))
 		assert.InDeltaSlice(t, expVals, gotVals, tol, fmt.Sprintf("feature: %+v, values: %+v\n", f, gotVals))
-	}
-}
-
-func TestWindowFunc(t *testing.T) {
-	testData := map[string]struct {
-		name     string
-		expected func([]float64) []float64
-	}{
-		"bartlett hann":    {WindowBartlettHann, window.BartlettHann},
-		"blackman":         {WindowBlackman, window.Blackman},
-		"blackman harris":  {WindowBlackmanHarris, window.BlackmanHarris},
-		"blackman nuttall": {WindowBlackmanNuttall, window.BlackmanNuttall},
-		"flat top":         {WindowFlatTop, window.FlatTop},
-		"hamming":          {WindowHamming, window.Hamming},
-		"hann":             {WindowHann, window.Hann},
-		"lanczos":          {WindowLanczos, window.Lanczos},
-		"nuttall":          {WindowNuttall, window.Nuttall},
-		"rectangular":      {WindowRectangular, window.Rectangular},
-		"sine":             {WindowSine, window.Sine},
-		"triangular":       {WindowTriangular, window.Triangular},
-		"unknown":          {"unknown", window.Rectangular},
-	}
-
-	numPnts := 10
-	for name, td := range testData {
-		t.Run(name, func(t *testing.T) {
-			res := WindowFunc(td.name)
-
-			seqRes := make([]float64, numPnts)
-			floats.AddConst(1.0, seqRes)
-
-			seqExp := make([]float64, numPnts)
-			floats.AddConst(1.0, seqExp)
-
-			assert.Equal(t, td.expected(seqExp), res(seqRes))
-		})
 	}
 }
 
@@ -671,7 +634,9 @@ func TestGenerateTimeFeatures(t *testing.T) {
 
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			features, _ := td.opt.GenerateTimeFeatures(td.t)
+			startTrainTime := timedataset.TimeSlice(td.t).StartTime()
+			endTrainTime := timedataset.TimeSlice(td.t).EndTime()
+			features, _ := td.opt.GenerateTimeFeatures(td.t, startTrainTime, endTrainTime)
 			compareFeatureSet(t, td.expected, features, 1e-4)
 		})
 	}
@@ -1109,7 +1074,9 @@ func TestGenerateFourierFeatures(t *testing.T) {
 	tSeries := timedataset.GenerateT(4*7, 6*time.Hour, nowFunc)
 	for name, td := range testData {
 		t.Run(name, func(t *testing.T) {
-			tFeat, _ := td.opt.GenerateTimeFeatures(tSeries)
+			startTrainTime := timedataset.TimeSlice(tSeries).StartTime()
+			endTrainTime := timedataset.TimeSlice(tSeries).EndTime()
+			tFeat, _ := td.opt.GenerateTimeFeatures(tSeries, startTrainTime, endTrainTime)
 
 			chptFeat := td.opt.ChangepointOptions.GenerateFeatures(tSeries, tSeries[len(tSeries)-1], td.trained)
 			tFeat.Update(chptFeat)
@@ -1120,6 +1087,199 @@ func TestGenerateFourierFeatures(t *testing.T) {
 				return
 			}
 			compareFeatureSet(t, td.expected, res, 1e-4)
+		})
+	}
+}
+
+func TestGenerateGrowthFeatures(t *testing.T) {
+	testData := map[string]struct {
+		epoch          []float64
+		trainStart     time.Time
+		trainEnd       time.Time
+		growthType     string
+		initialFeature *feature.Set
+		expected       *feature.Set
+	}{
+		"intercept only": {
+			epoch:      []float64{0, 43200, 86400}, // 0, 12h, 24h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: "",
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1},
+			),
+		},
+		"linear growth": {
+			epoch:      []float64{0, 43200, 86400}, // 0, 12h, 24h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthLinear,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1},
+			).Set(
+				feature.Linear(),
+				[]float64{0.0, 0.5, 1.0},
+			),
+		},
+		"quadratic growth": {
+			epoch:      []float64{0, 43200, 86400}, // 0, 12h, 24h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthQuadratic,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1},
+			).Set(
+				feature.Quadratic(),
+				[]float64{0.0, 0.25, 1.0},
+			),
+		},
+		"zero duration": {
+			epoch:      []float64{43200, 86400}, // 12h, 24h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), // Same as start
+			growthType: feature.GrowthLinear,
+			expected:   feature.NewSet(),
+		},
+		"single time point": {
+			epoch:      []float64{43200}, // 12h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthLinear,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1},
+			).Set(
+				feature.Linear(),
+				[]float64{0.5}, // 12h / 24h = 0.5
+			),
+		},
+		"empty epoch": {
+			epoch:      []float64{},
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthLinear,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{},
+			).Set(
+				feature.Linear(),
+				[]float64{},
+			),
+		},
+		"time before training start": {
+			epoch:      []float64{-86400, 0, 43200}, // -24h, 0, 12h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthLinear,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1},
+			).Set(
+				feature.Linear(),
+				[]float64{-1.0, 0.0, 0.5}, // Can be negative for times before start
+			),
+		},
+		"time after training end": {
+			epoch:      []float64{0, 86400, 172800}, // 0, 24h, 48h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthLinear,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1},
+			).Set(
+				feature.Linear(),
+				[]float64{0.0, 1.0, 2.0}, // Can be > 1.0 for times after end
+			),
+		},
+		"invalid growth type": {
+			epoch:      []float64{0, 43200, 86400},
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: "invalid",
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1},
+			), // Should only add intercept, ignore invalid type
+		},
+		"pre-existing features": {
+			epoch:      []float64{0, 43200},
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthLinear,
+			initialFeature: feature.NewSet().Set(
+				feature.NewTime("existing"),
+				[]float64{99, 88},
+			),
+			expected: feature.NewSet().Set(
+				feature.NewTime("existing"),
+				[]float64{99, 88},
+			).Set(
+				feature.Intercept(),
+				[]float64{1, 1},
+			).Set(
+				feature.Linear(),
+				[]float64{0.0, 0.5},
+			),
+		},
+		"multiple time points quadratic": {
+			epoch:      []float64{0, 21600, 43200, 64800, 86400}, // 0, 6h, 12h, 18h, 24h
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 2, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthQuadratic,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1, 1, 1},
+			).Set(
+				feature.Quadratic(),
+				[]float64{0.0, 0.0625, 0.25, 0.5625, 1.0}, // (0/24)^2, (6/24)^2, (12/24)^2, (18/24)^2, (24/24)^2
+			),
+		},
+		"large time range linear": {
+			epoch:      []float64{0, 86400, 2592000}, // 0, 1d, 30d
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 31, 0, 0, 0, 0, time.UTC),
+			growthType: feature.GrowthLinear,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1},
+			).Set(
+				feature.Linear(),
+				[]float64{0.0, 1.0 / 30.0, 1.0}, // 0, 1/30, 1
+			),
+		},
+		"small time range linear": {
+			epoch:      []float64{0, 60, 120, 180}, // 0, 1m, 2m, 3m
+			trainStart: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+			trainEnd:   time.Date(1970, 1, 1, 0, 5, 0, 0, time.UTC), // 5 minute range
+			growthType: feature.GrowthLinear,
+			expected: feature.NewSet().Set(
+				feature.Intercept(),
+				[]float64{1, 1, 1, 1},
+			).Set(
+				feature.Linear(),
+				[]float64{0.0, 0.2, 0.4, 0.6}, // 0/300, 60/300, 120/300, 180/300
+			),
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			tFeat := td.initialFeature
+			if tFeat == nil {
+				tFeat = feature.NewSet()
+			}
+
+			// Create Options instance to access private generateGrowthFeatures method
+			opt := &Options{
+				GrowthType: td.growthType,
+			}
+			opt.generateGrowthFeatures(td.epoch, td.trainStart, td.trainEnd, tFeat)
+
+			compareFeatureSet(t, td.expected, tFeat, 1e-6)
 		})
 	}
 }

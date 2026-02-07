@@ -19,14 +19,19 @@ var ErrUnknownFeatureType = errors.New("unknown feature type")
 // Model represents a serializeable format of a forecast storing the forecast options, fit scores,
 // and coefficients
 type Model struct {
-	TrainEndTime time.Time        `json:"train_end_time"`
-	Options      *options.Options `json:"options"`
-	Scores       *Scores          `json:"scores"`
-	Weights      Weights          `json:"weights"`
+	TrainStartTime time.Time        `json:"train_start_time"`
+	TrainEndTime   time.Time        `json:"train_end_time"`
+	Options        *options.Options `json:"options"`
+	Scores         *Scores          `json:"scores"`
+	Weights        Weights          `json:"weights"`
 }
 
 func (m Model) TablePrint(w io.Writer, prefix, indent string) error {
 	if _, err := fmt.Fprintf(w, "%s%sForecast:\n", prefix, util.IndentExpand(indent, 0)); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintf(w, "%s%sTraining Start Time: %s\n", prefix, util.IndentExpand(indent, 1), m.TrainStartTime); err != nil {
 		return err
 	}
 
