@@ -109,20 +109,18 @@ func (f *Forecast) generateFeatures(t []time.Time) (*feature.Set, error) {
 	if exists {
 		feat.Set(interceptLabel, interceptData)
 	}
-	if f.opt.GrowthOptions != nil {
-		switch f.opt.GrowthOptions.Type {
-		case feature.GrowthLinear:
-			growthFeat := feature.Linear()
-			growthData, exists := tFeat.Get(growthFeat)
-			if exists {
-				feat.Set(growthFeat, growthData)
-			}
-		case feature.GrowthQuadratic:
-			growthFeat := feature.Quadratic()
-			growthData, exists := tFeat.Get(growthFeat)
-			if exists {
-				feat.Set(growthFeat, growthData)
-			}
+	switch f.opt.GrowthType {
+	case feature.GrowthLinear:
+		growthFeat := feature.Linear()
+		growthData, exists := tFeat.Get(growthFeat)
+		if exists {
+			feat.Set(growthFeat, growthData)
+		}
+	case feature.GrowthQuadratic:
+		growthFeat := feature.Quadratic()
+		growthData, exists := tFeat.Get(growthFeat)
+		if exists {
+			feat.Set(growthFeat, growthData)
 		}
 	}
 

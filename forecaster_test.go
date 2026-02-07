@@ -1140,9 +1140,7 @@ func Example_forecasterWithGlobalTrend() {
 				},
 				Iterations: 500,
 				Tolerance:  1e-3,
-				GrowthOptions: &options.GrowthOptions{
-					Type: feature.GrowthLinear,
-				},
+				GrowthType: feature.GrowthLinear,
 			},
 			OutlierOptions: NewOutlierOptions(),
 		},

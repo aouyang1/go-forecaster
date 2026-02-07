@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"slices"
 	"strconv"
 	"time"
@@ -23,11 +22,6 @@ const (
 )
 
 var ErrUnknownTimeFeature = errors.New("unknown time feature")
-
-// GrowthOptions configures growth features for the forecast
-type GrowthOptions struct {
-	Type string `json:"type"` // "linear" or "quadratic"
-}
 
 // Options configures a forecast by specifying changepoints, seasonality order
 // and an optional regularization parameter where higher values removes more features
@@ -50,7 +44,7 @@ type Options struct {
 	EventSeriesOptions EventSeriesOptions `json:"-"`
 	EventOptions       EventOptions       `json:"event_options"`
 	MaskWindow         string             `json:"mask_window"`
-	GrowthOptions      *GrowthOptions     `json:"growth_options"`
+	GrowthType         string             `json:"growth_type"`
 }
 
 // NewDefaultOptions returns a set of default forecast options
@@ -93,12 +87,8 @@ func (o *Options) GenerateTimeFeatures(t []time.Time, trainStartTime, trainEndTi
 
 	tFeat := feature.NewSet()
 
-	epoch := make([]float64, len(t))
-	for i, tPnt := range t {
-		epochNano := float64(tPnt.UnixNano()) / 1e9
-		epoch[i] = epochNano
-	}
 	feat := feature.NewTime(LabelTimeEpoch)
+	epoch := feat.Generate(t)
 	tFeat.Set(feat, epoch)
 
 	o.generateGrowthFeatures(epoch, trainStartTime, trainEndTime, tFeat)
@@ -110,42 +100,25 @@ func (o *Options) GenerateTimeFeatures(t []time.Time, trainStartTime, trainEndTi
 }
 
 func (o *Options) generateGrowthFeatures(epoch []float64, trainStartTime, trainEndTime time.Time, tFeat *feature.Set) {
+	if trainEndTime.Equal(trainStartTime) {
+		return
+	}
 	interceptFeat := feature.Intercept()
-	ones := make([]float64, len(epoch))
-	floats.AddConst(1.0, ones)
-	tFeat.Set(interceptFeat, ones)
+	tFeat.Set(interceptFeat, interceptFeat.Generate(epoch, trainStartTime, trainEndTime))
 
-	if o.GrowthOptions == nil {
+	if o.GrowthType == "" {
 		return
 	}
 
 	// Add growth features if specified
-
-	// ensure that first feature is at 0
-	epochTrainStart := float64(trainStartTime.UnixNano()) / 1e9
-
-	// ensure last feature is at 1.0
-	scale := float64(trainEndTime.Sub(trainStartTime).Nanoseconds()) / 1e9
-	if scale == 0 {
-		return
-	}
-
-	switch o.GrowthOptions.Type {
+	switch o.GrowthType {
 	case feature.GrowthLinear:
-		linearGrowth := make([]float64, len(epoch))
-		for i, epochT := range epoch {
-			linearGrowth[i] = (float64(epochT) - epochTrainStart) / scale
-		}
 		linearFeat := feature.Linear()
-		tFeat.Set(linearFeat, linearGrowth)
+		tFeat.Set(linearFeat, linearFeat.Generate(epoch, trainStartTime, trainEndTime))
 
 	case feature.GrowthQuadratic:
-		quadraticGrowth := make([]float64, len(epoch))
-		for i, epochT := range epoch {
-			quadraticGrowth[i] = math.Pow((float64(epochT)-epochTrainStart)/scale, 2.0)
-		}
 		quadraticFeat := feature.Quadratic()
-		tFeat.Set(quadraticFeat, quadraticGrowth)
+		tFeat.Set(quadraticFeat, quadraticFeat.Generate(epoch, trainStartTime, trainEndTime))
 	}
 }
 
@@ -245,26 +218,13 @@ func generateFourierOrders(tFeatures *feature.Set, orders []int, periodDur time.
 
 	x := feature.NewSet()
 	for _, order := range orders {
-		sinFeat, cosFeat := generateFourierComponent(tFeat, order, period)
-		sinFeatCol := feature.NewSeasonality(col+"_"+label, feature.FourierCompSin, order)
-		cosFeatCol := feature.NewSeasonality(col+"_"+label, feature.FourierCompCos, order)
-		x.Set(sinFeatCol, sinFeat)
-		x.Set(cosFeatCol, cosFeat)
+		sinFeat := feature.NewSeasonality(col+"_"+label, feature.FourierCompSin, order)
+		cosFeat := feature.NewSeasonality(col+"_"+label, feature.FourierCompCos, order)
+		x.Set(sinFeat, sinFeat.Generate(tFeat, order, period))
+		x.Set(cosFeat, cosFeat.Generate(tFeat, order, period))
 	}
 
 	return x, nil
-}
-
-func generateFourierComponent(timeFeature []float64, order int, period float64) ([]float64, []float64) {
-	omega := 2.0 * math.Pi * float64(order) / period
-	sinFeat := make([]float64, len(timeFeature))
-	cosFeat := make([]float64, len(timeFeature))
-	for i, tFeat := range timeFeature {
-		rad := omega * tFeat
-		sinFeat[i] = math.Sin(rad)
-		cosFeat[i] = math.Cos(rad)
-	}
-	return sinFeat, cosFeat
 }
 
 func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sLabel string) (*feature.Set, error) {

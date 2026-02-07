@@ -2,6 +2,7 @@ package feature
 
 import (
 	"strings"
+	"time"
 
 	"github.com/goccy/go-json"
 )
@@ -58,4 +59,13 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 	t.Name = labelStr.Name
 	t.str = "tfeat_" + t.Name
 	return nil
+}
+
+func (t *Time) Generate(times []time.Time) []float64 {
+	epoch := make([]float64, len(times))
+	for i, tPnt := range times {
+		epochNano := float64(tPnt.UnixNano()) / 1e9
+		epoch[i] = epochNano
+	}
+	return epoch
 }
