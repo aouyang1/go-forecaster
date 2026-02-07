@@ -1,6 +1,7 @@
 package feature
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -269,13 +270,5 @@ func TestTimeGenerateKnownValues(t *testing.T) {
 
 // Helper function to check for invalid float values
 func isValueInvalid(val float64) bool {
-	return isValueNaN(val) || isValueInf(val)
-}
-
-func isValueNaN(val float64) bool {
-	return val != val // NaN is the only value that is not equal to itself
-}
-
-func isValueInf(val float64) bool {
-	return val > 1.7976931348623157e+308 || val < -1.7976931348623157e+308
+	return math.IsNaN(val) || math.IsInf(val, 0)
 }
