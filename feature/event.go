@@ -65,11 +65,11 @@ func (e *Event) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (e *Event) Generate(t []time.Time, window string, evSetting EventSetting) ([]float64, error) {
-	return evSetting.Generate(t, window)
+func (e *Event) Generate(t []time.Time, window string, evGenerator EventGenerator) ([]float64, error) {
+	return evGenerator.Generate(t, window)
 }
 
-type EventSetting interface {
+type EventGenerator interface {
 	Generate(t []time.Time, window string) ([]float64, error)
 }
 

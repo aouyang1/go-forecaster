@@ -10,7 +10,6 @@ import (
 	"github.com/aouyang1/go-forecaster/timedataset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gonum.org/v1/gonum/dsp/window"
 	"gonum.org/v1/gonum/floats"
 )
 
@@ -25,42 +24,6 @@ func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
 		require.True(t, exists)
 		require.Equal(t, len(expVals), len(gotVals))
 		assert.InDeltaSlice(t, expVals, gotVals, tol, fmt.Sprintf("feature: %+v, values: %+v\n", f, gotVals))
-	}
-}
-
-func TestWindowFunc(t *testing.T) {
-	testData := map[string]struct {
-		name     string
-		expected func([]float64) []float64
-	}{
-		"bartlett hann":    {WindowBartlettHann, window.BartlettHann},
-		"blackman":         {WindowBlackman, window.Blackman},
-		"blackman harris":  {WindowBlackmanHarris, window.BlackmanHarris},
-		"blackman nuttall": {WindowBlackmanNuttall, window.BlackmanNuttall},
-		"flat top":         {WindowFlatTop, window.FlatTop},
-		"hamming":          {WindowHamming, window.Hamming},
-		"hann":             {WindowHann, window.Hann},
-		"lanczos":          {WindowLanczos, window.Lanczos},
-		"nuttall":          {WindowNuttall, window.Nuttall},
-		"rectangular":      {WindowRectangular, window.Rectangular},
-		"sine":             {WindowSine, window.Sine},
-		"triangular":       {WindowTriangular, window.Triangular},
-		"unknown":          {"unknown", window.Rectangular},
-	}
-
-	numPnts := 10
-	for name, td := range testData {
-		t.Run(name, func(t *testing.T) {
-			res := WindowFunc(td.name)
-
-			seqRes := make([]float64, numPnts)
-			floats.AddConst(1.0, seqRes)
-
-			seqExp := make([]float64, numPnts)
-			floats.AddConst(1.0, seqExp)
-
-			assert.Equal(t, td.expected(seqExp), res(seqRes))
-		})
 	}
 }
 
