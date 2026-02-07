@@ -126,6 +126,9 @@ func (o *Options) generateGrowthFeatures(epoch []float64, trainStartTime, trainE
 
 	// ensure last feature is at 1.0
 	scale := float64(trainEndTime.Sub(trainStartTime).Nanoseconds()) / 1e9
+	if scale == 0 {
+		return
+	}
 
 	switch o.GrowthOptions.Type {
 	case feature.GrowthLinear:
