@@ -86,7 +86,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 		order       int
 		period      float64
 		wantLen     int
-		description string
 	}{
 		{
 			name:        "sin component with basic values",
@@ -95,7 +94,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       1,
 			period:      1.0,
 			wantLen:     5,
-			description: "Basic sine component with period 1.0",
 		},
 		{
 			name:        "cos component with basic values",
@@ -104,7 +102,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       1,
 			period:      1.0,
 			wantLen:     5,
-			description: "Basic cosine component with period 1.0",
 		},
 		{
 			name:        "sin component with higher order",
@@ -113,7 +110,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       2,
 			period:      1.0,
 			wantLen:     5,
-			description: "Sine component with order 2 (double frequency)",
 		},
 		{
 			name:        "cos component with higher order",
@@ -122,7 +118,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       3,
 			period:      1.0,
 			wantLen:     5,
-			description: "Cosine component with order 3 (triple frequency)",
 		},
 		{
 			name:        "different period",
@@ -131,7 +126,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       1,
 			period:      7.0,
 			wantLen:     8,
-			description: "Sine component with weekly period",
 		},
 		{
 			name:        "empty time series",
@@ -140,7 +134,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       1,
 			period:      1.0,
 			wantLen:     0,
-			description: "Empty input time series",
 		},
 		{
 			name:        "single time point",
@@ -149,7 +142,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       1,
 			period:      1.0,
 			wantLen:     1,
-			description: "Single time point",
 		},
 		{
 			name:        "negative time points",
@@ -158,7 +150,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       1,
 			period:      2.0,
 			wantLen:     5,
-			description: "Negative time points should work correctly",
 		},
 		{
 			name:        "zero period (edge case)",
@@ -167,7 +158,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       1,
 			period:      0.0001, // Very small period to avoid division by zero
 			wantLen:     3,
-			description: "Very small period (near zero)",
 		},
 		{
 			name:        "large order",
@@ -176,7 +166,6 @@ func TestSeasonalityGenerate(t *testing.T) {
 			order:       10,
 			period:      1.0,
 			wantLen:     10,
-			description: "High order seasonality component",
 		},
 	}
 
@@ -225,7 +214,6 @@ func TestSeasonalityGenerateKnownValues(t *testing.T) {
 		period      float64
 		expected    []float64
 		tolerance   float64
-		description string
 	}{
 		{
 			name:        "cos at key points",
@@ -235,7 +223,6 @@ func TestSeasonalityGenerateKnownValues(t *testing.T) {
 			period:      1.0,
 			expected:    []float64{1.0, 0.0, -1.0, 0.0, 1.0}, // cos(0), cos(π/2), cos(π), cos(3π/2), cos(2π)
 			tolerance:   1e-10,
-			description: "Cosine values at quadrantal angles",
 		},
 		{
 			name:        "sin at key points",
@@ -245,7 +232,6 @@ func TestSeasonalityGenerateKnownValues(t *testing.T) {
 			period:      1.0,
 			expected:    []float64{0.0, 1.0, 0.0, -1.0, 0.0}, // sin(0), sin(π/2), sin(π), sin(3π/2), sin(2π)
 			tolerance:   1e-10,
-			description: "Sine values at quadrantal angles",
 		},
 		{
 			name:        "second order cos",
@@ -255,7 +241,6 @@ func TestSeasonalityGenerateKnownValues(t *testing.T) {
 			period:      1.0,
 			expected:    []float64{1.0, -1.0, 1.0}, // cos(0), cos(π), cos(2π)
 			tolerance:   1e-10,
-			description: "Second order cosine with period 1.0",
 		},
 	}
 
