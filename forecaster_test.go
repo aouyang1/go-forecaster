@@ -1000,6 +1000,22 @@ func generateExampleSeriesWithTrend() ([]time.Time, []float64) {
 	return t, y
 }
 
+func generateExampleSeriesWithGlobalTrend() ([]time.Time, []float64) {
+	// create a daily sine wave at minutely with one week
+	minutes := 14 * 24 * 60
+	t := timedataset.GenerateT(minutes, time.Minute, time.Now)
+	y := make(timedataset.Series, minutes)
+
+	period := 86400.0
+	y.Add(timedataset.GenerateConstY(minutes, 98.3)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 1.0, 2*60*60)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		Add(timedataset.GenerateNoise(t, 3.2, 3.2, period, 5.0, 0.0)).
+		Add(timedataset.GenerateChange(t, t[0], 0.0, 40.0/(t[minutes*17/20].Sub(t[minutes/2]).Minutes())))
+
+	return t, y
+}
+
 /*
 func Example_forecasterAutoChangepoint() {
 	t, y := generateExampleSeries()
@@ -1105,6 +1121,51 @@ func Example_forecasterWithTrend() {
 	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster_with_trend.html"); err != nil {
+		panic(err)
+	}
+	// Output:
+}
+
+func Example_forecasterWithGlobalTrend() {
+	t, y := generateExampleSeriesWithGlobalTrend()
+
+	opt := &Options{
+		SeriesOptions: &SeriesOptions{
+			ForecastOptions: &options.Options{
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 500,
+				Tolerance:  1e-3,
+				GrowthType: feature.GrowthLinear,
+			},
+			OutlierOptions: NewOutlierOptions(),
+		},
+		UncertaintyOptions: &UncertaintyOptions{
+			ForecastOptions: &options.Options{
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 250,
+				Tolerance:  1e-2,
+				ChangepointOptions: options.ChangepointOptions{
+					Changepoints: nil,
+				},
+			},
+			ResidualWindow: 100,
+			ResidualZscore: 4.0,
+		},
+	}
+
+	defer recoverForecastPanic(nil)
+
+	if err := runForecastExample(opt, t, y, "examples/forecaster_with_global_trend.html"); err != nil {
 		panic(err)
 	}
 	// Output:

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
-	"slices"
 	"strconv"
 	"time"
 
@@ -40,11 +38,11 @@ type Options struct {
 
 	SeasonalityOptions SeasonalityOptions `json:"seasonality_options"`
 
-	DSTOptions         DSTOptions         `json:"dst_options"`
-	WeekendOptions     WeekendOptions     `json:"weekend_options"`
-	EventSeriesOptions EventSeriesOptions `json:"-"`
-	EventOptions       EventOptions       `json:"event_options"`
-	MaskWindow         string             `json:"mask_window"`
+	DSTOptions     DSTOptions     `json:"dst_options"`
+	WeekendOptions WeekendOptions `json:"weekend_options"`
+	EventOptions   EventOptions   `json:"event_options"`
+	MaskWindow     string         `json:"mask_window"`
+	GrowthType     string         `json:"growth_type"`
 }
 
 // NewDefaultOptions returns a set of default forecast options
@@ -80,30 +78,46 @@ func (o *Options) NewLassoAutoOptions() *linearmodel.LassoAutoOptions {
 	return lassoOpt
 }
 
-func (o *Options) GenerateTimeFeatures(t []time.Time) (*feature.Set, *feature.Set) {
+func (o *Options) GenerateTimeFeatures(t []time.Time, trainStartTime, trainEndTime time.Time) (*feature.Set, *feature.Set) {
 	if o == nil {
 		o = NewDefaultOptions()
 	}
 
 	tFeat := feature.NewSet()
 
-	interceptFeat := feature.Intercept()
-	ones := make([]float64, len(t))
-	floats.AddConst(1.0, ones)
-	tFeat.Set(interceptFeat, ones)
-
-	epoch := make([]float64, len(t))
-	for i, tPnt := range t {
-		epochNano := float64(tPnt.UnixNano()) / 1e9
-		epoch[i] = epochNano
-	}
 	feat := feature.NewTime(LabelTimeEpoch)
+	epoch := feat.Generate(t)
 	tFeat.Set(feat, epoch)
+
+	o.generateGrowthFeatures(epoch, trainStartTime, trainEndTime, tFeat)
 
 	eFeat := o.GenerateEventFeatures(t)
 	tFeat.Update(eFeat)
 
 	return tFeat, eFeat
+}
+
+func (o *Options) generateGrowthFeatures(epoch []float64, trainStartTime, trainEndTime time.Time, tFeat *feature.Set) {
+	if trainEndTime.Equal(trainStartTime) {
+		return
+	}
+	interceptFeat := feature.Intercept()
+	tFeat.Set(interceptFeat, interceptFeat.Generate(epoch, trainStartTime, trainEndTime))
+
+	if o.GrowthType == "" {
+		return
+	}
+
+	// Add growth features if specified
+	switch o.GrowthType {
+	case feature.GrowthLinear:
+		linearFeat := feature.Linear()
+		tFeat.Set(linearFeat, linearFeat.Generate(epoch, trainStartTime, trainEndTime))
+
+	case feature.GrowthQuadratic:
+		quadraticFeat := feature.Quadratic()
+		tFeat.Set(quadraticFeat, quadraticFeat.Generate(epoch, trainStartTime, trainEndTime))
+	}
 }
 
 func (o *Options) GenerateEventFeatures(t []time.Time) *feature.Set {
@@ -112,22 +126,7 @@ func (o *Options) GenerateEventFeatures(t []time.Time) *feature.Set {
 	}
 
 	eFeat := feature.NewSet()
-
-	eventSeriesOpts := o.EventSeriesOptions
-	if o.WeekendOptions.Enabled {
-		eventSeriesOpts = append(eventSeriesOpts, &o.WeekendOptions)
-	}
-
-	for eventSeriesOpt := range slices.Values(eventSeriesOpts) {
-		mask, err := eventSeriesOpt.GenerateMask(t, o.MaskWindow)
-		if err != nil {
-			slog.Warn("unable to generate mask", "name", eventSeriesOpt.Name())
-		}
-		if err := RegisterEventSeries(eventSeriesOpt.Name(), eFeat, mask); err != nil {
-			slog.Warn("unable to register event series mask", "name", eventSeriesOpt.Name(), "error", err.Error())
-		}
-	}
-
+	o.WeekendOptions.generateEventMask(t, eFeat, o.MaskWindow)
 	o.EventOptions.generateEventMask(t, eFeat, o.MaskWindow)
 	return eFeat
 }
@@ -175,9 +174,9 @@ func (o *Options) GenerateFourierFeatures(feat *feature.Set) (*feature.Set, erro
 		if seasCfg.Name == LabelSeasDaily && o.WeekendOptions.Enabled {
 			// only model for daily since we're masking the weekends which means we do not meet the sampling requirements
 			// to capture weekly seasonality.
-			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, LabelEventWeekend, LabelSeasDaily)
+			eventSeasFeat, err := generateEventSeasonality(feat, seasFeatures, feature.EventNameWeekend, LabelSeasDaily)
 			if err != nil {
-				slog.Warn("unable to generate weekend daily seasonality", "feature_name", LabelEventWeekend, "error", err.Error())
+				slog.Warn("unable to generate weekend daily seasonality", "feature_name", feature.EventNameWeekend, "error", err.Error())
 				continue
 			}
 			x.Update(eventSeasFeat)
@@ -202,26 +201,13 @@ func generateFourierOrders(tFeatures *feature.Set, orders []int, periodDur time.
 
 	x := feature.NewSet()
 	for _, order := range orders {
-		sinFeat, cosFeat := generateFourierComponent(tFeat, order, period)
-		sinFeatCol := feature.NewSeasonality(col+"_"+label, feature.FourierCompSin, order)
-		cosFeatCol := feature.NewSeasonality(col+"_"+label, feature.FourierCompCos, order)
-		x.Set(sinFeatCol, sinFeat)
-		x.Set(cosFeatCol, cosFeat)
+		sinFeat := feature.NewSeasonality(col+"_"+label, feature.FourierCompSin, order)
+		cosFeat := feature.NewSeasonality(col+"_"+label, feature.FourierCompCos, order)
+		x.Set(sinFeat, sinFeat.Generate(tFeat, order, period))
+		x.Set(cosFeat, cosFeat.Generate(tFeat, order, period))
 	}
 
 	return x, nil
-}
-
-func generateFourierComponent(timeFeature []float64, order int, period float64) ([]float64, []float64) {
-	omega := 2.0 * math.Pi * float64(order) / period
-	sinFeat := make([]float64, len(timeFeature))
-	cosFeat := make([]float64, len(timeFeature))
-	for i, tFeat := range timeFeature {
-		rad := omega * tFeat
-		sinFeat[i] = math.Sin(rad)
-		cosFeat[i] = math.Cos(rad)
-	}
-	return sinFeat, cosFeat
 }
 
 func generateEventSeasonality(feat, sFeat *feature.Set, eCol, sLabel string) (*feature.Set, error) {
@@ -250,6 +236,15 @@ func generateMaskedSeasonality(sFeat *feature.Set, col string, mask []float64, s
 			continue
 		}
 		maskedData := make([]float64, len(featData))
+		// Ensure mask and feature data have same length
+		if len(mask) != len(featData) {
+			// Truncate or extend mask to match feature data length
+			if len(mask) > len(featData) {
+				mask = mask[:len(featData)]
+			} else {
+				mask = append(mask, make([]float64, len(featData)-len(mask))...)
+			}
+		}
 		floats.MulTo(maskedData, mask, featData)
 
 		fcompStr, _ := label.Get("fourier_component")

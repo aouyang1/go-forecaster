@@ -20,6 +20,7 @@ func TestModelTablePrint(t *testing.T) {
 	}{
 		"no input": {
 			expected: `Forecast:
+Training Start Time: 0001-01-01 00:00:00 +0000 UTC
 Training End Time: 0001-01-01 00:00:00 +0000 UTC
 Weights:
  Type Labels Value
@@ -37,6 +38,7 @@ Weights:
 			prefix: "--",
 			indent: "**",
 			expected: `--Forecast:
+--**Training Start Time: 0001-01-01 00:00:00 +0000 UTC
 --**Training End Time: 1970-01-01 00:00:00 +0000 UTC
 --Scores:
 --**MAPE: 0.123    MSE: 1.234    R2: 0.012
@@ -114,6 +116,7 @@ Weights:
 			prefix: "  ",
 			indent: "  ",
 			expected: `  Forecast:
+    Training Start Time: 0001-01-01 00:00:00 +0000 UTC
     Training End Time: 1970-01-03 00:00:00 +0000 UTC
     Regularization: [0.000 1.000]
     Seasonality:
@@ -163,6 +166,7 @@ Weights:
 			prefix: "  ",
 			indent: "  ",
 			expected: `  Forecast:
+    Training Start Time: 0001-01-01 00:00:00 +0000 UTC
     Training End Time: 1970-01-03 00:00:00 +0000 UTC
     Regularization: [0.000 1.000]
     Seasonality: None

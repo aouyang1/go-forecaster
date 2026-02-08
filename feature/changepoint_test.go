@@ -2,6 +2,7 @@ package feature
 
 import (
 	"testing"
+	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/assert"
@@ -69,4 +70,87 @@ func TestChangepointUnmarshalJSON(t *testing.T) {
 	require.NoError(t, json.Unmarshal(out, &nextFeat))
 
 	assert.Equal(t, feat, &nextFeat)
+}
+
+func TestChangepointGenerate(t *testing.T) {
+	baseTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	changepointTime := time.Date(2023, 1, 3, 0, 0, 0, 0, time.UTC)
+
+	testCases := []struct {
+		name        string
+		changepoint *Changepoint
+		times       []time.Time
+		chptT       time.Time
+		delta       float64
+		expected    []float64
+		tolerance   float64
+	}{
+		{
+			name:        "bias component exact values",
+			changepoint: NewChangepoint("test", ChangepointCompBias),
+			times: []time.Time{
+				baseTime,                     // before: 0
+				baseTime.Add(48 * time.Hour), // at: 1
+				baseTime.Add(72 * time.Hour), // after: 1
+			},
+			chptT:     changepointTime,
+			delta:     3600.0,
+			expected:  []float64{0.0, 1.0, 1.0},
+			tolerance: 1e-10,
+		},
+		{
+			name:        "slope component exact values",
+			changepoint: NewChangepoint("test", ChangepointCompSlope),
+			times: []time.Time{
+				baseTime,                     // before: 0
+				baseTime.Add(48 * time.Hour), // at: 0
+				baseTime.Add(72 * time.Hour), // 1 day after: 1
+				baseTime.Add(96 * time.Hour), // 2 days after: 2
+			},
+			chptT:     changepointTime,
+			delta:     86400.0, // 1 day
+			expected:  []float64{0.0, 0.0, 1.0, 2.0},
+			tolerance: 1e-10,
+		},
+		{
+			name:        "slope with fractional delta",
+			changepoint: NewChangepoint("test", ChangepointCompSlope),
+			times: []time.Time{
+				changepointTime,                     // at: 0
+				changepointTime.Add(6 * time.Hour),  // 6 hours: 0.25
+				changepointTime.Add(12 * time.Hour), // 12 hours: 0.5
+				changepointTime.Add(24 * time.Hour), // 24 hours: 1.0
+			},
+			chptT:     changepointTime,
+			delta:     86400.0, // 1 day
+			expected:  []float64{0.0, 0.25, 0.5, 1.0},
+			tolerance: 1e-10,
+		},
+		{
+			name:        "slope with negative delta",
+			changepoint: NewChangepoint("test", ChangepointCompSlope),
+			times: []time.Time{
+				changepointTime,                // at: 0
+				changepointTime.Add(time.Hour), // 1 hour: -1
+			},
+			chptT:     changepointTime,
+			delta:     -3600.0, // -1 hour
+			expected:  []float64{0.0, -1.0},
+			tolerance: 1e-10,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.changepoint.Generate(tc.times, tc.chptT, tc.delta)
+
+			assert.NotNil(t, got)
+			assert.Len(t, got, len(tc.expected))
+
+			for i, expected := range tc.expected {
+				assert.InDelta(t, expected, got[i], tc.tolerance,
+					"value at index %d", i)
+			}
+		})
+	}
 }

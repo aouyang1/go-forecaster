@@ -126,28 +126,25 @@ func (c ChangepointOptions) GenerateFeatures(t []time.Time, trainingEndTime time
 		filteredChpts = append(filteredChpts, chpt)
 	}
 
-	chptFeatures := newChangepointFeatures(filteredChpts, t, c.EnableGrowth)
-
-	for i, chpt := range filteredChpts {
-		// compute dt between training end time and changepoint time
-		delta := trainingEndTime.Sub(chpt.T).Seconds()
-		chptFeatures[i].generate(chpt, t, delta, c.EnableGrowth)
-	}
-
 	feat := feature.NewSet()
-	for i := 0; i < len(filteredChpts); i++ {
+	for i, chpt := range filteredChpts {
 		chpntName := strconv.Itoa(i)
 		if filteredChpts[i].Name != "" {
 			chpntName = filteredChpts[i].Name
 		}
+
 		chpntBias := feature.NewChangepoint(chpntName, feature.ChangepointCompBias)
-		feat.Set(chpntBias, chptFeatures[i].bias)
+		feat.Set(chpntBias, chpntBias.Generate(t, chpt.T, 0))
 
 		if c.EnableGrowth {
+			// compute dt between training end time and changepoint time
+			delta := trainingEndTime.Sub(chpt.T).Seconds()
+
 			chpntGrowth := feature.NewChangepoint(chpntName, feature.ChangepointCompSlope)
-			feat.Set(chpntGrowth, chptFeatures[i].growth)
+			feat.Set(chpntGrowth, chpntGrowth.Generate(t, chpt.T, delta))
 		}
 	}
+
 	return feat
 }
 

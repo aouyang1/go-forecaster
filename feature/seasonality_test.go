@@ -76,3 +76,57 @@ func TestSeasonalityUnmarshalJSON(t *testing.T) {
 
 	assert.Equal(t, feat, &nextFeat)
 }
+
+func TestSeasonalityGenerate(t *testing.T) {
+	// Test specific known values to ensure mathematical correctness
+	testCases := []struct {
+		name        string
+		seasonality *Seasonality
+		timePoints  []float64
+		order       int
+		period      float64
+		expected    []float64
+		tolerance   float64
+	}{
+		{
+			name:        "cos at key points",
+			seasonality: NewSeasonality("test", FourierCompCos, 1),
+			timePoints:  []float64{0, 0.25, 0.5, 0.75, 1.0},
+			order:       1,
+			period:      1.0,
+			expected:    []float64{1.0, 0.0, -1.0, 0.0, 1.0}, // cos(0), cos(π/2), cos(π), cos(3π/2), cos(2π)
+			tolerance:   1e-10,
+		},
+		{
+			name:        "sin at key points",
+			seasonality: NewSeasonality("test", FourierCompSin, 1),
+			timePoints:  []float64{0, 0.25, 0.5, 0.75, 1.0},
+			order:       1,
+			period:      1.0,
+			expected:    []float64{0.0, 1.0, 0.0, -1.0, 0.0}, // sin(0), sin(π/2), sin(π), sin(3π/2), sin(2π)
+			tolerance:   1e-10,
+		},
+		{
+			name:        "second order cos",
+			seasonality: NewSeasonality("test", FourierCompCos, 2),
+			timePoints:  []float64{0, 0.25, 0.5},
+			order:       2,
+			period:      1.0,
+			expected:    []float64{1.0, -1.0, 1.0}, // cos(0), cos(π), cos(2π)
+			tolerance:   1e-10,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.seasonality.Generate(tc.timePoints, tc.order, tc.period)
+
+			assert.Len(t, got, len(tc.expected))
+
+			for i, expected := range tc.expected {
+				assert.InDelta(t, expected, got[i], tc.tolerance,
+					"value at index %d", i)
+			}
+		})
+	}
+}

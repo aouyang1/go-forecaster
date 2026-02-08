@@ -1,14 +1,18 @@
 package feature
 
 import (
+	"math"
 	"strings"
+	"time"
 
 	"github.com/goccy/go-json"
+	"gonum.org/v1/gonum/floats"
 )
 
 const (
 	GrowthIntercept = "intercept"
 	GrowthLinear    = "linear"
+	GrowthQuadratic = "quadratic"
 )
 
 type Growth struct {
@@ -63,6 +67,48 @@ func (g *Growth) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (g *Growth) Generate(epoch []float64, trainStartTime, trainEndTime time.Time) []float64 {
+	// ensure that first feature is at 0
+	epochTrainStart := float64(trainStartTime.UnixNano()) / 1e9
+
+	// ensure last feature is at 1.0
+	scale := float64(trainEndTime.Sub(trainStartTime).Nanoseconds()) / 1e9
+	if scale == 0 {
+		return nil
+	}
+
+	switch g.Name {
+	case GrowthIntercept:
+		ones := make([]float64, len(epoch))
+		floats.AddConst(1.0, ones)
+		return ones
+
+	case GrowthLinear:
+		linearGrowth := make([]float64, len(epoch))
+		for i, epochT := range epoch {
+			linearGrowth[i] = (float64(epochT) - epochTrainStart) / scale
+		}
+		return linearGrowth
+
+	case GrowthQuadratic:
+		quadraticGrowth := make([]float64, len(epoch))
+		for i, epochT := range epoch {
+			quadraticGrowth[i] = math.Pow((float64(epochT)-epochTrainStart)/scale, 2.0)
+		}
+		return quadraticGrowth
+
+	}
+	return nil
+}
+
 func Intercept() *Growth {
 	return NewGrowth(GrowthIntercept)
+}
+
+func Linear() *Growth {
+	return NewGrowth(GrowthLinear)
+}
+
+func Quadratic() *Growth {
+	return NewGrowth(GrowthQuadratic)
 }
