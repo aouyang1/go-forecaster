@@ -236,6 +236,15 @@ func generateMaskedSeasonality(sFeat *feature.Set, col string, mask []float64, s
 			continue
 		}
 		maskedData := make([]float64, len(featData))
+		// Ensure mask and feature data have same length
+		if len(mask) != len(featData) {
+			// Truncate or extend mask to match feature data length
+			if len(mask) > len(featData) {
+				mask = mask[:len(featData)]
+			} else {
+				mask = append(mask, make([]float64, len(featData)-len(mask))...)
+			}
+		}
 		floats.MulTo(maskedData, mask, featData)
 
 		fcompStr, _ := label.Get("fourier_component")

@@ -1091,6 +1091,253 @@ func TestGenerateFourierFeatures(t *testing.T) {
 	}
 }
 
+func TestGenerateEventSeasonality(t *testing.T) {
+	// Helper function to create test seasonality features using proper generation
+	createTestSeasonality := func(period string, orders []int) *feature.Set {
+		sFeat := feature.NewSet()
+
+		// Create time points for testing (10 points at 6-hour intervals)
+		tPoints := make([]float64, 10)
+		for i := 0; i < 10; i++ {
+			tPoints[i] = float64(i * 6 * 3600) // 6 hours in seconds
+		}
+
+		// Determine period based on seasonality type
+		var periodDur time.Duration
+		switch period {
+		case "daily":
+			periodDur = 24 * time.Hour
+		case "weekly":
+			periodDur = 7 * 24 * time.Hour
+		default:
+			periodDur = 24 * time.Hour
+		}
+
+		// Generate seasonality features for each order
+		for _, order := range orders {
+			// Create sin component
+			sinFeat := feature.NewSeasonality("test_"+period, feature.FourierCompSin, order)
+			sinData := sinFeat.Generate(tPoints, order, periodDur.Seconds())
+
+			// Create cos component
+			cosFeat := feature.NewSeasonality("test_"+period, feature.FourierCompCos, order)
+			cosData := cosFeat.Generate(tPoints, order, periodDur.Seconds())
+
+			sFeat.Set(sinFeat, sinData)
+			sFeat.Set(cosFeat, cosData)
+		}
+		return sFeat
+	}
+
+	testData := map[string]struct {
+		feat          *feature.Set
+		sFeat         *feature.Set
+		eCol          string
+		sLabel        string
+		expected      *feature.Set
+		expectedError string
+	}{
+		"valid event mask with seasonality": {
+			feat: feature.NewSet().Set(
+				feature.NewEvent("myevent"),
+				[]float64{1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+			),
+			sFeat:  createTestSeasonality("daily", []int{1}),
+			eCol:   "myevent",
+			sLabel: "daily",
+			expected: feature.NewSet().Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
+				[]float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // sin: [0,1,0,-1,0,1,0,-1,0,1] masked with [1,0,1,0,1,0,1,0,1,0] = [0,0,0,0,0,0,0,0,0,0]
+			).Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 1),
+				[]float64{1, 0, -1, 0, 1, 0, -1, 0, 1, 0}, // cos: [1,0,-1,0,1,0,-1,0,1,0] masked with [1,0,1,0,1,0,1,0,1,0] = [1,0,-1,0,1,0,-1,0,1,0]
+			),
+			expectedError: "",
+		},
+		"missing event mask": {
+			feat: feature.NewSet().Set(
+				feature.NewTime("epoch"),
+				[]float64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+			),
+			sFeat:         createTestSeasonality("daily", []int{1}),
+			eCol:          "nonexistent",
+			sLabel:        "daily",
+			expected:      nil,
+			expectedError: "feature event mask not found, skipping event feature name, nonexistent",
+		},
+		"empty seasonality features": {
+			feat: feature.NewSet().Set(
+				feature.NewEvent("myevent"),
+				[]float64{1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+			),
+			sFeat:         feature.NewSet(),
+			eCol:          "myevent",
+			sLabel:        "daily",
+			expected:      feature.NewSet(),
+			expectedError: "",
+		},
+
+		"mask shorter than feature data": {
+			feat: feature.NewSet().Set(
+				feature.NewEvent("myevent"),
+				[]float64{1, 0, 1, 0}, // 4 elements, shorter than 10
+			),
+			sFeat:  createTestSeasonality("daily", []int{1}),
+			eCol:   "myevent",
+			sLabel: "daily",
+			expected: feature.NewSet().Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
+				[]float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // Extended mask: [1,0,1,0,0,0,0,0,0,0] * sin [0,1,0,-1,0,1,0,-1,0,1]
+			).Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 1),
+				[]float64{1, 0, -1, 0, 0, 0, 0, 0, 0, 0}, // Extended mask: [1,0,1,0,0,0,0,0,0,0] * cos [1,0,-1,0,1,0,-1,0,1,0]
+			),
+			expectedError: "",
+		},
+		"multiple seasonality orders": {
+			feat: feature.NewSet().Set(
+				feature.NewEvent("myevent"),
+				[]float64{1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+			),
+			sFeat:  createTestSeasonality("daily", []int{1, 2}),
+			eCol:   "myevent",
+			sLabel: "daily",
+			expected: feature.NewSet().Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
+				[]float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // Order 1 sin masked
+			).Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 1),
+				[]float64{1, 0, -1, -0, 1, 0, -1, -0, 1, 0}, // Order 1 cos masked
+			).Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 2),
+				[]float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // Order 2 sin masked
+			).Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 2),
+				[]float64{1, -0, 1, -0, 1, -0, 1, -0, 1, -0}, // Order 2 cos masked
+			),
+			expectedError: "",
+		},
+		"nil feature set": {
+			feat:          feature.NewSet(),
+			sFeat:         createTestSeasonality("daily", []int{1}),
+			eCol:          "myevent",
+			sLabel:        "daily",
+			expected:      nil,
+			expectedError: "feature event mask not found, skipping event feature name, myevent",
+		},
+		"nil seasonality features": {
+			feat: feature.NewSet().Set(
+				feature.NewEvent("myevent"),
+				[]float64{1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+			),
+			sFeat:         nil,
+			eCol:          "myevent",
+			sLabel:        "daily",
+			expected:      feature.NewSet(),
+			expectedError: "",
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			result, err := generateEventSeasonality(td.feat, td.sFeat, td.eCol, td.sLabel)
+
+			if td.expectedError != "" {
+				assert.Error(t, err)
+				assert.EqualError(t, err, td.expectedError)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				if td.expected == nil {
+					assert.Nil(t, result)
+				} else {
+					require.NotNil(t, result)
+
+					compareFeatureSet(t, td.expected, result, 1e-6)
+				}
+			}
+		})
+	}
+}
+
+func TestGenerateMaskedSeasonality(t *testing.T) {
+	// Test the helper function directly
+	testData := map[string]struct {
+		sFeat    *feature.Set
+		col      string
+		mask     []float64
+		sLabel   string
+		expected *feature.Set
+	}{
+		"basic masking": {
+			sFeat: feature.NewSet().Set(
+				feature.NewSeasonality("test_daily", feature.FourierCompSin, 1),
+				[]float64{1, 2, 3, 4, 5},
+			).Set(
+				feature.NewSeasonality("test_daily", feature.FourierCompCos, 1),
+				[]float64{2, 4, 6, 8, 10},
+			),
+			col:    "myevent",
+			mask:   []float64{1, 0, 1, 0, 1},
+			sLabel: "daily",
+			expected: feature.NewSet().Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
+				[]float64{1, 0, 3, 0, 5},
+			).Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompCos, 1),
+				[]float64{2, 0, 6, 0, 10},
+			),
+		},
+		"mask longer than feature data": {
+			sFeat: feature.NewSet().Set(
+				feature.NewSeasonality("test_daily", feature.FourierCompSin, 1),
+				[]float64{1, 2, 3},
+			),
+			col:    "myevent",
+			mask:   []float64{1, 0, 1, 0, 1}, // 5 elements
+			sLabel: "daily",
+			expected: feature.NewSet().Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
+				[]float64{1, 0, 3}, // Truncated mask
+			),
+		},
+		"mask shorter than feature data": {
+			sFeat: feature.NewSet().Set(
+				feature.NewSeasonality("test_daily", feature.FourierCompSin, 1),
+				[]float64{1, 2, 3, 4, 5},
+			),
+			col:    "myevent",
+			mask:   []float64{1, 0}, // 2 elements
+			sLabel: "daily",
+			expected: feature.NewSet().Set(
+				feature.NewSeasonality("myevent_daily", feature.FourierCompSin, 1),
+				[]float64{1, 0, 0, 0, 0}, // Extended with zeros
+			),
+		},
+		"empty seasonality features": {
+			sFeat:    feature.NewSet(),
+			col:      "myevent",
+			mask:     []float64{1, 0, 1},
+			sLabel:   "daily",
+			expected: feature.NewSet(),
+		},
+		"nil seasonality features": {
+			sFeat:    nil,
+			col:      "myevent",
+			mask:     []float64{1, 0, 1},
+			sLabel:   "daily",
+			expected: feature.NewSet(),
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			result := generateMaskedSeasonality(td.sFeat, td.col, td.mask, td.sLabel)
+			compareFeatureSet(t, td.expected, result, 1e-6)
+		})
+	}
+}
+
 func TestGenerateGrowthFeatures(t *testing.T) {
 	testData := map[string]struct {
 		epoch          []float64
