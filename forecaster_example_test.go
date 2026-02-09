@@ -358,6 +358,99 @@ func Example_forecasterWithGlobalTrend() {
 	// Output:
 }
 
+func generateExampleSeriesWithWeekendsAndEvent() ([]time.Time, []float64) {
+	// create a daily sine wave at minutely with 4 weeks
+	minutes := 28 * 24 * 60
+	t := timedataset.GenerateT(minutes, time.Minute, time.Now)
+	y := make(timedataset.Series, minutes)
+
+	period := 86400.0
+	y.Add(timedataset.GenerateConstY(minutes, 98.3)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 1.0, 2*60*60)).
+		Add(timedataset.GenerateWaveY(t, 10.5, period, 3.0, 2.0*60*60+period/2.0/2.0/3.0)).
+		Add(timedataset.GenerateWaveY(t, 23.4, period, 7.0, 6.0*60*60+period/2.0/2.0/3.0).MaskWithWeekend(t)).
+		Add(timedataset.GenerateChange(t, t[minutes/2], 15.0, 0.0)).
+		Add(timedataset.GenerateChange(t, t[minutes/2+int(float64(minutes)*1.5/28)], -15.0, 0.0)).
+		Add(timedataset.GenerateNoise(t, 3.2, 3.2, period, 5.0, 0.0))
+
+	return t, y
+}
+
+func setupWithWeekendsAndEvent() ([]time.Time, []float64, *Options) {
+	t, y := generateExampleSeriesWithWeekendsAndEvent()
+
+	minutes := 28 * 24 * 60
+	eventStart := t[len(t)/2]
+	eventEnd := t[len(t)/2+int(float64(minutes)*1.5/28)]
+	events := []options.Event{
+		options.NewEvent("special_promotion", eventStart, eventEnd),
+	}
+
+	regularization := []float64{0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0}
+	opt := &Options{
+		SeriesOptions: &SeriesOptions{
+			ForecastOptions: &options.Options{
+				Regularization: regularization,
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 500,
+				Tolerance:  1e-3,
+				ChangepointOptions: options.ChangepointOptions{
+					Changepoints: nil,
+				},
+				WeekendOptions: options.WeekendOptions{
+					Enabled: true,
+				},
+				EventOptions: options.EventOptions{
+					Events: events,
+				},
+				DSTOptions: options.DSTOptions{
+					Enabled: false,
+				},
+			},
+			OutlierOptions: &OutlierOptions{
+				NumPasses:       3,
+				TukeyFactor:     1.5,
+				LowerPercentile: 0.25,
+				UpperPercentile: 0.75,
+			},
+		},
+		UncertaintyOptions: &UncertaintyOptions{
+			ForecastOptions: &options.Options{
+				Regularization: regularization,
+				SeasonalityOptions: options.SeasonalityOptions{
+					SeasonalityConfigs: []options.SeasonalityConfig{
+						options.NewDailySeasonalityConfig(12),
+						options.NewWeeklySeasonalityConfig(12),
+					},
+				},
+				Iterations: 250,
+				Tolerance:  1e-2,
+				ChangepointOptions: options.ChangepointOptions{
+					Changepoints: nil,
+				},
+				WeekendOptions: options.WeekendOptions{
+					Enabled: true,
+				},
+				EventOptions: options.EventOptions{
+					Events: events,
+				},
+				DSTOptions: options.DSTOptions{
+					Enabled: false,
+				},
+			},
+			ResidualWindow: 100,
+			ResidualZscore: 4.0,
+		},
+	}
+
+	return t, y, opt
+}
+
 func generateExamplePulseSeries() ([]time.Time, []float64) {
 	// create a daily sine wave at minutely with one week
 	minutes := 28 * 24 * 60
@@ -437,6 +530,17 @@ func Example_forecasterWithPulses() {
 	defer recoverForecastPanic(nil)
 
 	if err := runForecastExample(opt, t, y, "examples/forecaster_pulses.html"); err != nil {
+		panic(err)
+	}
+	// Output:
+}
+
+func Example_forecasterWithWeekendsAndCustomEvent() {
+	t, y, opt := setupWithWeekendsAndEvent()
+
+	defer recoverForecastPanic(nil)
+
+	if err := runForecastExample(opt, t, y, "examples/forecaster_weekends_and_event.html"); err != nil {
 		panic(err)
 	}
 	// Output:
