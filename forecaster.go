@@ -282,8 +282,12 @@ func (f *Forecaster) Predict(t []time.Time) (*Results, error) {
 
 	// cap uncertainty predictions to be greater than or equal to minimum uncertainty value defaulting to 0.0
 	for i := range len(uncertaintyRes) {
-		if uncertaintyRes[i] < f.opt.MinUncertaintyValue {
-			uncertaintyRes[i] = f.opt.MinUncertaintyValue
+		minUncertaintyValue := f.opt.MinUncertaintyPercentage * seriesRes[i]
+		if f.opt.MinUncertaintyValue > minUncertaintyValue {
+			minUncertaintyValue = f.opt.MinUncertaintyValue
+		}
+		if uncertaintyRes[i] < minUncertaintyValue {
+			uncertaintyRes[i] = minUncertaintyValue
 		}
 	}
 

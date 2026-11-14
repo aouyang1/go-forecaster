@@ -827,11 +827,12 @@ func TestFixedPercentageUncertainty(t *testing.T) {
 	}
 
 	testData := map[string]struct {
-		percentage     float64
-		seriesValues   []float64
-		expectedUpper  []float64
-		expectedLower  []float64
-		minUncertainty float64
+		percentage         float64
+		seriesValues       []float64
+		expectedUpper      []float64
+		expectedLower      []float64
+		minUncertainty     float64
+		minUncertaintyPerc float64
 	}{
 		"10% of constant series": {
 			percentage:     0.1,
@@ -847,6 +848,29 @@ func TestFixedPercentageUncertainty(t *testing.T) {
 			expectedLower:  []float64{94.0, 94.0, 94.0, 94.0, 94.0},
 			minUncertainty: 6.0,
 		},
+		"3% with min uncertainty percentage": {
+			percentage:         0.03,
+			seriesValues:       []float64{100.0, 100.0, 100.0, 100.0, 100.0},
+			expectedUpper:      []float64{104.0, 104.0, 104.0, 104.0, 104.0},
+			expectedLower:      []float64{96.0, 96.0, 96.0, 96.0, 96.0},
+			minUncertaintyPerc: 0.04,
+		},
+		"3% with min uncertainty greater than min uncertainty percentage": {
+			percentage:         0.03,
+			seriesValues:       []float64{100.0, 100.0, 100.0, 100.0, 100.0},
+			expectedUpper:      []float64{106.0, 106.0, 106.0, 106.0, 106.0},
+			expectedLower:      []float64{94.0, 94.0, 94.0, 94.0, 94.0},
+			minUncertainty:     6.0,
+			minUncertaintyPerc: 0.05,
+		},
+		"3% with min uncertainty less than min uncertainty percentage": {
+			percentage:         0.03,
+			seriesValues:       []float64{100.0, 100.0, 100.0, 100.0, 100.0},
+			expectedUpper:      []float64{106.0, 106.0, 106.0, 106.0, 106.0},
+			expectedLower:      []float64{94.0, 94.0, 94.0, 94.0, 94.0},
+			minUncertainty:     5.0,
+			minUncertaintyPerc: 0.06,
+		},
 	}
 
 	for name, td := range testData {
@@ -860,7 +884,8 @@ func TestFixedPercentageUncertainty(t *testing.T) {
 				UncertaintyOptions: &UncertaintyOptions{
 					Percentage: td.percentage,
 				},
-				MinUncertaintyValue: td.minUncertainty,
+				MinUncertaintyValue:      td.minUncertainty,
+				MinUncertaintyPercentage: td.minUncertaintyPerc,
 			}
 
 			f, err := New(opt)
