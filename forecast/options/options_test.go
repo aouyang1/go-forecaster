@@ -13,6 +13,47 @@ import (
 	"gonum.org/v1/gonum/floats"
 )
 
+func TestOptionsValidate(t *testing.T) {
+	testData := map[string]struct {
+		opt *Options
+		err error
+	}{
+		"nil":     {nil, nil},
+		"default": {NewDefaultOptions(), nil},
+		"negative regularization": {
+			&Options{Regularization: []float64{-1.0}},
+			ErrNegativeRegularization,
+		},
+		"negative iterations": {
+			&Options{Iterations: -1},
+			ErrNegativeIterations,
+		},
+		"negative tolerance": {
+			&Options{Tolerance: -1.0},
+			ErrNegativeTolerance,
+		},
+		"negative parallelization": {
+			&Options{Parallelization: -1},
+			ErrNegativeParallelization,
+		},
+		"negative auto num changepoints": {
+			&Options{ChangepointOptions: ChangepointOptions{AutoNumChangepoints: -1}},
+			ErrNegativeAutoNumChangepoints,
+		},
+	}
+
+	for name, td := range testData {
+		t.Run(name, func(t *testing.T) {
+			err := td.opt.Validate()
+			if td.err != nil {
+				assert.ErrorIs(t, err, td.err)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func compareFeatureSet(t *testing.T, expected, res *feature.Set, tol float64) {
 	assert.Equal(t, expected.Len(), res.Len())
 	require.Equal(t, expected.Labels(), res.Labels())

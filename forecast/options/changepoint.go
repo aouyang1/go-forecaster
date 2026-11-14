@@ -67,6 +67,14 @@ func NewDefaultChangepointOptions() ChangepointOptions {
 	}
 }
 
+// Validate runs basic validation on the changepoint options
+func (c ChangepointOptions) Validate() error {
+	if c.AutoNumChangepoints < 0 {
+		return ErrNegativeAutoNumChangepoints
+	}
+	return nil
+}
+
 func (c *ChangepointOptions) GenerateAutoChangepoints(t []time.Time) []Changepoint {
 	if !c.Auto {
 		return nil

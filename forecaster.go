@@ -53,8 +53,8 @@ func New(opt *Options) (*Forecaster, error) {
 		opt = NewDefaultOptions()
 	}
 
-	if opt.SeriesOptions == nil || opt.UncertaintyOptions == nil {
-		return nil, ErrNoSeriesOrUncertaintyOptions
+	if err := opt.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid forecaster options, %w", err)
 	}
 	f := &Forecaster{
 		opt: opt,
@@ -86,6 +86,10 @@ func NewFromModel(model Model) (*Forecaster, error) {
 	opt := model.Options
 	opt.SeriesOptions.ForecastOptions = model.Series.Options
 	opt.UncertaintyOptions.ForecastOptions = model.Uncertainty.Options
+
+	if err := opt.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid forecaster options from model, %w", err)
+	}
 
 	seriesForecast, err := forecast.NewFromModel(model.Series)
 	if err != nil {

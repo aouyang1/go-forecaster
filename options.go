@@ -1,9 +1,24 @@
 package forecaster
 
 import (
+	"errors"
+	"fmt"
 	"math"
 
 	"github.com/aouyang1/go-forecaster/forecast/options"
+)
+
+var (
+	ErrMinValueGreaterThanMaxValue      = errors.New("min value is greater than max value")
+	ErrNegativeMinUncertaintyValue      = errors.New("min uncertainty value must be non-negative")
+	ErrNegativeMinUncertaintyPercentage = errors.New("min uncertainty percentage must be non-negative")
+	ErrNegativeNumPasses                = errors.New("outlier number of passes must be non-negative")
+	ErrInvalidOutlierPercentile         = errors.New("outlier percentile must be between 0 and 1")
+	ErrLowerPercentileGreaterOrEqual    = errors.New("outlier lower percentile must be less than upper percentile")
+	ErrNegativeTukeyFactor              = errors.New("outlier tukey factor must be non-negative")
+	ErrNegativeResidualWindow           = errors.New("residual window must be non-negative")
+	ErrNegativeResidualZscore           = errors.New("residual z-score must be non-negative")
+	ErrNegativeUncertaintyPercentage    = errors.New("uncertainty percentage must be non-negative")
 )
 
 // OutlierOptions configures the outlier removal pre-process using the Tukey Method. The outlier
@@ -29,6 +44,26 @@ func NewOutlierOptions() *OutlierOptions {
 	}
 }
 
+// Validate runs basic validation on the outlier options
+func (o *OutlierOptions) Validate() error {
+	if o == nil {
+		return nil
+	}
+	if o.NumPasses < 0 {
+		return ErrNegativeNumPasses
+	}
+	if o.TukeyFactor < 0 {
+		return ErrNegativeTukeyFactor
+	}
+	if o.LowerPercentile < 0 || o.LowerPercentile > 1 || o.UpperPercentile < 0 || o.UpperPercentile > 1 {
+		return ErrInvalidOutlierPercentile
+	}
+	if o.LowerPercentile >= o.UpperPercentile {
+		return ErrLowerPercentileGreaterOrEqual
+	}
+	return nil
+}
+
 type SeriesOptions struct {
 	ForecastOptions *options.Options `json:"forecast_options"`
 	OutlierOptions  *OutlierOptions  `json:"outlier_options"`
@@ -39,6 +74,24 @@ func NewSeriesOptions() *SeriesOptions {
 		ForecastOptions: options.NewDefaultOptions(),
 		OutlierOptions:  NewOutlierOptions(),
 	}
+}
+
+// Validate runs basic validation on the series options and its nested forecast and outlier options
+func (o *SeriesOptions) Validate() error {
+	if o == nil {
+		return nil
+	}
+	if o.ForecastOptions != nil {
+		if err := o.ForecastOptions.Validate(); err != nil {
+			return fmt.Errorf("forecast options, %w", err)
+		}
+	}
+	if o.OutlierOptions != nil {
+		if err := o.OutlierOptions.Validate(); err != nil {
+			return fmt.Errorf("outlier options, %w", err)
+		}
+	}
+	return nil
 }
 
 type UncertaintyOptions struct {
@@ -54,6 +107,28 @@ func NewUncertaintyOptions() *UncertaintyOptions {
 		ResidualWindow:  100,
 		ResidualZscore:  4.0,
 	}
+}
+
+// Validate runs basic validation on the uncertainty options and its nested forecast options
+func (o *UncertaintyOptions) Validate() error {
+	if o == nil {
+		return nil
+	}
+	if o.ForecastOptions != nil {
+		if err := o.ForecastOptions.Validate(); err != nil {
+			return fmt.Errorf("forecast options, %w", err)
+		}
+	}
+	if o.ResidualWindow < 0 {
+		return ErrNegativeResidualWindow
+	}
+	if o.ResidualZscore < 0 {
+		return ErrNegativeResidualZscore
+	}
+	if o.Percentage < 0 {
+		return ErrNegativeUncertaintyPercentage
+	}
+	return nil
 }
 
 // Options represents all forecaster options for outlier removal, forecast fit, and uncertainty fit
@@ -75,6 +150,33 @@ func NewDefaultOptions() *Options {
 		SeriesOptions:      NewSeriesOptions(),
 		UncertaintyOptions: NewUncertaintyOptions(),
 	}
+}
+
+// Validate runs basic validation on all forecaster options including the nested series and
+// uncertainty options. A nil receiver is considered valid.
+func (o *Options) Validate() error {
+	if o == nil {
+		return nil
+	}
+	if o.SeriesOptions == nil || o.UncertaintyOptions == nil {
+		return ErrNoSeriesOrUncertaintyOptions
+	}
+	if err := o.SeriesOptions.Validate(); err != nil {
+		return fmt.Errorf("series options, %w", err)
+	}
+	if err := o.UncertaintyOptions.Validate(); err != nil {
+		return fmt.Errorf("uncertainty options, %w", err)
+	}
+	if o.MinValue != nil && o.MaxValue != nil && *o.MinValue > *o.MaxValue {
+		return ErrMinValueGreaterThanMaxValue
+	}
+	if o.MinUncertaintyValue < 0 {
+		return ErrNegativeMinUncertaintyValue
+	}
+	if o.MinUncertaintyPercentage < 0 {
+		return ErrNegativeMinUncertaintyPercentage
+	}
+	return nil
 }
 
 func (o *Options) SetMinValue(val float64) {
