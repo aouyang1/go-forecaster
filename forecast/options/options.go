@@ -20,7 +20,14 @@ const (
 	LabelSeasWeekly = "weekly"
 )
 
-var ErrUnknownTimeFeature = errors.New("unknown time feature")
+var (
+	ErrUnknownTimeFeature          = errors.New("unknown time feature")
+	ErrNegativeRegularization      = errors.New("regularization parameter must be non-negative")
+	ErrNegativeIterations          = errors.New("iterations must be non-negative")
+	ErrNegativeTolerance           = errors.New("tolerance must be non-negative")
+	ErrNegativeParallelization     = errors.New("parallelization must be non-negative")
+	ErrNegativeAutoNumChangepoints = errors.New("auto number of changepoints must be non-negative")
+)
 
 // Options configures a forecast by specifying changepoints, seasonality order
 // and an optional regularization parameter where higher values removes more features
@@ -52,6 +59,32 @@ func NewDefaultOptions() *Options {
 		Regularization:     []float64{0.0},
 		SeasonalityOptions: NewDefaultSeasonalityOptions(),
 	}
+}
+
+// Validate runs basic validation on the forecast options and its nested changepoint options.
+// A nil receiver is considered valid.
+func (o *Options) Validate() error {
+	if o == nil {
+		return nil
+	}
+	if err := o.ChangepointOptions.Validate(); err != nil {
+		return fmt.Errorf("changepoint options, %w", err)
+	}
+	for _, lambda := range o.Regularization {
+		if lambda < 0 {
+			return ErrNegativeRegularization
+		}
+	}
+	if o.Iterations < 0 {
+		return ErrNegativeIterations
+	}
+	if o.Tolerance < 0 {
+		return ErrNegativeTolerance
+	}
+	if o.Parallelization < 0 {
+		return ErrNegativeParallelization
+	}
+	return nil
 }
 
 func (o *Options) NewLassoAutoOptions() *linearmodel.LassoAutoOptions {
