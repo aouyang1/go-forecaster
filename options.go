@@ -58,11 +58,15 @@ func NewUncertaintyOptions() *UncertaintyOptions {
 
 // Options represents all forecaster options for outlier removal, forecast fit, and uncertainty fit
 type Options struct {
-	SeriesOptions       *SeriesOptions      `json:"series_options"`
-	UncertaintyOptions  *UncertaintyOptions `json:"uncertainty_options"`
-	MinValue            *float64            `json:"min_value"`
-	MaxValue            *float64            `json:"max_value"`
-	MinUncertaintyValue float64             `json:"min_uncertainty_value"`
+	SeriesOptions      *SeriesOptions      `json:"series_options"`
+	UncertaintyOptions *UncertaintyOptions `json:"uncertainty_options"`
+	MinValue           *float64            `json:"min_value"`
+	MaxValue           *float64            `json:"max_value"`
+
+	// both value and percentage can be used but the one with the greater uncertainty will be used
+	// when predicting the uncertainty value.
+	MinUncertaintyValue      float64 `json:"min_uncertainty_value"`
+	MinUncertaintyPercentage float64 `json:"min_uncertainty_percentage"`
 }
 
 // NewDefaultOptions generates a default set of options for a forecaster
